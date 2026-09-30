@@ -157,7 +157,7 @@ async function fetchModel(onProgress) {
       const buf = new Uint8Array(got); let o = 0; for (const c of chunks) { buf.set(c, o); o += c.length; }
       if (cache) try { await cache.put(url, new Response(buf)); } catch (e) { }
       return buf;
-    } catch (e) { }
+    } catch (e) { console.warn('Model mirror failed:', url, e); }
   }
   throw new Error('Could not download the background-removal model');
 }

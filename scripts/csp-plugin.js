@@ -11,7 +11,7 @@ export default function tightenCsp() {
       if (!ctx.server && process.env.VITE_VENDOR) {
         return html
           .replace(/ https:\/\/cdn\.jsdelivr\.net/g, '')
-          .replace(/ https:\/\/huggingface\.co https:\/\/cdn-lfs\.huggingface\.co https:\/\/cdn-lfs-us-1\.hf\.co/g, '');
+          .replace(/ https:\/\/huggingface\.co https:\/\/\*\.huggingface\.co https:\/\/\*\.hf\.co/g, '');
       }
       return html;
     },
