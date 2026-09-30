@@ -1,0 +1,20 @@
+CC0 1.0 Universal — Public Domain Dedication
+============================================
+
+Applies to the preset content in `src/presets.js`: the layout functions, palettes,
+type pairings, copy packs and format definitions, and to the baselines derived from
+them in `tests/baselines/`.
+
+To the extent possible under law, the Pinwheel Studio contributors have waived all
+copyright and related or neighbouring rights to this material. You may copy, modify,
+distribute and use it, including for commercial purposes, without asking permission
+and without attribution.
+
+Designs you make from these presets are yours. Pinwheel Studio claims no rights over
+them and requires no credit.
+
+Full text: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+Note: this dedication covers the presets only. The rest of the application is MIT
+licensed (see LICENSE), and the fonts, model and libraries the app uses carry their
+own licences (see THIRD-PARTY.md).
