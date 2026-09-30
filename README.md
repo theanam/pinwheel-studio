@@ -10,12 +10,15 @@ stay on your machine.
   model, runs on the device.
 - **Portable files.** A `.pinwheel` file is a zip: a JSON document plus the original
   assets. Easy to share, diff and archive.
-- **Real templates.** 8,199 of them across 72 formats, generated from 74 hand-built
-  layouts and 31 copy packs — including 15 occasions, from birthdays and weddings to
-  Eid, Puja, Diwali, Christmas and memorials — so every template opens as ordinary
-  text, shapes and frames. Every frame carries sample art in the template's own
-  palette until a photo replaces it. Decks, carousels, booklets, reports and menus
-  open with a story arc across their pages.
+- **Real templates.** 8,412 of them across 72 formats, generated from 76 hand-built
+  layouts and 35 copy packs, so every template opens as ordinary text, shapes and
+  frames. 19 occasions — kids' and grown-up birthdays, engagement, wedding,
+  anniversary, Valentine's, Mother's Day, baby shower, graduation, Christmas, Eid,
+  Puja, Diwali, Easter, Thanksgiving, Halloween, New Year and memorials — each with a
+  signature palette, a motif set (snowflakes, reindeer, crescents, lanterns, diyas,
+  eggs, pumpkins, balloons, rings, doves…) and a background scatter. Every frame
+  carries sample art in the template's own palette until a photo replaces it. Decks,
+  carousels, booklets, reports and menus open with a story arc across their pages.
 
 The full product and technical spec is at [`public/spec.html`](public/spec.html), and
 is served from the running app at `/spec.html`.

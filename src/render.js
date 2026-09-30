@@ -19,6 +19,8 @@ function shapeNode(h, el) {
   if (s === 'star' || s === 'burst') return h('polygon', { points: starPts(s === 'burst' ? (el.points > 8 ? el.points : 16) : el.points || 5, s === 'burst' ? Math.max(el.inner || .8, .7) : el.inner || .5, w, H), ...p });
   if (s === 'polygon') return h('polygon', { points: ngonPts(el.sides || 6, w, H), ...p });
   if (s === 'poly' && el.pts) return h('polygon', { points: polyPts(el.pts, w, H), ...p });
+  // Motif paths are authored in a 100×100 box and scaled to the frame (fill only).
+  if (s === 'path' && el.d) return h('path', { d: el.d, transform: `scale(${w / 100} ${H / 100})`, fillRule: 'evenodd', fill: p.fill });
   if (SHAPE_PTS[s]) return h('polygon', { points: polyPts(SHAPE_PTS[s], w, H), ...p });
   if (s === 'arch') { const r = w / 2; return h('path', { d: `M0 ${H} L0 ${Math.min(r, H)} A ${r} ${Math.min(r, H)} 0 0 1 ${w} ${Math.min(r, H)} L${w} ${H} Z`, ...p }); }
   if (s === 'half') return h('path', { d: `M0 ${H} A ${w / 2} ${H} 0 0 1 ${w} ${H} Z`, ...p });
@@ -109,14 +111,17 @@ function sampleArt(h, s) {
     return { vb: '0 0 100 130', k };
   }
   // landscape
+  const night = s.scene === 'night', winter = s.scene === 'winter';
   k.push(h('rect', { key: 'sky', width: 160, height: 100, fill: c.sky }));
   k.push(h('circle', { key: 'sun', cx: v === 2 ? 40 : 120, cy: 28, r: 14, fill: c.sun }));
-  [[24, 30], [96, 20]].forEach(([x, y], i) => { k.push(h('ellipse', { key: 'cl' + i, cx: x + v * 6, cy: y, rx: 16, ry: 6, fill: c.cloud, opacity: .85 })); k.push(h('ellipse', { key: 'cl2' + i, cx: x + 8 + v * 6, cy: y - 4, rx: 10, ry: 6, fill: c.cloud, opacity: .85 })); });
+  if (night) { k.push(h('circle', { key: 'moonbite', cx: (v === 2 ? 40 : 120) + 7, cy: 24, r: 12, fill: c.sky })); [[20, 14], [48, 30], [70, 10], [88, 22], [140, 12], [150, 40], [30, 44]].forEach(([x, y], i) => k.push(h('circle', { key: 'st' + i, cx: x + v * 2, cy: y, r: i % 3 ? 1.2 : 1.8, fill: c.cloud, opacity: .9 }))); }
+  else [[24, 30], [96, 20]].forEach(([x, y], i) => { k.push(h('ellipse', { key: 'cl' + i, cx: x + v * 6, cy: y, rx: 16, ry: 6, fill: c.cloud, opacity: .85 })); k.push(h('ellipse', { key: 'cl2' + i, cx: x + 8 + v * 6, cy: y - 4, rx: 10, ry: 6, fill: c.cloud, opacity: .85 })); });
   if (v === 1) { k.push(h('path', { key: 'mtn', d: 'M0 100 L0 74 L36 40 L62 66 L86 32 L118 68 L140 48 L160 70 L160 100 Z', fill: c.far })); k.push(h('path', { key: 'snow', d: 'M78 44 L86 32 L94 44 Z M30 48 L36 40 L42 48 Z', fill: c.cloud, opacity: .9 })); k.push(h('path', { key: 'near', d: 'M0 100 L0 84 C40 70 90 92 160 80 L160 100 Z', fill: c.near })); }
   else if (v === 2) { k.push(h('rect', { key: 'sea', x: 0, y: 58, width: 160, height: 42, fill: c.near })); [64, 72, 80].forEach((y, i) => k.push(h('path', { key: 'w' + i, d: `M${10 + i * 30} ${y} q6 -4 12 0 t12 0 t12 0`, stroke: c.cloud, strokeWidth: 1.6, fill: 'none', opacity: .7 }))); k.push(h('path', { key: 'sand', d: 'M0 100 L0 88 C50 82 110 96 160 86 L160 100 Z', fill: c.far })); }
   else { k.push(h('path', { key: 'far', d: 'M0 100 L0 62 C30 46 60 72 90 56 C120 42 140 62 160 52 L160 100 Z', fill: c.far })); k.push(h('path', { key: 'near', d: 'M0 100 L0 80 C40 64 80 90 120 74 C140 68 150 76 160 72 L160 100 Z', fill: c.near })); }
   if (v !== 2) [[22, 84], [44, 88], [128, 82]].forEach(([x, y], i) => { k.push(h('polygon', { key: 't' + i, points: `${x},${y - 22} ${x - 8},${y} ${x + 8},${y}`, fill: c.tree })); k.push(h('rect', { key: 'tr' + i, x: x - 1.5, y, width: 3, height: 6, fill: c.tree })); });
-  if (v === 3) k.push(h('path', { key: 'birds', d: 'M60 30 q4 -4 8 0 M70 24 q4 -4 8 0 M52 22 q4 -4 8 0', stroke: c.tree, strokeWidth: 1.2, fill: 'none' }));
+  if (v === 3 && !night && !winter) k.push(h('path', { key: 'birds', d: 'M60 30 q4 -4 8 0 M70 24 q4 -4 8 0 M52 22 q4 -4 8 0', stroke: c.tree, strokeWidth: 1.2, fill: 'none' }));
+  if (winter) { [[12, 22], [38, 48], [58, 16], [84, 40], [104, 12], [126, 50], [146, 26], [70, 62], [20, 70]].forEach(([x, y], i) => k.push(h('circle', { key: 'sn' + i, cx: x + v * 3, cy: y, r: i % 2 ? 1.6 : 2.4, fill: '#FFFFFF', opacity: .9 }))); if (v !== 2) [[22, 84], [44, 88], [128, 82]].forEach(([x, y], i) => k.push(h('polygon', { key: 'snowcap' + i, points: `${x},${y - 22} ${x - 3},${y - 14} ${x + 3},${y - 14}`, fill: '#FFFFFF', opacity: .85 }))); }
   return { vb: '0 0 160 100', k };
 }
 function sampleNode(h, el) {

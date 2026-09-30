@@ -1,9 +1,9 @@
 CC0 1.0 Universal — Public Domain Dedication
 ============================================
 
-Applies to the preset content in `src/presets.js`: the layout functions, palettes,
-type pairings, copy packs and format definitions, and to the baselines derived from
-them in `tests/baselines/`.
+Applies to the preset content in `src/presets.js` — the layout functions, palettes,
+type pairings, copy packs and format definitions — to the occasion motif drawings in
+`src/motifs.js`, and to the baselines derived from them in `tests/baselines/`.
 
 To the extent possible under law, the Pinwheel Studio contributors have waived all
 copyright and related or neighbouring rights to this material. You may copy, modify,

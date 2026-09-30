@@ -80,7 +80,7 @@ export interface TextElement extends BaseElement {
 
 export type ShapeKind =
   | 'rect' | 'rounded' | 'ellipse' | 'triangle' | 'diamond' | 'star' | 'burst'
-  | 'polygon' | 'arrow' | 'chevron' | 'parallelogram' | 'arch' | 'half' | 'quarter' | 'poly';
+  | 'polygon' | 'arrow' | 'chevron' | 'parallelogram' | 'arch' | 'half' | 'quarter' | 'poly' | 'path';
 
 export interface ShapeElement extends BaseElement {
   type: 'shape';
@@ -98,6 +98,8 @@ export interface ShapeElement extends BaseElement {
   sides: number;
   /** Unit-square points for `shape: 'poly'`. */
   pts?: [number, number][];
+  /** SVG path data in a 100×100 box for `shape: 'path'` (occasion motifs). */
+  d?: string;
   dash?: boolean;
   shadow?: boolean;
 }

@@ -9,6 +9,7 @@
 
     fmt=ig-post,pitch     formats to show (default: every format)
     layout=resume,badge   restrict to these layouts
+    topic=christmas,eid   restrict to these copy packs (then `per` is per pack)
     per=2                 templates per format (default 1)
     pages=1               1 = first page only, all = every page (default all)
     w=240                 thumbnail width in px
@@ -39,6 +40,7 @@
   const q = new URLSearchParams(location.search);
   const fmts = q.get('fmt') ? q.get('fmt').split(',') : P.FORMATS.map(f => f.id);
   const layouts = q.get('layout') ? q.get('layout').split(',') : null;
+  const topics = q.get('topic') ? q.get('topic').split(',') : null;
   const per = +(q.get('per') || 1);
   const allPages = (q.get('pages') || 'all') !== '1';
   const w = +(q.get('w') || 240);
@@ -48,11 +50,11 @@
 
   const cat = P.catalog();
   const picks = [];
-  for (const id of fmts) {
-    let ts = cat.filter(t => t.fmt === id && (!layouts || layouts.includes(t.layout)));
-    // Spread across layouts rather than taking the first N variants of one.
-    const seen = new Set(); ts = ts.filter(t => !seen.has(t.layout) && seen.add(t.layout));
-    picks.push(...ts.slice(0, per));
+  const spread = ts => { const seen = new Set(); return ts.filter(t => !seen.has(t.layout) && seen.add(t.layout)); };
+  if (topics) {
+    for (const tp of topics) picks.push(...spread(cat.filter(t => t.topic === tp && fmts.includes(t.fmt) && (!layouts || layouts.includes(t.layout)))).slice(0, per));
+  } else {
+    for (const id of fmts) picks.push(...spread(cat.filter(t => t.fmt === id && (!layouts || layouts.includes(t.layout)))).slice(0, per));
   }
   document.getElementById('note').textContent = `${picks.length} templates · ${fmts.length} formats`;
 

@@ -71,7 +71,8 @@ four things differ from `_source/Pinwheel Studio.dc.html`:
 
 `src/presets.js` has grown well past the prototype — 72 formats with safe zones and
 story arcs, 74 layouts including photo-first and occasion layouts, 31 copy packs, and
-procedural sample art on every frame — and `src/render.js` draws that sample art.
+procedural sample art on every frame — and `src/render.js` draws that sample art and the `path` shape that occasion motifs
+(`src/motifs.js`) use.
 
 `src/io.js` is the prototype file unchanged apart from the CDN-vs-vendor indirection
 at the top.
