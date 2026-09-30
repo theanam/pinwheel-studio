@@ -9,19 +9,14 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
 <style>
 html,body{margin:0;background:#F4F2EE;-webkit-font-smoothing:antialiased}
-a{color:#C9523A;text-decoration:none}
-a:hover{color:#E8674A;text-decoration:underline}
+a{color:#16624C;text-decoration:none}
+a:hover{color:#1F7D62;text-decoration:underline}
 </style>
 </head>
 <body>
 <div style="font-family:'Source Sans 3', system-ui, sans-serif; color:#24211D; font-size:16px; line-height:1.6; min-height:100vh">
   <header style="display:flex; align-items:center; gap:14px; padding:14px 32px; border-bottom:1px solid #E6E1D9; background:#FBFAF8; position:sticky; top:0; z-index:5">
-    <div style="display:grid; grid-template-columns:10px 10px; gap:2px">
-      <div style="width:10px; height:10px; background:#E8674A; border-radius:10px 0 0 0"></div>
-      <div style="width:10px; height:10px; background:#24211D; border-radius:0 10px 0 0"></div>
-      <div style="width:10px; height:10px; background:#24211D; border-radius:0 0 0 10px"></div>
-      <div style="width:10px; height:10px; background:#E8674A; border-radius:0 0 10px 0"></div>
-    </div>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" aria-hidden="true" style="display:block;flex:none"><path d="M54.5 45.5 L54.5 7 L93 7 A40 40 0 0 1 54.5 45.5 Z" fill="#1F7D62"/><path d="M54.5 45.5 L54.5 7 L93 7 A40 40 0 0 1 54.5 45.5 Z" fill="#24211D" transform="rotate(90 50 50)"/><path d="M54.5 45.5 L54.5 7 L93 7 A40 40 0 0 1 54.5 45.5 Z" fill="#1F7D62" transform="rotate(180 50 50)"/><path d="M54.5 45.5 L54.5 7 L93 7 A40 40 0 0 1 54.5 45.5 Z" fill="#24211D" transform="rotate(270 50 50)"/><circle cx="50" cy="50" r="7" fill="#24211D"/><circle cx="50" cy="50" r="2.9" fill="#F4F2EE"/></svg>
     <span style="font-weight:700">Pinwheel Studio</span>
     <span style="color:#8A837A">Spec v1.0 · September 2026</span>
     <div style="flex:1"></div>
@@ -54,7 +49,7 @@ a:hover{color:#E8674A;text-decoration:underline}
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-top:8px">
           <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:16px"><div style="font-weight:700">Local-first</div><div style="color:#6E675E; font-size:14px">Static site on GitHub Pages. Every feature, including ML, runs on the device.</div></div>
           <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:16px"><div style="font-weight:700">Portable files</div><div style="color:#6E675E; font-size:14px">A .pinwheel file is a zip: JSON document plus original assets. Easy to share, diff and archive.</div></div>
-          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:16px"><div style="font-weight:700">Real templates</div><div style="color:#6E675E; font-size:14px">1,500+ generated from hand-built layouts, so every template is a normal, editable design.</div></div>
+          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:16px"><div style="font-weight:700">Real templates</div><div style="color:#6E675E; font-size:14px">8,000+ generated from hand-built layouts, so every template is a normal, editable design.</div></div>
         </div>
         <h3 style="margin:16px 0 0; font-size:18px">Principles</h3>
         <ul style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:4px">
@@ -69,13 +64,13 @@ a:hover{color:#E8674A;text-decoration:underline}
         <h2 style="margin:0; font-size:28px; letter-spacing:-0.01em">2. Feature scope</h2>
         <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; overflow:hidden">
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; background:#F7F5F1; font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8A837A"><span>Area</span><span>Capability</span><span>Status</span></div>
-          <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Templates</b><span>Gallery with search and category filters. Apply to the current design or start from one. Re-layout on resize.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
+          <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Templates</b><span>Gallery with search, format and occasion filters. Apply to the current design or start from one. Re-layout on resize.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Text</b><span>34 Google Fonts, size, line height, tracking, bold/italic/caps, align, highlight, outline, shadow, in-place editing.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Shapes &amp; lines</b><span>14 shapes (rect, ellipse, star, burst, polygon, arrow, arch…), fill, stroke, dash, corner radius, points; lines with arrowheads.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Images</b><span>Upload, paste, drag onto frames. Crop by zoom and focus point, masks (rounded, circle, arch), 7 filter presets plus 6 adjustments, border, flip.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Background removal</b><span>U²-Netp via onnxruntime-web, on the device. Keeps the original so it can be restored.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Layout tools</b><span>Snapping to page and element edges and centers, align, layer order, layers panel (hide, lock, reorder), grouping, box select.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
-          <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Pages</b><span>Multiple pages: add, duplicate, reorder, delete, per-page background.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
+          <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Pages</b><span>Multiple pages: add, duplicate, reorder, delete, per-page background. Decks, carousels, booklets, reports and menus open with a story arc already laid out across their pages.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Data</b><span>Bar, line, pie and donut charts with inline data editing. QR codes.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Brand kit</b><span>Four color roles, heading and body fonts, logo. One click restyles any design. Palette and type-pairing swaps.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Export</b><span>Multi-page PDF, PNG and JPG (1×–3×, zipped when there are several pages), SVG, native .pinwheel.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
@@ -163,28 +158,29 @@ QR       Base &amp; { value, fg, qbg }</pre>
 
       <section id="presets" style="display:flex; flex-direction:column; gap:14px">
         <h2 style="margin:0; font-size:28px; letter-spacing:-0.01em">6. Preset system</h2>
-        <p style="margin:0; text-wrap:pretty">Templates aren't stored. They're generated deterministically from five hand-authored ingredient sets, so 1,500+ templates cost about 90 KB of code and any fix to a layout improves hundreds of templates at once.</p>
+        <p style="margin:0; text-wrap:pretty">Templates aren't stored. They're generated deterministically from five hand-authored ingredient sets, so 8,000+ templates cost about 130 KB of code and any fix to a layout improves hundreds of templates at once.</p>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px">
-          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#E8674A; line-height:1">24</div><div style="font-weight:700">Formats</div><div style="font-size:13px; color:#6E675E">Social, thumbnail, banner, deck, print, card</div></div>
-          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#E8674A; line-height:1">45</div><div style="font-weight:700">Layouts</div><div style="font-size:13px; color:#6E675E">Responsive functions of W × H</div></div>
-          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#E8674A; line-height:1">17</div><div style="font-weight:700">Copy packs</div><div style="font-size:13px; color:#6E675E">Sale, podcast, travel, wedding, gaming…</div></div>
-          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#E8674A; line-height:1">18</div><div style="font-weight:700">Palettes</div><div style="font-size:13px; color:#6E675E">Role-based and contrast-checked</div></div>
-          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#E8674A; line-height:1">19</div><div style="font-weight:700">Type pairings</div><div style="font-size:13px; color:#6E675E">With measured glyph-width factors</div></div>
+          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#1F7D62; line-height:1">72</div><div style="font-weight:700">Formats</div><div style="font-size:13px; color:#6E675E">Social, video, web, decks, print, documents, cards</div></div>
+          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#1F7D62; line-height:1">74</div><div style="font-weight:700">Layouts</div><div style="font-size:13px; color:#6E675E">Responsive functions of W × H</div></div>
+          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#1F7D62; line-height:1">31</div><div style="font-weight:700">Copy packs</div><div style="font-size:13px; color:#6E675E">Sale, podcast, travel, gaming… and 15 occasions: birthdays, weddings, Eid, Puja, Diwali, Christmas, memorials</div></div>
+          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#1F7D62; line-height:1">23</div><div style="font-weight:700">Palettes</div><div style="font-size:13px; color:#6E675E">Role-based and contrast-checked</div></div>
+          <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:14px"><div style="font-size:30px; font-weight:700; color:#1F7D62; line-height:1">19</div><div style="font-weight:700">Type pairings</div><div style="font-size:13px; color:#6E675E">With measured glyph-width factors</div></div>
         </div>
         <h3 style="margin:8px 0 0; font-size:18px">How a template is built</h3>
         <ol style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:4px">
-          <li>The catalog pairs each <b>format</b> with the layouts whose <i>kinds</i> (t, s, d, p, b, c) and <i>aspect classes</i> (banner, wide, square, tall) fit it, about 50 per format.</li>
-          <li>Each (format, layout, variant) picks a <b>copy pack</b> by stride, then a pairing and palette from that topic's curated preferences. Wedding copy never gets set in a gaming marker font.</li>
+          <li>The catalog pairs each <b>format</b> with the layouts whose <i>kinds</i> (t, s, d, p, b, c) and <i>aspect classes</i> (banner, wide, square, tall) fit it, 50–100 per format. A format can pin itself to purpose-built layouts (<code style="font-family:'IBM Plex Mono', monospace; font-size:14px">only</code>) or declare a platform <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">safe</code> box that the layout runs inside, as YouTube channel art does.</li>
+          <li>Each (format, layout, variant) picks a <b>copy pack</b> by stride, then a pairing and palette from that topic's curated preferences. Wedding copy never gets set in a gaming marker font. A layout can name the packs it suits (the invitation frame takes occasions only) and a pack can name the layouts it tolerates, so memorial copy never lands in a sale burst.</li>
           <li>The layout runs against a context: <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">u = min(W,H)/100</code> units, margins, and helpers for text, headings, shapes, frames, buttons, stickers, pills and vertical stacks.</li>
           <li><b>Headline fitting</b> shrinks type until the estimated wrap fits a line and height budget, using each face's width factor, case and tracking. On the canvas, a measure pass then syncs real text heights back into the model.</li>
           <li>A seeded RNG, hashed from the template id, drives decorative variation such as Bauhaus tiles and waveforms. The same id always produces the same design.</li>
+          <li><b>Multi-page formats follow a story arc.</b> Page 1 is the template's own layout; the rest come from a per-format sequence — a deck opens with an agenda, fills with section dividers, two-column pages and stats, and closes on a call to action; a carousel repeats a numbered point page and ends the same way. Layouts read the page index, so dividers number themselves and each carousel point picks the next item of copy.</li>
         </ol>
         <h3 style="margin:8px 0 0; font-size:18px">Quality rules every layout must pass</h3>
         <ul style="margin:0; padding-left:20px">
           <li>Text never sits on an unknown photo without a scrim, a band or a solid shape.</li>
           <li>Accent-colored text uses <i>hi</i>, which falls back to ink when the accent has less than 3:1 contrast on the background.</li>
           <li>Margins are at least 7u. Nothing important goes into platform UI zones (story top and bottom 12%).</li>
-          <li>Image slots are labelled placeholders sized for real photos. Templates never ship stock imagery.</li>
+          <li>Image slots come filled with a procedural sample — a cartoon portrait, a landscape or a product, chosen from the frame's label and shape and drawn as inline SVG in the palette's own colours — so a template reads as a finished design before a photo is dropped in. No stock imagery ships: the sample is a few hundred bytes of vector, and it disappears the moment a real photo lands in the frame.</li>
           <li>Visual QA in CI renders one template per format × layout to PNG and diffs it against approved baselines.</li>
         </ul>
         <h3 style="margin:8px 0 0; font-size:18px">Adding a layout</h3>
@@ -194,7 +190,7 @@ QR       Base &amp; { value, fg, qbg }</pre>
   const s  = c.t(C.sub, m, 0, W - 2*m, u*3.4, { color: P.muted });
   const hd = c.hd(C.title, m, 0, W - 2*m, u*14, 3, H*.4);
   c.vstack([k, hd, s], [u*3, u*4], m, H - m);
-});   // → +50 templates across every compatible format</pre>
+});   // → +100 templates across every compatible format</pre>
       </section>
 
       <section id="export" style="display:flex; flex-direction:column; gap:14px">
@@ -244,7 +240,7 @@ QR       Base &amp; { value, fg, qbg }</pre>
 
       <section id="ui" style="display:flex; flex-direction:column; gap:14px">
         <h2 style="margin:0; font-size:28px; letter-spacing:-0.01em">10. UI system</h2>
-        <p style="margin:0">Calm and neutral so the user's design carries the color. Warm off-whites, one coral accent reserved for primary actions and selection, and a humanist sans for the interface.</p>
+        <p style="margin:0">Calm and neutral so the user's design carries the color. Warm off-whites, one dark mint accent reserved for primary actions and selection, and a humanist sans for the interface. Every UI color is a token, and a dark palette follows the system setting or the ☾ toggle in the header.</p>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:10px">
           <div style="display:flex; flex-direction:column; gap:6px"><div style="height:56px; border-radius:10px; background:#F4F2EE; border:1px solid #E6E1D9"></div><span style="font-size:13px"><b>App</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:12px">#F4F2EE</code></span></div>
           <div style="display:flex; flex-direction:column; gap:6px"><div style="height:56px; border-radius:10px; background:#FBFAF8; border:1px solid #E6E1D9"></div><span style="font-size:13px"><b>Panel</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:12px">#FBFAF8</code></span></div>
@@ -252,14 +248,15 @@ QR       Base &amp; { value, fg, qbg }</pre>
           <div style="display:flex; flex-direction:column; gap:6px"><div style="height:56px; border-radius:10px; background:#E6E1D9"></div><span style="font-size:13px"><b>Line</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:12px">#E6E1D9</code></span></div>
           <div style="display:flex; flex-direction:column; gap:6px"><div style="height:56px; border-radius:10px; background:#24211D"></div><span style="font-size:13px"><b>Ink</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:12px">#24211D</code></span></div>
           <div style="display:flex; flex-direction:column; gap:6px"><div style="height:56px; border-radius:10px; background:#6E675E"></div><span style="font-size:13px"><b>Muted</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:12px">#6E675E</code></span></div>
-          <div style="display:flex; flex-direction:column; gap:6px"><div style="height:56px; border-radius:10px; background:#E8674A"></div><span style="font-size:13px"><b>Coral</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:12px">#E8674A</code></span></div>
-          <div style="display:flex; flex-direction:column; gap:6px"><div style="height:56px; border-radius:10px; background:#FCEAE4"></div><span style="font-size:13px"><b>Coral tint</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:12px">#FCEAE4</code></span></div>
+          <div style="display:flex; flex-direction:column; gap:6px"><div style="height:56px; border-radius:10px; background:#1F7D62"></div><span style="font-size:13px"><b>Mint</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:12px">#1F7D62</code></span></div>
+          <div style="display:flex; flex-direction:column; gap:6px"><div style="height:56px; border-radius:10px; background:#DDF1E8"></div><span style="font-size:13px"><b>Mint tint</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:12px">#DDF1E8</code></span></div>
         </div>
         <ul style="margin:0; padding-left:20px">
           <li><b>Type.</b> Source Sans 3 (400/600/700) for the UI; IBM Plex Mono for dimensions, values and code. 14 px base, 12 px uppercase section labels at +0.06em.</li>
           <li><b>Shape.</b> Controls 32–34 px high with 7–8 px radius. Cards 10–12 px radius. Segmented controls on a #F1EEE9 track.</li>
-          <li><b>Selection.</b> 1.5 px coral outline, round corner handles, pill side handles, rotation knob 14 px below. Hover outline is coral at 55%.</li>
-          <li><b>Brand mark.</b> Four quarter-circles in coral and ink, a pinwheel built from the app's own shape primitives.</li>
+          <li><b>Selection.</b> 1.5 px mint outline, round corner handles, pill side handles, rotation knob 14 px below. Hover outline is mint at 55%.</li>
+          <li><b>Dark mode.</b> Same tokens, second palette: near-black warm surfaces, cream ink, and a lighter mint for outlines and links so contrast holds. Native controls follow via <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">color-scheme</code>. Canvas pages keep their own colors — only the chrome changes.</li>
+          <li><b>Brand mark.</b> A pinwheel of four sails in mint and ink around an ink pin. Each sail has two straight outer edges and one curved inner edge, rotated — not mirrored — so it reads as spinning. One SVG path, sized from 12 px to the app icon.</li>
         </ul>
       </section>
 

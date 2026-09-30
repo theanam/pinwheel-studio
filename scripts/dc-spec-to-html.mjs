@@ -3,6 +3,8 @@
 // contents hoisted into <head>. Output is served as a plain page at /spec.html.
 import fs from 'fs';
 
+import { markSVG } from '../src/lib/mark-path.js';
+
 const raw = fs.readFileSync('_source/Pinwheel Spec.dc.html', 'utf8');
 const open = raw.match(/<x-dc(?:\s[^>]*)?>/);
 const body = raw.slice(open.index + open[0].length, raw.lastIndexOf('</x-dc>'));
@@ -11,7 +13,8 @@ const helmet = body.match(/<helmet>([\s\S]*?)<\/helmet>/);
 const head = helmet ? helmet[1].trim() : '';
 const content = body.replace(/<helmet>[\s\S]*?<\/helmet>/, '').trim()
   // The studio is the app itself, not a sibling document.
-  .replace(/href="Pinwheel Studio\.dc\.html"/g, 'href="./"');
+  .replace(/href="Pinwheel Studio\.dc\.html"/g, 'href="./"')
+  .replace(/<pw-mark size="(\d+)"><\/pw-mark>/g, (_, n) => markSVG(+n));
 
 fs.mkdirSync('public', { recursive: true });
 fs.writeFileSync('public/spec.html', `<!DOCTYPE html>

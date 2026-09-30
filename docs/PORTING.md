@@ -40,6 +40,12 @@ value in the UI was retyped by hand.
   distinct declaration becomes a generated class in `src/lib/hover.css`, so hover
   states actually work.
 - `<helmet>` is dropped; its contents live in `index.html`.
+- `<pw-mark size="N">` → `<Mark size={N} />`. The brand mark is a component
+  (`src/lib/Mark.jsx`, geometry in `src/lib/mark-path.js`) rather than a drawing in
+  the template, so the icons script and the spec page share it.
+- Literal hex colours in static styles and in `style-hover` rules are mapped to UI
+  tokens (`scripts/ui-tokens.js`), which is what makes dark mode a palette swap.
+  `build-tokens.mjs` emits `src/lib/tokens.css` in the same run.
 
 ## What was changed by hand
 
@@ -56,9 +62,19 @@ four things differ from `_source/Pinwheel Studio.dc.html`:
 4. `qrcode-generator` is fetched through `io.js` once the modules land, instead of a
    `<script>` tag in the head, which keeps `script-src` free of `'unsafe-inline'` and
    lets self-hosting mode vendor it with everything else.
+5. Chrome colours are tokens (`var(--pw-…)`) and a theme toggle was added; document
+   colours (brand-kit defaults, new-element defaults, page backgrounds, swatches)
+   stay literal. The Elements panel resolves two tokens with `cssVar()` because SVG
+   `fill` attributes cannot take `var()`.
+6. The home screen shows twelve formats and an "All formats" toggle, and the gallery
+   gained an Occasions row that filters by copy pack.
 
-`src/presets.js`, `src/render.js` and `src/io.js` are the prototype files unchanged,
-apart from the CDN-vs-vendor indirection at the top of `io.js`.
+`src/presets.js` has grown well past the prototype — 72 formats with safe zones and
+story arcs, 74 layouts including photo-first and occasion layouts, 31 copy packs, and
+procedural sample art on every frame — and `src/render.js` draws that sample art.
+
+`src/io.js` is the prototype file unchanged apart from the CDN-vs-vendor indirection
+at the top.
 
 ## Things the spec calls for that are not built yet
 

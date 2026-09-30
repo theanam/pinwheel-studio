@@ -140,6 +140,8 @@ export interface ImageElement extends BaseElement {
   /** Placeholder caption and tint, shown until a photo is dropped in. */
   label?: string;
   tint?: Color;
+  /** Procedural sample art drawn while the frame has no asset (templates set this). */
+  sample?: { kind: 'portrait' | 'landscape' | 'product'; v: number; c: Record<string, Color> } | null;
 }
 
 export interface ChartElement extends BaseElement {

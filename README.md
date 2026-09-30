@@ -1,4 +1,6 @@
-# Pinwheel Studio
+# Pinwheel Studio (WIP)
+
+**https://pinwheelstudio.org**
 
 An open-source desktop-publishing studio that runs entirely in the browser. Social
 posts, thumbnails, print and slides — no account, no server, no uploads. Your files
@@ -8,8 +10,12 @@ stay on your machine.
   model, runs on the device.
 - **Portable files.** A `.pinwheel` file is a zip: a JSON document plus the original
   assets. Easy to share, diff and archive.
-- **Real templates.** 1,572 of them, generated from 45 hand-built layouts, so every
-  template opens as ordinary text, shapes and frames.
+- **Real templates.** 8,199 of them across 72 formats, generated from 74 hand-built
+  layouts and 31 copy packs — including 15 occasions, from birthdays and weddings to
+  Eid, Puja, Diwali, Christmas and memorials — so every template opens as ordinary
+  text, shapes and frames. Every frame carries sample art in the template's own
+  palette until a photo replaces it. Decks, carousels, booklets, reports and menus
+  open with a story arc across their pages.
 
 The full product and technical spec is at [`public/spec.html`](public/spec.html), and
 is served from the running app at `/spec.html`.
@@ -58,6 +64,7 @@ Node without a browser.
 | `npm run build` | Production build into `dist/`, including the generated service worker |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test:visual` | Template baselines — one design per format × layout, diffed against `tests/baselines/layouts.json` |
+| `npm run dev` then open `/tests/contact-sheet.html` | Visual QA sheet: live thumbnails of the catalogue, filterable by `?fmt=`, `layout=`, `per=`, `pages=` |
 | `npm run icons` | Regenerate the brand mark (`public/icon*.png`, `public/icon.svg`) |
 | `npm run vendor` | Download the pinned third-party libraries into `public/vendor` |
 | `npm run build:offline` | Vendor everything, including the model, and build with no third-party hosts |
@@ -66,7 +73,7 @@ Node without a browser.
 
 `presets.js` generates every template from five ingredient sets, so a single layout
 edit can change hundreds of designs at once. `npm run test:visual` builds one design
-per format × layout pair (645 of them), normalises away random ids and float noise,
+per format × layout pair, normalises away random ids and float noise,
 and compares a hash against the committed baselines. When a change is intentional:
 
 ```sh
@@ -92,13 +99,26 @@ rather than embedding them, so the studio needs the live faces. Export inlines t
 ## Deploying
 
 `.github/workflows/pages.yml` type-checks, runs the template baselines, builds and
-publishes to GitHub Pages on every push to `main`. Enable Pages for the repository
-with "GitHub Actions" as the source; nothing else needs configuring.
+publishes to GitHub Pages on every push to `main`, served at
+[pinwheelstudio.org](https://pinwheelstudio.org). The custom domain is set in the
+repository's Pages settings and mirrored in `public/CNAME`; DNS points the apex at
+GitHub's Pages IPs.
 
 The build emits a PWA manifest and a service worker that precaches the app shell, so
 the studio installs to the dock and opens offline. The manifest registers a file
 handler for `application/vnd.pinwheel+zip`, which means double-clicking a `.pinwheel`
 file opens it in the studio.
+
+## Theming and dark mode
+
+Every UI colour is a token. `scripts/ui-tokens.js` is the single source — light and
+dark values per token, plus the map from the design prototype's literal hex values
+to tokens — and `scripts/build-tokens.mjs` emits `src/lib/tokens.css` from it (the
+view generator runs it). Dark follows `prefers-color-scheme` until the user picks a
+side with the ☾ / ☀ button in the header, which sets `data-theme` on `<html>` and is
+remembered in `localStorage`. Canvas pages keep their own colours; only the chrome
+changes. Document colours in the editor (brand-kit defaults, new-element defaults,
+swatches) stay literal on purpose.
 
 ## TypeScript
 

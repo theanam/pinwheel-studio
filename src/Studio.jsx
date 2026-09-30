@@ -12,20 +12,29 @@ export default class Studio extends React.Component {
   state = {
     ready: false, loadError: null, screen: 'home', doc: null, assets: {}, uploads: [], sel: [], page: 0, zoom: .5,
     panel: 'templates', editingId: null, guides: [], marquee: null, hoverId: null, dragInfo: null,
-    galCat: 'All', galQ: '', galLimit: 48, tplQ: '', tplSame: true, tplLimit: 24, menu: null, busy: null, toast: null,
+    galCat: 'All', galOcc: null, galQ: '', galLimit: 48, tplQ: '', tplSame: true, tplLimit: 24, menu: null, busy: null, toast: null,
     cropMode: false, exportScale: 2, relayout: true,
-    brand: { bg: '#FBF7F0', ink: '#1F1B16', accent: '#E8674A', accent2: '#2F6F73', heading: 'DM Serif Display', body: 'DM Sans', logo: null },
-    hasAutosave: false, autosaveName: '', customW: 1080, customH: 1080
+    brand: { bg: '#FBF7F0', ink: '#1F1B16', accent: '#1F7D62', accent2: '#2F6F73', heading: 'DM Serif Display', body: 'DM Sans', logo: null },
+    hasAutosave: false, autosaveName: '', customW: 1080, customH: 1080, fmtsAll: false,
+    theme: (() => { try { return localStorage.getItem('pinwheel.theme') || 'system'; } catch (e) { return 'system'; } })()
   };
   hist = []; fut = []; thumbCache = new Map(); builtCache = new Map(); clip = null;
-  CORAL = '#E8674A';
+  CORAL = 'var(--pw-accent-line)';
+  /** Resolved value of a UI token, for the few places that need a literal (SVG fills). */
+  cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
   ONEW = ['Anton', 'Bebas Neue', 'Archivo Black', 'Abril Fatface', 'DM Serif Display', 'Pacifico', 'Instrument Serif', 'Permanent Marker'];
   setCanvasRef = n => { this.canvasEl = n; };
   setImgInput = n => { this.imgInput = n; };
   setFileInput = n => { this.fileInput = n; };
   setLogoInput = n => { this.logoInput = n; };
 
+  // 'system' follows prefers-color-scheme; 'light' / 'dark' pin it via data-theme.
+  applyTheme(t) { const r = document.documentElement; if (t === 'system') delete r.dataset.theme; else r.dataset.theme = t; }
+  isDark() { const t = this.state.theme; return t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); }
+  toggleTheme = () => { const t = this.isDark() ? 'light' : 'dark'; try { localStorage.setItem('pinwheel.theme', t); } catch (e) { } this.applyTheme(t); this.setState({ theme: t }); };
   componentDidMount() {
+    this.applyTheme(this.state.theme);
+    this._mq = matchMedia('(prefers-color-scheme: dark)'); this._mqFn = () => this.forceUpdate(); this._mq.addEventListener('change', this._mqFn);
     this._key = e => this.onKey(e); window.addEventListener('keydown', this._key);
     this._paste = e => this.onPaste(e); window.addEventListener('paste', this._paste);
     this._rs = () => { clearTimeout(this._rst); this._rst = setTimeout(() => this.state.screen === 'editor' && this.fitZoom(), 150); }; window.addEventListener('resize', this._rs);
@@ -49,7 +58,7 @@ export default class Studio extends React.Component {
       });
     }).catch(err => { console.error(err); this.setState({ loadError: String(err) }); });
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('paste', this._paste); window.removeEventListener('resize', this._rs); }
+  componentWillUnmount() { this._mq.removeEventListener('change', this._mqFn); window.removeEventListener('keydown', this._key); window.removeEventListener('paste', this._paste); window.removeEventListener('resize', this._rs); }
   componentDidUpdate(pp, ps) {
     if (this.state.doc && this.state.doc !== ps.doc) { this.scheduleMeasure(); this.scheduleAutosave(); }
     if (this.state.brand !== ps.brand) try { localStorage.setItem('pinwheel.brand', JSON.stringify(this.state.brand)); } catch (e) { }
@@ -95,10 +104,10 @@ export default class Studio extends React.Component {
   reId(els) { const gm = {}; return els.map(e => { const n = structuredClone(e); n.id = this.P.nid(); if (n.groupId) n.groupId = gm[n.groupId] ||= this.P.nid(); return n; }); }
 
   /* ---------- documents ---------- */
-  brandTheme() { const b = this.state.brand, P = this.P; return { ...P.makeTheme({ id: 'brand', name: 'Brand kit', bg: b.bg, ink: b.ink, accent: b.accent, accent2: b.accent2, surface: P.mix(b.bg, '#FFFFFF', .6) }), display: b.heading, body: b.body, pairId: null }; }
+  brandTheme() { const b = this.state.brand, P = this.P; return { ...P.makeTheme({ id: 'brand', name: 'Brand kit', bg: b.bg, ink: b.ink, accent: b.accent, accent2: b.accent2, surface: P.mix(b.bg, 'var(--pw-surface)', .6) }), display: b.heading, body: b.body, pairId: null }; }
   newDoc(fmtId, w, h) {
     const f = this.P.FORMAT[fmtId]; const W = f ? f.w : Math.max(16, Math.min(8000, w | 0)), H = f ? f.h : Math.max(16, Math.min(8000, h | 0));
-    this.openDoc({ name: 'Untitled ' + (f ? f.name : 'design'), w: W, h: H, fmt: f ? f.id : 'custom', theme: this.brandTheme(), created: new Date().toISOString(), pages: [{ id: this.P.nid(), bg: '#FFFFFF', els: [] }] }, {});
+    this.openDoc({ name: 'Untitled ' + (f ? f.name : 'design'), w: W, h: H, fmt: f ? f.id : 'custom', theme: this.brandTheme(), created: new Date().toISOString(), pages: [{ id: this.P.nid(), bg: 'var(--pw-surface)', els: [] }] }, {});
   }
   openDoc(doc, assets) {
     this.hist = []; this.fut = [];
@@ -413,8 +422,8 @@ export default class Studio extends React.Component {
   };
 
   /* ---------- view helpers ---------- */
-  segStyle(on, grow = true) { return { flex: grow ? '1 1 auto' : 'none', height: 28, padding: '0 9px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? '#FFFFFF' : 'transparent', color: on ? '#24211D' : '#6E675E', boxShadow: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', whiteSpace: 'nowrap' }; }
-  btnStyle(kind) { return { height: 32, padding: '0 11px', borderRadius: 7, border: kind === 'primary' ? 'none' : '1px solid #E0DBD2', background: kind === 'primary' ? this.CORAL : kind === 'on' ? '#24211D' : '#FFFFFF', color: kind === 'primary' || kind === 'on' ? '#FFFFFF' : kind === 'danger' ? '#B23A22' : '#24211D', fontWeight: 600, fontSize: 13, cursor: 'pointer', flex: kind === 'primary' ? '1 1 100%' : '1 1 auto' }; }
+  segStyle(on, grow = true) { return { flex: grow ? '1 1 auto' : 'none', height: 28, padding: '0 9px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? 'var(--pw-surface)' : 'transparent', color: on ? 'var(--pw-ink)' : 'var(--pw-muted)', boxShadow: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', whiteSpace: 'nowrap' }; }
+  btnStyle(kind) { return { height: 32, padding: '0 11px', borderRadius: 7, border: kind === 'primary' ? 'none' : '1px solid var(--pw-line-2)', background: kind === 'primary' ? this.CORAL : kind === 'on' ? 'var(--pw-ink)' : 'var(--pw-surface)', color: kind === 'primary' || kind === 'on' ? 'var(--pw-surface)' : kind === 'danger' ? '#B23A22' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer', flex: kind === 'primary' ? '1 1 100%' : '1 1 auto' }; }
   thumbFor(desc, maxW, maxH) {
     const key = desc.id + '|' + maxW + '|' + maxH; if (this.thumbCache.has(key)) return this.thumbCache.get(key);
     let b = this.builtCache.get(desc.id); if (!b) { b = this.P.build(desc); this.builtCache.set(desc.id, b); }
@@ -425,11 +434,11 @@ export default class Studio extends React.Component {
     const d = this.state.doc, t = d.theme, b = this.state.brand;
     const list = [...new Set([t.bg, t.ink, t.accent, t.accent2, t.surface, t.muted, b.accent, b.accent2, b.ink, '#FFFFFF', '#000000'].filter(Boolean).map(c => c.toUpperCase()))].slice(0, 12);
     const out = list.map(c => ({ title: c, onClick: () => set(c), style: { width: 26, height: 26, borderRadius: 7, border: '1px solid rgba(0,0,0,.12)', background: c, cursor: 'pointer', padding: 0, outline: cur && cur.toUpperCase() === c ? '2px solid ' + this.CORAL : 'none', outlineOffset: 2 } }));
-    if (allowNone) out.unshift({ title: 'None', onClick: () => set(null), style: { width: 26, height: 26, borderRadius: 7, border: '1px solid #D8D3CA', background: 'linear-gradient(135deg, #FFF 45%, #D94B3A 45%, #D94B3A 55%, #FFF 55%)', cursor: 'pointer', padding: 0, outline: !cur ? '2px solid ' + this.CORAL : 'none', outlineOffset: 2 } });
+    if (allowNone) out.unshift({ title: 'None', onClick: () => set(null), style: { width: 26, height: 26, borderRadius: 7, border: '1px solid var(--pw-line-strong)', background: 'linear-gradient(135deg, #FFF 45%, #D94B3A 45%, #D94B3A 55%, #FFF 55%)', cursor: 'pointer', padding: 0, outline: !cur ? '2px solid ' + this.CORAL : 'none', outlineOffset: 2 } });
     return out;
   }
   ctl(c) {
-    const k = c.k; return { label: '', display: '', ...c, hasLabel: !!c.label && k !== 'btns', isSlider: k === 'slider', isNums: k === 'nums', isColor: k === 'color', isSelect: k === 'select', isSeg: k === 'seg', isText: k === 'text', isArea: k === 'area', isBtns: k === 'btns', isNote: k === 'note', gridStyle: { display: 'grid', gridTemplateColumns: `repeat(${c.cols || 2}, minmax(0, 1fr))`, gap: 6 }, selectNode: k === 'select' ? this.selectEl(c.value, c.options, c.onChange, { height: 34, border: '1px solid #E0DBD2', borderRadius: 7, padding: '0 8px', fontSize: 13, background: '#FFFFFF', width: '100%', ...(c.selFont ? { fontFamily: `'${c.value}'`, fontSize: 15 } : {}) }) : null };
+    const k = c.k; return { label: '', display: '', ...c, hasLabel: !!c.label && k !== 'btns', isSlider: k === 'slider', isNums: k === 'nums', isColor: k === 'color', isSelect: k === 'select', isSeg: k === 'seg', isText: k === 'text', isArea: k === 'area', isBtns: k === 'btns', isNote: k === 'note', gridStyle: { display: 'grid', gridTemplateColumns: `repeat(${c.cols || 2}, minmax(0, 1fr))`, gap: 6 }, selectNode: k === 'select' ? this.selectEl(c.value, c.options, c.onChange, { height: 34, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 8px', fontSize: 13, background: 'var(--pw-surface)', width: '100%', ...(c.selFont ? { fontFamily: `'${c.value}'`, fontSize: 15 } : {}) }) : null };
   }
   selectEl(value, options, onChange, style) {
     const h = React.createElement;
@@ -541,7 +550,7 @@ export default class Studio extends React.Component {
         const dirs = one ? (e0.type === 'text' ? ['nw', 'ne', 'se', 'sw', 'e', 'w'] : e0.type === 'line' ? ['e', 'w'] : e0.type === 'qr' ? ['nw', 'ne', 'se', 'sw'] : ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) : ['nw', 'ne', 'se', 'sw'];
         const pos = { nw: [0, 0], n: [.5, 0], ne: [1, 0], e: [1, .5], se: [1, 1], s: [.5, 1], sw: [0, 1], w: [0, .5] };
         const cur = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' };
-        out.handles = dirs.map(d => { const [fx, fy] = pos[d]; const side = d.length === 1; const hw = side ? (d === 'e' || d === 'w' ? 6 : 18) : 11, hh = side ? (d === 'e' || d === 'w' ? 18 : 6) : 11; return { onDown: e => this.startResize(e, d), style: { position: 'absolute', left: `calc(${fx * 100}% - ${hw / 2}px)`, top: `calc(${fy * 100}% - ${hh / 2}px)`, width: hw, height: hh, background: '#FFFFFF', border: `1.5px solid ${C}`, borderRadius: side ? 4 : '50%', pointerEvents: 'auto', cursor: cur[d], boxShadow: '0 1px 3px rgba(0,0,0,.18)' } }; });
+        out.handles = dirs.map(d => { const [fx, fy] = pos[d]; const side = d.length === 1; const hw = side ? (d === 'e' || d === 'w' ? 6 : 18) : 11, hh = side ? (d === 'e' || d === 'w' ? 18 : 6) : 11; return { onDown: e => this.startResize(e, d), style: { position: 'absolute', left: `calc(${fx * 100}% - ${hw / 2}px)`, top: `calc(${fy * 100}% - ${hh / 2}px)`, width: hw, height: hh, background: 'var(--pw-surface)', border: `1.5px solid ${C}`, borderRadius: side ? 4 : '50%', pointerEvents: 'auto', cursor: cur[d], boxShadow: '0 1px 3px rgba(0,0,0,.18)' } }; });
         out.showRot = one && e0.type !== 'line' ? true : one; out.onRot = this.startRotate;
       }
       if (!one) out.multi = els.map(e => ({ position: 'absolute', left: e.x * z, top: e.y * z, width: e.w * z, height: e.h * z, transform: `rotate(${e.rot || 0}deg)`, outline: `1px dashed ${C}`, pointerEvents: 'none', zIndex: 2 }));
@@ -555,25 +564,28 @@ export default class Studio extends React.Component {
   renderVals() {
     const st = this.state, P = this.P, R = this.R, h = React.createElement;
     const base = { loading: !st.ready, loadingText: st.loadError ? 'Could not start: ' + st.loadError : 'Warming up the studio…', isHome: false, isEditor: false, hasBusy: !!st.busy, busyText: st.busy || '', hasToast: !!st.toast, toastText: st.toast || '',
+      toggleTheme: this.toggleTheme, themeGlyph: this.isDark() ? '☀' : '☾', themeTitle: this.isDark() ? 'Switch to light mode' : 'Switch to dark mode',
       setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, openFile: this.openFile };
     if (!st.ready) return base;
     const cat = P.catalog();
     if (st.screen === 'home') {
       const q = st.galQ.trim().toLowerCase();
-      const list = (st.galCat === 'All' ? this._mixed : cat).filter(t => (st.galCat === 'All' || t.cat === st.galCat) && (!q || q.split(/\s+/).every(w => t.search.includes(w))));
+      const list = (st.galCat === 'All' ? this._mixed : cat).filter(t => (st.galCat === 'All' || t.cat === st.galCat) && (!st.galOcc || t.topic === st.galOcc) && (!q || q.split(/\s+/).every(w => t.search.includes(w))));
       const rowH = this.props.galleryRowHeight ?? 190;
       const cats = ['All', ...new Set(P.FORMATS.map(f => f.cat))];
       return { ...base, isHome: true,
         statLine: `${cat.length.toLocaleString()} templates across ${P.FORMATS.length} formats · ${P.LAYOUTS.length} layouts, ${P.PALETTES.length} palettes and ${P.PAIRINGS.length} type pairings — every one fully editable.`,
         galQ: st.galQ, onGalQ: e => this.setState({ galQ: e.target.value, galLimit: 48 }),
         hasAutosave: st.hasAutosave, autosaveName: st.autosaveName, resumeAutosave: this.resumeAutosave,
-        fmts: P.FORMATS.map(f => { const s = 28 / Math.max(f.w, f.h); return { name: f.name, dims: `${f.w} × ${f.h}`, onClick: () => this.newDoc(f.id), iconStyle: { width: Math.max(6, f.w * s), height: Math.max(6, f.h * s), border: '1.5px solid #24211D', borderRadius: 2 } }; }),
+        fmts: (st.fmtsAll ? P.FORMATS : P.FORMATS.slice(0, 12)).map(f => { const s = 28 / Math.max(f.w, f.h); return { name: f.name, dims: `${f.w} × ${f.h}`, onClick: () => this.newDoc(f.id), iconStyle: { width: Math.max(6, f.w * s), height: Math.max(6, f.h * s), border: '1.5px solid var(--pw-ink)', borderRadius: 2 } }; }),
+        fmtsHasMore: P.FORMATS.length > 12, fmtsMoreLabel: st.fmtsAll ? 'Show fewer' : `All ${P.FORMATS.length} formats →`, toggleFmts: () => this.setState(s => ({ fmtsAll: !s.fmtsAll })),
         customW: st.customW, customH: st.customH, onCustomW: e => this.setState({ customW: e.target.value }), onCustomH: e => this.setState({ customH: e.target.value }), createCustom: () => this.newDoc(null, +st.customW, +st.customH),
-        galCats: cats.map(c => ({ label: c, onClick: () => this.setState({ galCat: c, galLimit: 48 }), style: { height: 32, padding: '0 14px', borderRadius: 16, border: '1px solid ' + (st.galCat === c ? '#24211D' : '#E0DBD2'), background: st.galCat === c ? '#24211D' : '#FFFFFF', color: st.galCat === c ? '#FFFFFF' : '#24211D', fontWeight: 600, fontSize: 13, cursor: 'pointer' } })),
-        galCount: `${list.length.toLocaleString()} ${st.galCat === 'All' ? '' : st.galCat + ' '}templates`,
+        galOccs: [{ id: null, name: 'Any' }, ...P.OCCASIONS.map(id => P.TOPIC[id])].map(o => ({ label: o.name, onClick: () => this.setState({ galOcc: o.id, galLimit: 48 }), style: { height: 30, padding: '0 12px', borderRadius: 15, border: '1px solid ' + (st.galOcc === o.id ? 'var(--pw-accent-line)' : 'var(--pw-line-2)'), background: st.galOcc === o.id ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', color: st.galOcc === o.id ? 'var(--pw-accent-deep)' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer' } })),
+        galCats: cats.map(c => ({ label: c, onClick: () => this.setState({ galCat: c, galLimit: 48 }), style: { height: 32, padding: '0 14px', borderRadius: 16, border: '1px solid ' + (st.galCat === c ? 'var(--pw-ink)' : 'var(--pw-line-2)'), background: st.galCat === c ? 'var(--pw-ink)' : 'var(--pw-surface)', color: st.galCat === c ? 'var(--pw-surface)' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer' } })),
+        galCount: `${list.length.toLocaleString()} ${st.galOcc ? P.TOPIC[st.galOcc].name.toLowerCase() + ' ' : ''}${st.galCat === 'All' ? '' : st.galCat + ' '}templates`,
         galItems: list.slice(0, st.galLimit).map(t => { const ar = t.w / t.h; const w = Math.round(Math.min(rowH * ar, rowH * 2.5)); return { name: t.name, title: `${t.name} — ${t.layoutName}`, meta: `${t.fmtName} · ${t.layoutName}`, onClick: () => this.fromTemplate(t), thumb: this.thumbFor(t, w, rowH),
           cardStyle: { width: w, display: 'flex', flexDirection: 'column', gap: 5, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', flex: 'none' },
-          boxStyle: { width: w, height: rowH, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#E6E2DB', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(36,33,29,.08), 0 4px 14px rgba(36,33,29,.06)' } }; }),
+          boxStyle: { width: w, height: rowH, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--pw-canvas)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(36,33,29,.08), 0 4px 14px rgba(36,33,29,.06)' } }; }),
         galEmpty: !list.length, galHasMore: list.length > st.galLimit, galMore: () => this.setState(s => ({ galLimit: s.galLimit + 48 }))
       };
     }
@@ -582,14 +594,14 @@ export default class Studio extends React.Component {
     const v = { ...base, isEditor: true, goHome: () => this.setState({ screen: 'home', sel: [], editingId: null, hasAutosave: true, autosaveName: d.name }),
       docName: d.name, onDocName: e => { const n = e.target.value; this.setState(s => ({ doc: { ...s.doc, name: n } })); },
       undo: this.undo, redo: this.redo,
-      undoStyle: { width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 18, color: this.hist.length ? '#24211D' : '#C9C3B9' }, redoStyle: { width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 18, color: this.fut.length ? '#24211D' : '#C9C3B9' },
+      undoStyle: { width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 18, color: this.hist.length ? 'var(--pw-ink)' : 'var(--pw-disabled)' }, redoStyle: { width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 18, color: this.fut.length ? 'var(--pw-ink)' : 'var(--pw-disabled)' },
       sizeLabel: `${d.w}×${d.h}`, zoomLabel: Math.round(z * 100) + '%', zoomIn: () => this.setZoom(z * 1.2), zoomOut: () => this.setZoom(z / 1.2), zoomFit: this.fitZoom,
       menuOpen: !!st.menu, closeMenus: () => this.setState({ menu: null }),
       toggleFile: () => this.setState(s => ({ menu: s.menu === 'file' ? null : 'file' })), toggleResize: () => this.setState(s => ({ menu: s.menu === 'resize' ? null : 'resize' })), toggleExport: () => this.setState(s => ({ menu: s.menu === 'export' ? null : 'export' })),
       fileOpen: st.menu === 'file', resizeOpen: st.menu === 'resize', exportOpen: st.menu === 'export', saveProject: this.saveProject,
       fileItems: [{ label: 'New design', hint: '', onClick: () => this.setState({ screen: 'home', menu: null, hasAutosave: true, autosaveName: d.name }) }, { label: 'Open .pinwheel…', hint: '', onClick: this.openFile }, { label: 'Save .pinwheel', hint: '⌘S', onClick: this.saveProject }, { label: 'Import image…', hint: '', onClick: () => { this.setState({ menu: null }); this.imgInput && this.imgInput.click(); } }],
-      canRelayout: !!d.tpl, toggleRelayout: () => this.setState(s => ({ relayout: !s.relayout })), relayoutBox: { width: 16, height: 16, borderRadius: 4, flex: 'none', marginTop: 2, border: '1.5px solid ' + (st.relayout ? C : '#BDB6AB'), background: st.relayout ? C : '#FFFFFF' },
-      resizeItems: P.FORMATS.map(f => ({ label: f.name, dims: `${f.w}×${f.h}`, onClick: () => this.resizeDoc(f.id), style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, height: 34, padding: '0 10px', border: 'none', background: f.id === d.fmt ? '#FCEAE4' : 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 13.5, color: '#24211D', textAlign: 'left', flex: 'none' } })),
+      canRelayout: !!d.tpl, toggleRelayout: () => this.setState(s => ({ relayout: !s.relayout })), relayoutBox: { width: 16, height: 16, borderRadius: 4, flex: 'none', marginTop: 2, border: '1.5px solid ' + (st.relayout ? C : 'var(--pw-line-strong)'), background: st.relayout ? C : 'var(--pw-surface)' },
+      resizeItems: P.FORMATS.map(f => ({ label: f.name, dims: `${f.w}×${f.h}`, onClick: () => this.resizeDoc(f.id), style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, height: 34, padding: '0 10px', border: 'none', background: f.id === d.fmt ? 'var(--pw-accent-tint)' : 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 13.5, color: 'var(--pw-ink)', textAlign: 'left', flex: 'none' } })),
       scaleOpts: [[1, 'Standard'], [2, 'High'], [3, 'Print']].map(([s, l]) => ({ label: `${l} ${s}×`, onClick: () => this.setState({ exportScale: s }), style: this.segStyle(st.exportScale === s) })),
       exportItems: [
         { label: 'PDF', hint: `All ${d.pages.length} page${d.pages.length > 1 ? 's' : ''} in one document`, onClick: () => this.doExport('pdf', 'all') },
@@ -599,12 +611,12 @@ export default class Studio extends React.Component {
         { label: 'SVG', hint: 'Scalable, fonts embedded', onClick: () => this.doExport('svg', 'all') },
         { label: 'Pinwheel project (.pinwheel)', hint: 'Editable file with all assets', onClick: this.saveProject }
       ],
-      rail: panels.map(([id, label, glyph]) => { const on = st.panel === id; return { label, glyph, onClick: () => this.setState(s => ({ panel: s.panel === id ? null : id })), style: { width: 64, height: 58, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, border: 'none', borderRadius: 10, cursor: 'pointer', background: on ? '#FCEAE4' : 'transparent', color: on ? '#C9523A' : '#57514A' } }; }),
+      rail: panels.map(([id, label, glyph]) => { const on = st.panel === id; return { label, glyph, onClick: () => this.setState(s => ({ panel: s.panel === id ? null : id })), style: { width: 64, height: 58, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, border: 'none', borderRadius: 10, cursor: 'pointer', background: on ? 'var(--pw-accent-tint)' : 'transparent', color: on ? 'var(--pw-accent-deep)' : 'var(--pw-text-2)' } }; }),
       panelOpen: !!st.panel, panelTitle: (panels.find(p => p[0] === st.panel) || [])[1] || '', closePanel: () => this.setState({ panel: null }),
       pTemplates: st.panel === 'templates', pStyles: st.panel === 'styles', pElements: st.panel === 'elements', pText: st.panel === 'text', pUploads: st.panel === 'uploads', pData: st.panel === 'data', pBrand: st.panel === 'brand', pLayers: st.panel === 'layers',
       setCanvasRef: this.setCanvasRef, onCanvasDown: this.onCanvasDown, onCanvasDrop: this.onCanvasDrop, onCanvasDragOver: this.onCanvasDragOver,
       addPageEnd: () => this.addPage(d.pages.length - 1),
-      addPageStyle: { width: Math.max(220, d.w * z), height: 44, borderRadius: 10, border: '1.5px dashed #BDB6AB', background: 'transparent', color: '#6E675E', fontWeight: 600, fontSize: 14, cursor: 'pointer' }
+      addPageStyle: { width: Math.max(220, d.w * z), height: 44, borderRadius: 10, border: '1.5px dashed var(--pw-line-strong)', background: 'transparent', color: 'var(--pw-muted)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }
     };
     if (st.panel === 'templates') {
       const q = st.tplQ.trim().toLowerCase();
@@ -616,11 +628,11 @@ export default class Studio extends React.Component {
     }
     if (st.panel === 'styles') {
       Object.assign(v, { shuffleStyle: this.shuffleStyle,
-        palItems: P.PALETTES.map(p => ({ name: p.name, onClick: () => this.applyPalette(p), sw: [p.bg, p.ink, p.accent, p.accent2].map(c => ({ flex: 1, background: c })), style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 7, border: '1px solid ' + (d.theme.id === p.id ? C : '#EAE6DF'), background: '#FFFFFF', borderRadius: 9, cursor: 'pointer', textAlign: 'left' } })),
-        pairItems: P.PAIRINGS.map(p => ({ display: p.name, body: `${p.display} + ${p.body}`, onClick: () => this.applyPairing(p), dStyle: { fontFamily: `'${p.display}'`, fontWeight: p.dw, fontSize: 22, lineHeight: 1.1, textTransform: p.upper ? 'uppercase' : 'none', letterSpacing: p.track + 'em', color: '#24211D' }, bStyle: { fontFamily: `'${p.body}'`, fontSize: 12, color: '#6E675E' }, style: { display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start', padding: '10px 12px', border: '1px solid ' + (d.theme.pairId === p.id ? C : '#EAE6DF'), background: '#FFFFFF', borderRadius: 9, cursor: 'pointer', textAlign: 'left' } })) });
+        palItems: P.PALETTES.map(p => ({ name: p.name, onClick: () => this.applyPalette(p), sw: [p.bg, p.ink, p.accent, p.accent2].map(c => ({ flex: 1, background: c })), style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 7, border: '1px solid ' + (d.theme.id === p.id ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', textAlign: 'left' } })),
+        pairItems: P.PAIRINGS.map(p => ({ display: p.name, body: `${p.display} + ${p.body}`, onClick: () => this.applyPairing(p), dStyle: { fontFamily: `'${p.display}'`, fontWeight: p.dw, fontSize: 22, lineHeight: 1.1, textTransform: p.upper ? 'uppercase' : 'none', letterSpacing: p.track + 'em', color: 'var(--pw-ink)' }, bStyle: { fontFamily: `'${p.body}'`, fontSize: 12, color: 'var(--pw-muted)' }, style: { display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start', padding: '10px 12px', border: '1px solid ' + (d.theme.pairId === p.id ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', textAlign: 'left' } })) });
     }
     if (st.panel === 'elements') {
-      const ink = '#24211D';
+      const ink = this.cssVar('--pw-ink'), C = this.cssVar('--pw-accent');
       Object.assign(v, {
         shapeItems: R.SHAPES.map(s => ({ label: s, onClick: () => this.addShape(s), thumb: this.miniEl({ type: 'shape', shape: s, w: 38, h: s === 'half' ? 19 : s === 'arrow' || s === 'chevron' || s === 'parallelogram' ? 24 : s === 'arch' ? 44 : 38, fill: s === 'rect' || s === 'ellipse' ? C : ink, points: s === 'burst' ? 14 : 5, inner: s === 'burst' ? .78 : .5, sides: 6 }) })),
         lineItems: [['Line', {}], ['Dashed', { dash: true }], ['Arrow', { arrow: true }]].map(([l, o]) => ({ label: l, onClick: () => this.addLine(o), thumb: this.miniEl({ type: 'line', w: 60, h: 10, stroke: ink, sw: 3, ...o }, 64) })),
@@ -630,20 +642,20 @@ export default class Studio extends React.Component {
     if (st.panel === 'text') {
       const t = d.theme;
       Object.assign(v, {
-        textBtns: [['heading', 'Add a heading', { fontFamily: `'${t.display}'`, fontSize: 24, fontWeight: this.ONEW.includes(t.display) ? 400 : 700 }], ['sub', 'Add a subheading', { fontFamily: `'${t.body}'`, fontSize: 17, fontWeight: 700 }], ['body', 'Add body text', { fontFamily: `'${t.body}'`, fontSize: 14, fontWeight: 400 }]].map(([k, l, fs]) => ({ label: l, onClick: () => this.addText(k), style: { ...fs, textAlign: 'left', padding: '12px 14px', border: '1px solid #EAE6DF', background: '#FFFFFF', borderRadius: 9, cursor: 'pointer', color: '#24211D' } })),
-        comboItems: P.PAIRINGS.map(p => ({ display: p.upper ? 'HELLO' : 'Hello', body: p.display + ' · ' + p.body, onClick: () => this.addCombo(p), dStyle: { fontFamily: `'${p.display}'`, fontWeight: p.dw, fontSize: 24, lineHeight: 1.1, letterSpacing: p.track + 'em' }, bStyle: { fontFamily: `'${p.body}'`, fontSize: 10.5, color: '#6E675E', textAlign: 'center' } }))
+        textBtns: [['heading', 'Add a heading', { fontFamily: `'${t.display}'`, fontSize: 24, fontWeight: this.ONEW.includes(t.display) ? 400 : 700 }], ['sub', 'Add a subheading', { fontFamily: `'${t.body}'`, fontSize: 17, fontWeight: 700 }], ['body', 'Add body text', { fontFamily: `'${t.body}'`, fontSize: 14, fontWeight: 400 }]].map(([k, l, fs]) => ({ label: l, onClick: () => this.addText(k), style: { ...fs, textAlign: 'left', padding: '12px 14px', border: '1px solid var(--pw-line-soft)', background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', color: 'var(--pw-ink)' } })),
+        comboItems: P.PAIRINGS.map(p => ({ display: p.upper ? 'HELLO' : 'Hello', body: p.display + ' · ' + p.body, onClick: () => this.addCombo(p), dStyle: { fontFamily: `'${p.display}'`, fontWeight: p.dw, fontSize: 24, lineHeight: 1.1, letterSpacing: p.track + 'em' }, bStyle: { fontFamily: `'${p.body}'`, fontSize: 10.5, color: 'var(--pw-muted)', textAlign: 'center' } }))
       });
     }
     if (st.panel === 'uploads') Object.assign(v, { uploadClick: () => { this.replaceTarget = null; this.imgInput && this.imgInput.click(); }, noUploads: !st.uploads.length, uploadItems: st.uploads.filter(id => st.assets[id]).map(id => ({ imgStyle: { width: '100%', height: '100%', backgroundImage: `url("${st.assets[id].src}")`, backgroundSize: 'cover', backgroundPosition: 'center', pointerEvents: 'none' }, onClick: () => this.addImageAsset(id), onDragStart: e => { e.dataTransfer.setData('text/pw-asset', id); e.dataTransfer.effectAllowed = 'copy'; } })) });
     if (st.panel === 'data') {
-      const t = d.theme; const mk = type => this.miniEl({ type: 'chart', chart: type, w: 96, h: 60, data: [{ l: '', v: 3 }, { l: '', v: 5 }, { l: '', v: 4 }, { l: '', v: 7 }], colors: [C, '#24211D', '#BDB6AB', '#E6E1D9'], ink: '#24211D', font: 'Source Sans 3', labels: false, hole: '#FFFFFF' }, 100);
-      Object.assign(v, { chartItems: [['bar', 'Bar'], ['line', 'Line'], ['pie', 'Pie'], ['donut', 'Donut']].map(([k, l]) => ({ label: l, thumb: mk(k), onClick: () => this.addChart(k) })), addQR: this.addQR, qrThumb: this.miniEl({ type: 'qr', w: 44, h: 44, value: 'pinwheel', fg: '#24211D', qbg: '#FFFFFF' }, 48) });
+      const t = d.theme; const mk = type => this.miniEl({ type: 'chart', chart: type, w: 96, h: 60, data: [{ l: '', v: 3 }, { l: '', v: 5 }, { l: '', v: 4 }, { l: '', v: 7 }], colors: [C, 'var(--pw-ink)', 'var(--pw-line-strong)', 'var(--pw-line)'], ink: 'var(--pw-ink)', font: 'Source Sans 3', labels: false, hole: 'var(--pw-surface)' }, 100);
+      Object.assign(v, { chartItems: [['bar', 'Bar'], ['line', 'Line'], ['pie', 'Pie'], ['donut', 'Donut']].map(([k, l]) => ({ label: l, thumb: mk(k), onClick: () => this.addChart(k) })), addQR: this.addQR, qrThumb: this.miniEl({ type: 'qr', w: 44, h: 44, value: 'pinwheel', fg: 'var(--pw-ink)', qbg: 'var(--pw-surface)' }, 48) });
     }
     if (st.panel === 'brand') {
       const b = st.brand; const setB = (k, val) => this.setState(s => ({ brand: { ...s.brand, [k]: val } }));
       Object.assign(v, {
         brandColors: [['bg', 'Background'], ['ink', 'Text'], ['accent', 'Primary'], ['accent2', 'Secondary']].map(([k, l]) => ({ label: l, value: b[k], onChange: e => setB(k, e.target.value.toUpperCase()) })),
-        brandFonts: [['heading', 'Headings'], ['body', 'Body']].map(([k, l]) => ({ label: l, value: b[k], selectNode: this.selectEl(b[k], P.FONTS.map(f => ({ value: f.name, label: f.name })), e => setB(k, e.target.value), { height: 36, border: '1px solid #E0DBD2', borderRadius: 7, padding: '0 8px', fontSize: 15, background: '#FFFFFF', fontFamily: `'${b[k]}'`, width: '100%' }) })),
+        brandFonts: [['heading', 'Headings'], ['body', 'Body']].map(([k, l]) => ({ label: l, value: b[k], selectNode: this.selectEl(b[k], P.FONTS.map(f => ({ value: f.name, label: f.name })), e => setB(k, e.target.value), { height: 36, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 8px', fontSize: 15, background: 'var(--pw-surface)', fontFamily: `'${b[k]}'`, width: '100%' }) })),
         fontOptions: P.FONTS.map(f => f.name), hasLogo: !!(b.logo && st.assets[b.logo]), logoStyle: { width: '100%', height: '100%', backgroundImage: b.logo && st.assets[b.logo] ? `url("${st.assets[b.logo].src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }, addLogo: this.addLogo,
         uploadLogo: () => this.logoInput && this.logoInput.click(), logoBtnLabel: b.logo ? 'Replace logo' : 'Upload logo', applyBrand: this.applyBrand
       });
@@ -653,13 +665,13 @@ export default class Studio extends React.Component {
       Object.assign(v, { noLayers: !pg.els.length, layerItems: [...pg.els].reverse().map(el => { const on = st.sel.includes(el.id); const nm = el.type === 'text' ? el.text.slice(0, 32) : el.name || el.type; const ic = { width: 24, height: 24, border: 'none', background: 'transparent', borderRadius: 5, cursor: 'pointer', fontSize: 12 };
         return { label: nm, meta: [el.type, el.groupId ? 'grouped' : '', el.locked ? 'locked' : '', el.hidden ? 'hidden' : ''].filter(Boolean).join(' · '), onClick: () => this.setState({ sel: [el.id] }),
           onUp: () => { this.setState({ sel: [el.id] }, () => this.arrange('forward')); }, onDown: () => { this.setState({ sel: [el.id] }, () => this.arrange('backward')); },
-          eye: el.hidden ? '◌' : '●', lock: el.locked ? '▣' : '□', eyeStyle: { ...ic, color: el.hidden ? '#BDB6AB' : '#57514A' }, lockStyle: { ...ic, color: el.locked ? C : '#9A9389' },
+          eye: el.hidden ? '◌' : '●', lock: el.locked ? '▣' : '□', eyeStyle: { ...ic, color: el.hidden ? 'var(--pw-line-strong)' : 'var(--pw-text-2)' }, lockStyle: { ...ic, color: el.locked ? C : 'var(--pw-placeholder)' },
           onEye: () => this.setDoc((dd, p) => { const x = p.els.find(q => q.id === el.id); x.hidden = !x.hidden; }), onLock: () => this.setDoc((dd, p) => { const x = p.els.find(q => q.id === el.id); x.locked = !x.locked; }),
-          style: { display: 'flex', alignItems: 'center', gap: 2, padding: '0 6px', borderRadius: 8, background: on ? '#FCEAE4' : '#FFFFFF', border: '1px solid ' + (on ? '#F3C9BC' : '#EEEAE3') } }; }) });
+          style: { display: 'flex', alignItems: 'center', gap: 2, padding: '0 6px', borderRadius: 8, background: on ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', border: '1px solid ' + (on ? 'var(--pw-accent-tint-line)' : 'var(--pw-line-soft)') } }; }) });
     }
     const opts = { interactive: true, assets: st.assets, editingId: st.editingId, onElDown: this.onElDown, onElDbl: this.onElDbl, onTextCommit: this.onTextCommit, onHover: this.onHover };
     v.pages = d.pages.map((p, i) => ({ ...this.overlay(i), label: `Page ${i + 1}`, onFocus: () => this.setState({ page: i, sel: [] }),
-      labelStyle: { border: 'none', background: 'transparent', padding: '0 4px', fontWeight: 700, fontSize: 13, cursor: 'pointer', color: i === st.page ? '#24211D' : '#8A837A' },
+      labelStyle: { border: 'none', background: 'transparent', padding: '0 4px', fontWeight: 700, fontSize: 13, cursor: 'pointer', color: i === st.page ? 'var(--pw-ink)' : 'var(--pw-muted-2)' },
       wrapStyle: { position: 'relative', width: d.w * z, height: d.h * z, boxShadow: i === st.page ? `0 0 0 2px ${C}, 0 8px 30px rgba(36,33,29,.12)` : '0 2px 10px rgba(36,33,29,.1)', flex: 'none' },
       stageStyle: { position: 'absolute', left: 0, top: 0, width: d.w, height: d.h, transform: `scale(${z})`, transformOrigin: '0 0', overflow: 'hidden', cursor: st.cropMode ? 'move' : 'default' },
       node: R.renderPage(h, p, d, { ...opts, onPageDown: e => this.onPageDown(e, i) }),

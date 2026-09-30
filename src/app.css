@@ -1,33 +1,25 @@
 /* Pinwheel Studio — UI system (spec §10). Calm and neutral so the user's design
-   carries the colour: warm off-whites, one coral accent reserved for primary
-   actions and selection, a humanist sans for the interface. */
-:root {
-  --pw-app: #F4F2EE;      /* app background   */
-  --pw-panel: #FBFAF8;    /* panels, headers  */
-  --pw-canvas: #EAE7E1;   /* canvas surround  */
-  --pw-line: #E6E1D9;     /* hairlines        */
-  --pw-ink: #24211D;      /* body text        */
-  --pw-muted: #6E675E;    /* secondary text   */
-  --pw-coral: #E8674A;    /* accent           */
-  --pw-coral-deep: #C9523A;
-  --pw-coral-tint: #FCEAE4;
-}
+   carries the colour: warm off-whites, one mint accent reserved for primary
+   actions and selection, a humanist sans for the interface. Every colour is a
+   token from lib/tokens.css, which is what makes dark mode a palette swap. */
+@import './lib/tokens.css';
 
-html, body { margin: 0; height: 100%; background: var(--pw-app); -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; height: 100%; background: var(--pw-app); color: var(--pw-ink); -webkit-font-smoothing: antialiased; }
 * { box-sizing: border-box; }
 #root { height: 100%; }
 
-a { color: var(--pw-coral-deep); text-decoration: none; }
-a:hover { color: var(--pw-coral); text-decoration: underline; }
+a { color: var(--pw-accent-deep); text-decoration: none; }
+a:hover { color: var(--pw-accent-line); text-decoration: underline; }
 button { font-family: inherit; }
 input, select, textarea { font-family: inherit; color: var(--pw-ink); }
-input[type=range] { accent-color: var(--pw-coral); width: 100%; }
+input[type=range] { accent-color: var(--pw-accent); width: 100%; }
+::placeholder { color: var(--pw-placeholder); }
 
 /* Spec §11: every control keeps a visible focus ring for keyboard users. */
-:focus-visible { outline: 2px solid var(--pw-coral); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--pw-accent-line); outline-offset: 2px; border-radius: 4px; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #D8D3CA; border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb { background: var(--pw-line-strong); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }

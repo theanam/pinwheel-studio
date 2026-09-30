@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pinwheel — template contact sheet</title>
+<!--
+  Visual QA for the preset system (spec §6). Served by the dev server at
+  /tests/contact-sheet.html and driven by query parameters:
+
+    fmt=ig-post,pitch     formats to show (default: every format)
+    layout=resume,badge   restrict to these layouts
+    per=2                 templates per format (default 1)
+    pages=1               1 = first page only, all = every page (default all)
+    w=240                 thumbnail width in px
+
+  It renders the live model through the same renderer as the canvas, so what shows
+  here is what a user gets.
+-->
+<style>
+  body { margin: 0; padding: 20px; background: #EAE7E1; font: 12px/1.4 'Source Sans 3', system-ui, sans-serif; color: #24211D; }
+  .grid { display: flex; flex-wrap: wrap; gap: 22px 16px; align-items: flex-start; }
+  .card { display: flex; flex-direction: column; gap: 6px; }
+  .pages { display: flex; gap: 6px; align-items: flex-start; }
+  .thumb { box-shadow: 0 1px 4px rgba(36,33,29,.18); background: #fff; }
+  .label { max-width: 100%; font-size: 11px; color: #57514A; }
+  .label b { color: #24211D; }
+  .note { margin-bottom: 14px; color: #6E675E; }
+</style>
+</head>
+<body>
+<div id="note" class="note"></div>
+<div id="grid" class="grid"></div>
+<script type="module">
+  import React from 'react';
+  import { createRoot } from 'react-dom/client';
+  import * as P from '../src/presets.js';
+  import { renderThumb } from '../src/render.js';
+
+  const q = new URLSearchParams(location.search);
+  const fmts = q.get('fmt') ? q.get('fmt').split(',') : P.FORMATS.map(f => f.id);
+  const layouts = q.get('layout') ? q.get('layout').split(',') : null;
+  const per = +(q.get('per') || 1);
+  const allPages = (q.get('pages') || 'all') !== '1';
+  const w = +(q.get('w') || 240);
+
+  // Fonts: the studio injects every family up front; do the same here.
+  for (const f of P.FONTS) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = P.fontURL(f); document.head.appendChild(l); }
+
+  const cat = P.catalog();
+  const picks = [];
+  for (const id of fmts) {
+    let ts = cat.filter(t => t.fmt === id && (!layouts || layouts.includes(t.layout)));
+    // Spread across layouts rather than taking the first N variants of one.
+    const seen = new Set(); ts = ts.filter(t => !seen.has(t.layout) && seen.add(t.layout));
+    picks.push(...ts.slice(0, per));
+  }
+  document.getElementById('note').textContent = `${picks.length} templates · ${fmts.length} formats`;
+
+  const h = React.createElement;
+  const cards = picks.map(t => {
+    const d = P.build(t);
+    const pages = allPages ? d.pages : d.pages.slice(0, 1);
+    const maxH = Math.round(w * 1.6);
+    return h('div', { className: 'card', key: t.id },
+      h('div', { className: 'pages' }, pages.map((pg, i) => h('div', { className: 'thumb', key: i }, renderThumb(h, d, pg, pages.length > 1 ? Math.round(w * .62) : w, maxH, {})))),
+      h('div', { className: 'label', style: { maxWidth: w * (pages.length > 1 ? .62 * pages.length + .2 : 1) } }, h('b', null, t.fmtName), ` · ${t.layoutName} · ${t.topicName} · ${d.pages.length} p`));
+  });
+  createRoot(document.getElementById('grid')).render(h(React.Fragment, null, cards));
+  window.__ready = true;
+</script>
+</body>
+</html>

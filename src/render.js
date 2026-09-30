@@ -73,6 +73,57 @@ function chartNode(h, el) {
   return h('svg', { width: w, height: H, viewBox: `0 0 ${w} ${H}`, style: { display: 'block', overflow: 'visible' } }, kids);
 }
 
+/* Procedural sample art for template frames (see presets.js sampleFor). Covers the
+   frame like a photo would — preserveAspectRatio "slice" is object-fit: cover. */
+const SKIN = ['#F1C9A5', '#D9A47C', '#B77A55', '#8D5A3C'];
+const HAIR = ['#2B2118', '#B8742E', '#1B1B1B', '#6B3E2E'];
+function sampleArt(h, s) {
+  const { kind, v, c } = s, k = [];
+  if (kind === 'portrait') {
+    const skin = SKIN[v % 4], hair = HAIR[(v + 1) % 4];
+    if (c.bg !== 'none') { k.push(h('rect', { key: 'bg', width: 100, height: 130, fill: c.bg })); k.push(h('circle', { key: 'halo', cx: 50, cy: 66, r: 44, fill: c.halo })); }
+    if (v === 1) k.push(h('path', { key: 'hairL', d: 'M24 60 C22 24 78 24 76 60 L80 96 L20 96 Z', fill: hair }));
+    k.push(h('path', { key: 'body', d: 'M8 130 C8 102 30 94 50 94 C70 94 92 102 92 130 Z', fill: c.shirt }));
+    k.push(h('rect', { key: 'neck', x: 42, y: 76, width: 16, height: 20, fill: skin }));
+    k.push(h('circle', { key: 'earL', cx: 28, cy: 60, r: 5, fill: skin })); k.push(h('circle', { key: 'earR', cx: 72, cy: 60, r: 5, fill: skin }));
+    k.push(h('ellipse', { key: 'head', cx: 50, cy: 56, rx: 23, ry: 27, fill: skin }));
+    if (v === 0) k.push(h('path', { key: 'hair', d: 'M27 54 C27 26 73 26 73 54 C66 40 34 40 27 54 Z', fill: hair }));
+    if (v === 1) k.push(h('path', { key: 'hair', d: 'M27 50 C29 26 71 26 73 50 C62 38 38 38 27 50 Z', fill: hair }));
+    if (v === 2) { k.push(h('path', { key: 'hair', d: 'M27 52 C27 28 73 28 73 52 C68 42 32 42 27 52 Z', fill: hair })); k.push(h('circle', { key: 'bun', cx: 50, cy: 28, r: 9, fill: hair })); }
+    if (v === 3) [30, 40, 50, 60, 70].forEach((x, i) => k.push(h('circle', { key: 'curl' + i, cx: x, cy: 34 + (i % 2) * 3, r: 8, fill: hair })));
+    k.push(h('circle', { key: 'eyeL', cx: 41, cy: 58, r: 2.4, fill: c.ink })); k.push(h('circle', { key: 'eyeR', cx: 59, cy: 58, r: 2.4, fill: c.ink }));
+    if (v === 2) { k.push(h('circle', { key: 'gL', cx: 41, cy: 58, r: 6.5, fill: 'none', stroke: c.ink, strokeWidth: 1.4 })); k.push(h('circle', { key: 'gR', cx: 59, cy: 58, r: 6.5, fill: 'none', stroke: c.ink, strokeWidth: 1.4 })); k.push(h('path', { key: 'gB', d: 'M47.5 58 L52.5 58', stroke: c.ink, strokeWidth: 1.4 })); }
+    k.push(h('path', { key: 'browL', d: 'M36 51 Q41 48 46 51', stroke: c.ink, strokeWidth: 1.6, fill: 'none', strokeLinecap: 'round' }));
+    k.push(h('path', { key: 'browR', d: 'M54 51 Q59 48 64 51', stroke: c.ink, strokeWidth: 1.6, fill: 'none', strokeLinecap: 'round' }));
+    k.push(h('path', { key: 'smile', d: 'M43 69 Q50 76 57 69', stroke: c.ink, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
+    k.push(h('circle', { key: 'chL', cx: 35, cy: 66, r: 3.5, fill: '#E8674A', opacity: .25 })); k.push(h('circle', { key: 'chR', cx: 65, cy: 66, r: 3.5, fill: '#E8674A', opacity: .25 }));
+    return { vb: '0 0 100 130', k };
+  }
+  if (kind === 'product') {
+    k.push(h('rect', { key: 'bg', width: 100, height: 130, fill: c.bg }));
+    k.push(h('ellipse', { key: 'plinth', cx: 50, cy: 112, rx: 34, ry: 8, fill: c.plinth }));
+    if (v % 2 === 0) { k.push(h('rect', { key: 'cap', x: 41, y: 22, width: 18, height: 16, rx: 3, fill: c.cap })); k.push(h('rect', { key: 'body', x: 32, y: 34, width: 36, height: 76, rx: 9, fill: c.body })); k.push(h('rect', { key: 'label', x: 38, y: 62, width: 24, height: 26, rx: 3, fill: c.label })); }
+    else { k.push(h('rect', { key: 'lid', x: 30, y: 30, width: 40, height: 10, rx: 3, fill: c.cap })); k.push(h('rect', { key: 'jar', x: 32, y: 38, width: 36, height: 72, rx: 6, fill: c.body })); k.push(h('rect', { key: 'label', x: 38, y: 58, width: 24, height: 30, rx: 3, fill: c.label })); }
+    k.push(h('rect', { key: 'l1', x: 42, y: v % 2 ? 66 : 70, width: 16, height: 2.5, rx: 1, fill: c.cap, opacity: .7 })); k.push(h('rect', { key: 'l2', x: 42, y: v % 2 ? 73 : 77, width: 10, height: 2.5, rx: 1, fill: c.cap, opacity: .4 }));
+    k.push(h('rect', { key: 'shine', x: 37, y: 42, width: 4, height: 30, rx: 2, fill: '#FFFFFF', opacity: .35 }));
+    return { vb: '0 0 100 130', k };
+  }
+  // landscape
+  k.push(h('rect', { key: 'sky', width: 160, height: 100, fill: c.sky }));
+  k.push(h('circle', { key: 'sun', cx: v === 2 ? 40 : 120, cy: 28, r: 14, fill: c.sun }));
+  [[24, 30], [96, 20]].forEach(([x, y], i) => { k.push(h('ellipse', { key: 'cl' + i, cx: x + v * 6, cy: y, rx: 16, ry: 6, fill: c.cloud, opacity: .85 })); k.push(h('ellipse', { key: 'cl2' + i, cx: x + 8 + v * 6, cy: y - 4, rx: 10, ry: 6, fill: c.cloud, opacity: .85 })); });
+  if (v === 1) { k.push(h('path', { key: 'mtn', d: 'M0 100 L0 74 L36 40 L62 66 L86 32 L118 68 L140 48 L160 70 L160 100 Z', fill: c.far })); k.push(h('path', { key: 'snow', d: 'M78 44 L86 32 L94 44 Z M30 48 L36 40 L42 48 Z', fill: c.cloud, opacity: .9 })); k.push(h('path', { key: 'near', d: 'M0 100 L0 84 C40 70 90 92 160 80 L160 100 Z', fill: c.near })); }
+  else if (v === 2) { k.push(h('rect', { key: 'sea', x: 0, y: 58, width: 160, height: 42, fill: c.near })); [64, 72, 80].forEach((y, i) => k.push(h('path', { key: 'w' + i, d: `M${10 + i * 30} ${y} q6 -4 12 0 t12 0 t12 0`, stroke: c.cloud, strokeWidth: 1.6, fill: 'none', opacity: .7 }))); k.push(h('path', { key: 'sand', d: 'M0 100 L0 88 C50 82 110 96 160 86 L160 100 Z', fill: c.far })); }
+  else { k.push(h('path', { key: 'far', d: 'M0 100 L0 62 C30 46 60 72 90 56 C120 42 140 62 160 52 L160 100 Z', fill: c.far })); k.push(h('path', { key: 'near', d: 'M0 100 L0 80 C40 64 80 90 120 74 C140 68 150 76 160 72 L160 100 Z', fill: c.near })); }
+  if (v !== 2) [[22, 84], [44, 88], [128, 82]].forEach(([x, y], i) => { k.push(h('polygon', { key: 't' + i, points: `${x},${y - 22} ${x - 8},${y} ${x + 8},${y}`, fill: c.tree })); k.push(h('rect', { key: 'tr' + i, x: x - 1.5, y, width: 3, height: 6, fill: c.tree })); });
+  if (v === 3) k.push(h('path', { key: 'birds', d: 'M60 30 q4 -4 8 0 M70 24 q4 -4 8 0 M52 22 q4 -4 8 0', stroke: c.tree, strokeWidth: 1.2, fill: 'none' }));
+  return { vb: '0 0 160 100', k };
+}
+function sampleNode(h, el) {
+  const { vb, k } = sampleArt(h, el.sample);
+  return h('svg', { 'data-sample': el.sample.kind, viewBox: vb, preserveAspectRatio: 'xMidYMid slice', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', transform: `scale(${el.zoom || 1})${el.flip ? ' scaleX(-1)' : ''}`, transformOrigin: `${el.cx ?? 50}% ${el.cy ?? 50}%`, filter: filterCSS(el.filters), pointerEvents: 'none' } }, k);
+}
+
 function placeholder(h, el) {
   const s = Math.max(4, Math.min(el.w, el.h) / 36);
   return h('div', { 'data-placeholder': '1', style: { position: 'absolute', inset: 0, background: el.tint || '#DDD', backgroundImage: `repeating-linear-gradient(135deg, rgba(0,0,0,.06) 0 ${s}px, transparent ${s}px ${s * 4}px)`, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
@@ -113,7 +164,7 @@ export function renderEl(h, el, o = {}) {
     const src = el.asset && o.assets && o.assets[el.asset] && o.assets[el.asset].src;
     const br = el.mask === 'circle' ? '50%' : el.mask === 'arch' ? `${el.w / 2}px ${el.w / 2}px 0 0` : (el.mask === 'rounded' ? Math.max(el.radius || 0, Math.min(el.w, el.h) * .08) : el.radius || 0);
     const st = { ...base, overflow: 'hidden', borderRadius: br, border: el.border && el.borderW ? `${el.borderW}px solid ${el.border}` : undefined, boxShadow: el.shadow ? `0 ${Math.min(el.w, el.h) * .03}px ${Math.min(el.w, el.h) * .08}px rgba(0,0,0,.22)` : undefined, background: src ? 'transparent' : undefined };
-    const img = src ? h('img', { src, draggable: false, alt: '', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: el.fit || 'cover', objectPosition: `${el.cx ?? 50}% ${el.cy ?? 50}%`, transform: `scale(${el.zoom || 1})${el.flip ? ' scaleX(-1)' : ''}`, transformOrigin: `${el.cx ?? 50}% ${el.cy ?? 50}%`, filter: filterCSS(el.filters), display: 'block', pointerEvents: 'none', userSelect: 'none' } }) : placeholder(h, el);
+    const img = src ? h('img', { src, draggable: false, alt: '', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: el.fit || 'cover', objectPosition: `${el.cx ?? 50}% ${el.cy ?? 50}%`, transform: `scale(${el.zoom || 1})${el.flip ? ' scaleX(-1)' : ''}`, transformOrigin: `${el.cx ?? 50}% ${el.cy ?? 50}%`, filter: filterCSS(el.filters), display: 'block', pointerEvents: 'none', userSelect: 'none' } }) : el.sample ? sampleNode(h, el) : placeholder(h, el);
     return h('div', { ...common, style: st }, img);
   }
   if (el.type === 'qr') {
@@ -126,7 +177,7 @@ export function renderEl(h, el, o = {}) {
 
 export function renderPage(h, page, doc, o = {}) {
   const bgImg = page.bgAsset && o.assets && o.assets[page.bgAsset];
-  return h('div', { 'data-page-node': page.id, onPointerDown: o.onPageDown, style: { position: 'relative', width: doc.w, height: doc.h, background: page.bg || '#FFFFFF', backgroundImage: bgImg ? `url(${bgImg.src})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden', pointerEvents: o.interactive ? 'auto' : 'none', userSelect: 'none', WebkitUserSelect: 'none' } },
+  return h('div', { 'data-page-node': page.id, onPointerDown: o.onPageDown, style: { position: 'relative', width: doc.w, height: doc.h, backgroundColor: page.bg || '#FFFFFF', backgroundImage: bgImg ? `url(${bgImg.src})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden', pointerEvents: o.interactive ? 'auto' : 'none', userSelect: 'none', WebkitUserSelect: 'none' } },
     page.els.map(el => renderEl(h, el, o)));
 }
 

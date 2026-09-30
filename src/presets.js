@@ -50,7 +50,12 @@ export const PALETTES = [
   ['sky', 'Sky', '#CFE8FF', '#0A2342', '#FF7B54', '#2CA58D', '#EAF4FF'],
   ['gold', 'Charcoal & Gold', '#1E1E1E', '#F2EDE4', '#C9A227', '#6B6B6B', '#2A2A2A'],
   ['cobalt', 'Cobalt', '#1F3FD1', '#FFFFFF', '#FFD23F', '#FF8FA3', '#3452DB'],
-  ['sage', 'Sage', '#E4E8DC', '#2F3A2B', '#8A9A5B', '#D98E5F', '#F1F4EC']
+  ['sage', 'Sage', '#E4E8DC', '#2F3A2B', '#8A9A5B', '#D98E5F', '#F1F4EC'],
+  ['festive', 'Festive Red', '#7A1F2B', '#FFF3E0', '#E8B04B', '#2F6B3A', '#8C2A37'],
+  ['emerald', 'Emerald & Gold', '#0F3D3E', '#F5EFE0', '#D4AF37', '#6BB39A', '#154A4B'],
+  ['marigold', 'Marigold', '#FFF1CC', '#4A1E12', '#E4572E', '#F2B134', '#FFF8E6'],
+  ['pastel', 'Pastel', '#FFF8E7', '#3D3A4B', '#F28CB1', '#8FD3C7', '#FFFFFF'],
+  ['ivory', 'Ivory', '#F6F3EE', '#2B2B2B', '#7A8B7E', '#B8B0A2', '#FFFFFF']
 ].map(([id, name, bg, ink, accent, accent2, surface]) => ({ id, name, bg, ink, accent, accent2, surface }));
 export const THEME_KEYS = ['bg', 'ink', 'accent', 'accent2', 'surface', 'muted', 'onAccent', 'onAccent2', 'hi', 'line', 'tint', 'onSurface'];
 export function makeTheme(p) {
@@ -90,30 +95,87 @@ export const PAIRINGS = [
 /* ---------- formats ---------- */
 // kind: t thumbnail · s social · d deck · p print · b banner · c card
 export const FORMATS = [
+  // Social
   { id: 'yt-thumb', name: 'YouTube Thumbnail', cat: 'YouTube', w: 1280, h: 720, kind: 't' },
   { id: 'ig-post', name: 'Instagram Post', cat: 'Instagram', w: 1080, h: 1080, kind: 's' },
   { id: 'ig-portrait', name: 'Instagram Portrait', cat: 'Instagram', w: 1080, h: 1350, kind: 's' },
   { id: 'ig-story', name: 'Instagram Story', cat: 'Instagram', w: 1080, h: 1920, kind: 's' },
-  { id: 'ig-carousel', name: 'Instagram Carousel', cat: 'Instagram', w: 1080, h: 1350, kind: 's', pages: 3 },
+  { id: 'ig-carousel', name: 'Instagram Carousel', cat: 'Instagram', w: 1080, h: 1350, kind: 's', pages: 5, arc: 'carousel' },
   { id: 'tiktok', name: 'TikTok / Reels Cover', cat: 'TikTok', w: 1080, h: 1920, kind: 's' },
   { id: 'fb-post', name: 'Facebook Post', cat: 'Facebook', w: 1200, h: 630, kind: 's' },
+  { id: 'li-post', name: 'LinkedIn Post', cat: 'LinkedIn', w: 1200, h: 1200, kind: 's' },
+  { id: 'pin', name: 'Pinterest Pin', cat: 'Pinterest', w: 1000, h: 1500, kind: 's' },
+  { id: 'x-post', name: 'X Post', cat: 'X', w: 1600, h: 900, kind: 's' },
+  { id: 'pres', name: 'Presentation 16:9', cat: 'Presentation', w: 1920, h: 1080, kind: 'd', pages: 6, arc: 'deck' },
+  { id: 'a4', name: 'A4 Flyer', cat: 'Flyer', w: 794, h: 1123, kind: 'p' },
+  { id: 'ig-reel', name: 'Instagram Reel Cover', cat: 'Instagram', w: 1080, h: 1920, kind: 's' },
+  { id: 'li-carousel', name: 'LinkedIn Carousel', cat: 'LinkedIn', w: 1080, h: 1080, kind: 's', pages: 5, arc: 'carousel' },
+  { id: 'li-banner', name: 'LinkedIn Banner', cat: 'LinkedIn', w: 1584, h: 396, kind: 'b' },
   { id: 'fb-event', name: 'Facebook Event Cover', cat: 'Facebook', w: 1920, h: 1005, kind: 's' },
   { id: 'fb-cover', name: 'Facebook Cover', cat: 'Facebook', w: 1640, h: 624, kind: 'b' },
-  { id: 'x-post', name: 'X Post', cat: 'X', w: 1600, h: 900, kind: 's' },
   { id: 'x-header', name: 'X Header', cat: 'X', w: 1500, h: 500, kind: 'b' },
-  { id: 'li-post', name: 'LinkedIn Post', cat: 'LinkedIn', w: 1200, h: 1200, kind: 's' },
-  { id: 'li-banner', name: 'LinkedIn Banner', cat: 'LinkedIn', w: 1584, h: 396, kind: 'b' },
-  { id: 'pin', name: 'Pinterest Pin', cat: 'Pinterest', w: 1000, h: 1500, kind: 's' },
+  { id: 'yt-shorts', name: 'YouTube Shorts Cover', cat: 'YouTube', w: 1080, h: 1920, kind: 's' },
+  // YouTube crops channel art to a 1546×423 strip on desktop; the layout runs inside that.
+  { id: 'yt-banner', name: 'YouTube Channel Art', cat: 'YouTube', w: 2560, h: 1440, kind: 'b', safe: [1546, 423] },
+  { id: 'twitch-banner', name: 'Twitch Banner', cat: 'Twitch', w: 1200, h: 480, kind: 'b' },
+  { id: 'twitch-offline', name: 'Twitch Offline Screen', cat: 'Twitch', w: 1920, h: 1080, kind: 't' },
+  { id: 'discord-banner', name: 'Discord Banner', cat: 'Discord', w: 960, h: 540, kind: 's' },
   { id: 'podcast', name: 'Podcast Cover', cat: 'Podcast', w: 1400, h: 1400, kind: 's' },
+  { id: 'album', name: 'Album Cover', cat: 'Music', w: 3000, h: 3000, kind: 's' },
+  // Web & marketing
+  { id: 'og-image', name: 'Link Preview Image', cat: 'Web', w: 1200, h: 630, kind: 's' },
+  { id: 'web-hero', name: 'Website Hero', cat: 'Web', w: 1920, h: 800, kind: 'b' },
   { id: 'email-header', name: 'Email Header', cat: 'Web', w: 1200, h: 400, kind: 'b' },
-  { id: 'pres', name: 'Presentation 16:9', cat: 'Presentation', w: 1920, h: 1080, kind: 'd', pages: 3 },
+  { id: 'email-news', name: 'Email Newsletter', cat: 'Web', w: 600, h: 1500, kind: 's' },
+  { id: 'infographic', name: 'Infographic', cat: 'Web', w: 800, h: 2000, kind: 'p' },
+  { id: 'etsy-banner', name: 'Etsy Shop Banner', cat: 'Ecommerce', w: 1200, h: 300, kind: 'b' },
+  { id: 'product-img', name: 'Product Listing Image', cat: 'Ecommerce', w: 2000, h: 2000, kind: 's' },
+  { id: 'app-shot', name: 'App Store Screenshot', cat: 'App', w: 1290, h: 2796, kind: 's' },
+  // Video & screens
+  { id: 'title-card', name: 'Video Title Card', cat: 'Video', w: 1920, h: 1080, kind: 't' },
+  { id: 'zoom-bg', name: 'Video Call Background', cat: 'Video', w: 1920, h: 1080, kind: 's' },
+  { id: 'wallpaper-phone', name: 'Phone Wallpaper', cat: 'Wallpaper', w: 1170, h: 2532, kind: 's' },
+  { id: 'wallpaper-desktop', name: 'Desktop Wallpaper', cat: 'Wallpaper', w: 2560, h: 1440, kind: 's' },
+  // Presentations
+  { id: 'pitch', name: 'Pitch Deck', cat: 'Presentation', w: 1920, h: 1080, kind: 'd', pages: 8, arc: 'deck' },
+  { id: 'pres-43', name: 'Presentation 4:3', cat: 'Presentation', w: 1600, h: 1200, kind: 'd', pages: 5, arc: 'deck' },
+  { id: 'pres-mobile', name: 'Mobile Presentation', cat: 'Presentation', w: 1080, h: 1920, kind: 'd', pages: 5, arc: 'deck' },
+  // Posters, flyers & signage
   { id: 'poster', name: 'Poster 18×24 in', cat: 'Poster', w: 1728, h: 2304, kind: 'p' },
-  { id: 'a4', name: 'A4 Flyer', cat: 'Flyer', w: 794, h: 1123, kind: 'p' },
+  { id: 'poster-24x36', name: 'Poster 24×36 in', cat: 'Poster', w: 2304, h: 3456, kind: 'p' },
+  { id: 'a3', name: 'A3 Poster', cat: 'Poster', w: 1123, h: 1587, kind: 'p' },
+  { id: 'a5', name: 'A5 Flyer', cat: 'Flyer', w: 559, h: 794, kind: 'p' },
   { id: 'letter', name: 'US Letter Flyer', cat: 'Flyer', w: 816, h: 1056, kind: 'p' },
+  { id: 'rack-card', name: 'Rack Card 4×9 in', cat: 'Flyer', w: 1200, h: 2700, kind: 'p' },
+  { id: 'door-hanger', name: 'Door Hanger 4.25×11 in', cat: 'Flyer', w: 1275, h: 3300, kind: 'p' },
+  { id: 'yard-sign', name: 'Yard Sign 24×18 in', cat: 'Signage', w: 2304, h: 1728, kind: 'p' },
+  { id: 'banner-sign', name: 'Banner 72×24 in', cat: 'Signage', w: 3456, h: 1152, kind: 'b' },
+  // Documents & multi-page print
+  { id: 'resume', name: 'Résumé', cat: 'Documents', w: 816, h: 1056, kind: 'p', pages: 2, arc: 'resume', only: ['resume'] },
+  { id: 'letterhead', name: 'Letterhead', cat: 'Documents', w: 816, h: 1056, kind: 'p', only: ['letterhead'] },
+  { id: 'report', name: 'Report / Proposal', cat: 'Documents', w: 816, h: 1056, kind: 'p', pages: 4, arc: 'report' },
+  { id: 'newsletter', name: 'Print Newsletter', cat: 'Documents', w: 816, h: 1056, kind: 'p', pages: 2, arc: 'newsletter' },
+  { id: 'booklet', name: 'Booklet A5', cat: 'Brochure', w: 559, h: 794, kind: 'p', pages: 4, arc: 'booklet' },
+  { id: 'brochure', name: 'Brochure (Letter)', cat: 'Brochure', w: 816, h: 1056, kind: 'p', pages: 4, arc: 'booklet' },
+  { id: 'menu-letter', name: 'Menu (Letter)', cat: 'Menu', w: 816, h: 1056, kind: 'p', pages: 2, arc: 'menu' },
+  { id: 'table-tent', name: 'Table Tent 4×6 in', cat: 'Menu', w: 1200, h: 1800, kind: 'p', pages: 2, arc: 'menu' },
+  { id: 'photo-book', name: 'Photo Book 8×8 in', cat: 'Photo', w: 2400, h: 2400, kind: 'p', pages: 4, arc: 'photobook' },
+  // Cards & small print
   { id: 'postcard', name: 'Postcard 6×4 in', cat: 'Print', w: 1800, h: 1200, kind: 'p' },
   { id: 'certificate', name: 'Certificate A4 Landscape', cat: 'Print', w: 1123, h: 794, kind: 'p' },
+  { id: 'gift-cert', name: 'Gift Certificate 7×3.5 in', cat: 'Print', w: 2100, h: 1050, kind: 'p' },
   { id: 'invite', name: 'Invitation 5×7 in', cat: 'Invitation', w: 1050, h: 1470, kind: 'p' },
-  { id: 'bizcard', name: 'Business Card', cat: 'Business Card', w: 1050, h: 600, kind: 'c', pages: 2 }
+  { id: 'greeting', name: 'Greeting Card 5×7 in', cat: 'Cards', w: 1500, h: 2100, kind: 'p', pages: 2, arc: 'greeting' },
+  { id: 'recipe-card', name: 'Recipe Card 4×6 in', cat: 'Cards', w: 1200, h: 1800, kind: 'p' },
+  { id: 'bookmark', name: 'Bookmark 2.5×7 in', cat: 'Cards', w: 750, h: 2100, kind: 'p' },
+  { id: 'ticket', name: 'Event Ticket 5×2.5 in', cat: 'Cards', w: 1500, h: 750, kind: 'p' },
+  { id: 'name-badge', name: 'Name Badge 4×3 in', cat: 'Cards', w: 1200, h: 900, kind: 'p', only: ['badge', 'label', 'minimal-corner'] },
+  { id: 'label', name: 'Product Label 3×3 in', cat: 'Cards', w: 900, h: 900, kind: 'p', only: ['label', 'concentric', 'centered-badge', 'sale-burst', 'minimal-corner', 'framed-poster', 'outline-type'] },
+  { id: 'bizcard', name: 'Business Card', cat: 'Business Card', w: 1050, h: 600, kind: 'c', pages: 2 },
+  // Publishing
+  { id: 'book-cover', name: 'Book Cover 6×9 in', cat: 'Publishing', w: 1800, h: 2700, kind: 'p' },
+  { id: 'ebook', name: 'eBook Cover', cat: 'Publishing', w: 1600, h: 2560, kind: 'p' },
+  { id: 'magazine-cover', name: 'Magazine Cover 8.5×11 in', cat: 'Publishing', w: 2550, h: 3300, kind: 'p' }
 ];
 export const FORMAT = Object.fromEntries(FORMATS.map(f => [f.id, f]));
 
@@ -125,7 +187,7 @@ const TOPICS = [
   { id: 'food', name: 'Food & dining', brand: 'Sunday Table', kicker: 'Supper club', title: 'Sunday Pasta Night', short: 'Fresh pasta Sunday', word: 'Pasta', sub: 'Hand-rolled pasta, natural wine and one long table. Bring a friend, leave with ten.', cta: 'Reserve a seat', handle: '@sundaytable', url: 'sundaytable.kitchen', stat: ['12', 'seats a night'], items: ['Burrata & charred peaches', 'Cacio e pepe, made tableside', 'Brown butter gnocchi', 'Olive oil cake'], date: ['09', 'Nov', 'Sunday, Nov 9', '7:00 pm'], place: '118 Mercer St', price: '$65', badge: 'Chef’s pick', quote: 'The kind of dinner where you forget to check your phone for three hours.', author: 'Dana Whitfield', role: 'Regular guest', tags: ['Vegetarian', 'Wine', 'Communal'], chart: [['Jan', 30], ['Feb', 42], ['Mar', 55], ['Apr', 71]], vs: ['Dried', 'Fresh'], count: ['4', 'seats left'], ep: 'Menu 11', menu: [['Burrata', '$16'], ['Cacio e pepe', '$22'], ['Gnocchi', '$24'], ['Olive oil cake', '$11']], person: 'Marco Bellini', job: 'Head Chef', pairs: ['fatface', 'modern-serif', 'script', 'classic', 'bookish', 'instrument'], pals: ['terracotta', 'tomato', 'paper', 'sage', 'forest'] },
   { id: 'fitness', name: 'Fitness', brand: 'Ironline', kicker: '30-day program', title: 'The Strength Reset', short: '30 days stronger', word: 'Lift', sub: 'Three sessions a week, 40 minutes each. Progressive, simple, built to stick.', cta: 'Start free', handle: '@ironline.fit', url: 'ironline.fit', stat: ['+38%', 'average strength gain'], items: ['Squat, hinge, push, pull', 'Train 3× a week', 'Log every set', 'Sleep like it’s your job'], date: ['01', 'Sep', 'Starts Sept 1', '6:30 am'], place: 'Ironline Studio, Floor 2', price: '$49/mo', badge: 'Beginner friendly', quote: 'I finally stopped program-hopping. Thirty days in, my deadlift is up 40 pounds.', author: 'Chris Tan', role: 'Member', tags: ['Strength', 'Mobility', 'Coaching'], chart: [['Wk1', 60], ['Wk2', 68], ['Wk3', 77], ['Wk4', 83]], vs: ['Day 1', 'Day 30'], count: ['7', 'days to go'], ep: 'Week 01', menu: [['Drop-in', '$22'], ['10-pack', '$180'], ['Monthly', '$49'], ['Coaching', '$99']], person: 'Alex Rivera', job: 'Head Coach', pairs: ['sports', 'impact', 'heavy', 'condensed', 'rubik'], pals: ['electric', 'citrus', 'mono', 'cobalt', 'tomato'] },
   { id: 'tech', name: 'Product launch', brand: 'Orbit', kicker: 'Introducing', title: 'Meet Orbit 2.0', short: 'Orbit 2.0 is here', word: 'Orbit', sub: 'Your team’s calendar, tasks and docs finally talking to each other. Faster than ever.', cta: 'Try it free', handle: '@orbitapp', url: 'orbit.app', stat: ['3×', 'faster planning'], items: ['Shared timelines', 'Offline-first sync', 'Keyboard everything', 'Private by default'], date: ['30', 'Oct', 'Launch day · Oct 30', '9:00 am PT'], place: 'Live stream', price: '$8/seat', badge: 'New', quote: 'We replaced four tools with Orbit in a week. Planning meetings got 20 minutes shorter.', author: 'Nadia Hassan', role: 'Head of Ops, Fieldwork', tags: ['Productivity', 'Teams', 'AI'], chart: [['Q1', 22], ['Q2', 35], ['Q3', 51], ['Q4', 78]], vs: ['Before', 'After'], count: ['5', 'days to launch'], ep: 'v2.0', menu: [['Free', '$0'], ['Team', '$8'], ['Business', '$16'], ['Enterprise', 'Talk to us']], person: 'Riya Shah', job: 'Product Lead', pairs: ['grotesk', 'round', 'art', 'geo', 'instrument'], pals: ['midnight', 'cobalt', 'lavender', 'mono', 'electric', 'sky'] },
-  { id: 'wedding', name: 'Wedding', brand: 'Ana & Theo', kicker: 'Together with their families', title: 'Ana & Theo', short: 'Save the date', word: 'Forever', sub: 'request the pleasure of your company as they celebrate their marriage.', cta: 'RSVP by August 1', handle: '#AnaAndTheo', url: 'anaandtheo.love', stat: ['10', 'years in the making'], items: ['Ceremony at 4pm', 'Dinner & dancing to follow', 'Garden attire', 'Shuttle from the inn'], date: ['20', 'Sep', 'Saturday, September 20', 'Four o’clock'], place: 'Rosewood Estate, Sonoma', price: '', badge: 'Save the date', quote: 'Whatever our souls are made of, his and mine are the same.', author: 'Emily Brontë', role: '', tags: ['Ceremony', 'Dinner', 'Dancing'], chart: [['2015', 1], ['2018', 3], ['2022', 6], ['2025', 10]], vs: ['Ana', 'Theo'], count: ['60', 'days to go'], ep: 'No. 01', menu: [['Oysters', 'first'], ['Heirloom salad', 'second'], ['Short rib', 'main'], ['Olive oil cake', 'sweet']], person: 'Ana Costa', job: 'Bride-to-be', pairs: ['luxe', 'script', 'classic', 'instrument', 'editorial'], pals: ['blush', 'sage', 'paper', 'gold', 'sand'] },
+  { id: 'wedding', name: 'Wedding', occasion: true, kw: 'wedding marriage save the date invitation bride groom', brand: 'Ana & Theo', kicker: 'Together with their families', title: 'Ana & Theo', short: 'Save the date', word: 'Forever', sub: 'request the pleasure of your company as they celebrate their marriage.', cta: 'RSVP by August 1', handle: '#AnaAndTheo', url: 'anaandtheo.love', stat: ['10', 'years in the making'], items: ['Ceremony at 4pm', 'Dinner & dancing to follow', 'Garden attire', 'Shuttle from the inn'], date: ['20', 'Sep', 'Saturday, September 20', 'Four o’clock'], place: 'Rosewood Estate, Sonoma', price: '', badge: 'Save the date', quote: 'Whatever our souls are made of, his and mine are the same.', author: 'Emily Brontë', role: '', tags: ['Ceremony', 'Dinner', 'Dancing'], chart: [['2015', 1], ['2018', 3], ['2022', 6], ['2025', 10]], vs: ['Ana', 'Theo'], count: ['60', 'days to go'], ep: 'No. 01', menu: [['Oysters', 'first'], ['Heirloom salad', 'second'], ['Short rib', 'main'], ['Olive oil cake', 'sweet']], person: 'Ana Costa', job: 'Bride-to-be', pairs: ['luxe', 'script', 'classic', 'instrument', 'editorial'], pals: ['blush', 'sage', 'paper', 'gold', 'sand'] },
   { id: 'realestate', name: 'Real estate', brand: 'Keystone Homes', kicker: 'Open house', title: 'Light-Filled Corner Home', short: 'Just listed', word: 'Home', sub: '3 bed · 2 bath · 1,840 sq ft with a south-facing garden and original oak floors.', cta: 'Book a viewing', handle: '@keystonehomes', url: 'keystone.homes', stat: ['$840K', 'asking price'], items: ['South-facing garden', 'Chef’s kitchen', 'Walk to the park', 'EV-ready garage'], date: ['18', 'Oct', 'Saturday, Oct 18', '11am – 2pm'], place: '42 Alder Lane', price: '$840K', badge: 'Just listed', quote: 'They found us a home we didn’t know we could afford — in a week.', author: 'The Parkers', role: 'Happy homeowners', tags: ['3 bed', '2 bath', 'Garden'], chart: [['2022', 690], ['2023', 735], ['2024', 790], ['2025', 840]], vs: ['Before reno', 'After reno'], count: ['2', 'days only'], ep: 'Listing 118', menu: [['Studio', '$2,100'], ['1 bed', '$2,800'], ['2 bed', '$3,600'], ['Penthouse', '$6,900']], person: 'Grace Liu', job: 'Listing Agent', pairs: ['classic', 'modern-serif', 'grotesk', 'luxe', 'bookish'], pals: ['sand', 'gold', 'sage', 'mono', 'paper'] },
   { id: 'music', name: 'Live music', brand: 'Neon Tides', kicker: 'Live · one night only', title: 'Neon Tides', short: 'Neon Tides live', word: 'Live', sub: 'With special guests Paper Moons. Doors at 8. Dance until the lights come on.', cta: 'Get tickets', handle: '@neontides', url: 'neontides.band', stat: ['1', 'night only'], items: ['Doors 8pm', 'Paper Moons 8:45', 'Neon Tides 10pm', 'Afterparty in the loft'], date: ['27', 'Nov', 'Thursday, Nov 27', 'Doors 8pm'], place: 'The Foundry, Brooklyn', price: '$25', badge: 'Sold out soon', quote: 'The loudest, sweatiest, happiest two hours I’ve had all year.', author: 'Kai Monroe', role: 'Local Sound', tags: ['Synth pop', 'All ages', 'Late show'], chart: [['NYC', 90], ['CHI', 72], ['LA', 85], ['ATX', 64]], vs: ['Studio', 'Live'], count: ['9', 'days to go'], ep: 'Tour ’25', menu: [['GA', '$25'], ['Balcony', '$40'], ['VIP', '$90'], ['Merch bundle', '$55']], person: 'Remy Vance', job: 'Booking Agent', pairs: ['poster', 'art', 'round', 'marker', 'sports'], pals: ['electric', 'plum', 'midnight', 'cobalt', 'citrus'] },
   { id: 'education', name: 'Workshop', brand: 'Studio Class', kicker: 'Weekend workshop', title: 'Intro to Watercolor', short: 'Learn watercolor', word: 'Paint', sub: 'Two relaxed afternoons. All materials included. No experience needed — just curiosity.', cta: 'Save your spot', handle: '@studioclass', url: 'studioclass.org', stat: ['8', 'students per class'], items: ['Wet-on-wet washes', 'Mixing a limited palette', 'Painting light', 'Take-home sketchbook'], date: ['04', 'Oct', 'Oct 4 & 5', '1 – 4pm'], place: 'The Annex, 3rd floor', price: '$120', badge: 'All levels', quote: 'I came in unable to draw a circle and left with a painting on my fridge.', author: 'Tom Becker', role: 'Past student', tags: ['Beginner', 'Materials included', 'Small group'], chart: [['Wk1', 20], ['Wk2', 45], ['Wk3', 70], ['Wk4', 92]], vs: ['First try', 'Day two'], count: ['6', 'spots left'], ep: 'Lesson 01', menu: [['Single class', '$65'], ['Weekend', '$120'], ['Monthly', '$220'], ['Private', '$90/h']], person: 'Hana Sato', job: 'Instructor', pairs: ['script', 'modern-serif', 'bookish', 'round', 'instrument'], pals: ['sky', 'lavender', 'mint', 'paper', 'blush'] },
@@ -136,8 +198,26 @@ const TOPICS = [
   { id: 'finance', name: 'Finance tips', brand: 'Clearbook', kicker: 'Money, simply', title: '5 Money Habits That Actually Work', short: '5 money habits', word: 'Save', sub: 'Small, boring, automatic. The habits that quietly add up to real wealth.', cta: 'Get the guide', handle: '@clearbook', url: 'clearbook.money', stat: ['$4,200', 'saved in year one'], items: ['Pay yourself first', 'Automate everything', 'One fun budget', 'Review every Sunday'], date: ['01', 'Jan', 'Start January 1', ''], place: 'Free online course', price: 'Free', badge: 'Save this', quote: 'Automating my savings did more in six months than a decade of good intentions.', author: 'Daniel Kim', role: 'Reader', tags: ['Budgeting', 'Investing', 'Habits'], chart: [['Y1', 4200], ['Y2', 9100], ['Y3', 14800], ['Y4', 21000]], vs: ['Spending', 'Saving'], count: ['5', 'minutes a week'], ep: 'Tip 05', menu: [['Emergency fund', '3 mo'], ['Retirement', '15%'], ['Fun money', '10%'], ['Investing', 'monthly']], person: 'Elena Petrova', job: 'Financial Planner', pairs: ['grotesk', 'geo', 'condensed', 'editorial', 'rubik'], pals: ['mint', 'cobalt', 'mono', 'midnight', 'sage'] },
   { id: 'fashion', name: 'Fashion', brand: 'Maison Vale', kicker: 'The autumn edit', title: 'Quiet Layers', short: 'Autumn edit', word: 'Edit', sub: 'Wool, suede and soft tailoring in the colors of late October.', cta: 'Shop the edit', handle: '@maisonvale', url: 'maisonvale.com', stat: ['24', 'new pieces'], items: ['Double-faced wool coat', 'Suede ankle boots', 'Merino rollneck', 'Wide-leg trousers'], date: ['10', 'Oct', 'Available Oct 10', ''], place: 'Flagship & online', price: '$340', badge: 'New season', quote: 'Clothes that feel like a deep breath. I wear the coat every single day.', author: 'Sofia Laurent', role: 'Stylist', tags: ['Outerwear', 'Knitwear', 'Tailoring'], chart: [['Aug', 14], ['Sep', 22], ['Oct', 37], ['Nov', 41]], vs: ['Day', 'Night'], count: ['48', 'hours early access'], ep: 'Look 07', menu: [['Coat', '$340'], ['Boots', '$220'], ['Rollneck', '$140'], ['Trousers', '$180']], person: 'Julien Vale', job: 'Creative Director', pairs: ['luxe', 'instrument', 'editorial', 'poster', 'classic'], pals: ['gold', 'terracotta', 'mono', 'sand', 'plum'] },
   { id: 'hiring', name: 'Hiring', brand: 'Fieldwork', kicker: 'We’re hiring', title: 'Build the Future of Field Science', short: 'We’re hiring!', word: 'Join', sub: 'Remote-friendly, four-day weeks, and teammates who care about the craft.', cta: 'See open roles', handle: '@fieldwork', url: 'fieldwork.io/jobs', stat: ['14', 'open roles'], items: ['Senior Product Designer', 'Staff Backend Engineer', 'Data Scientist', 'Customer Success Lead'], date: ['31', 'Jul', 'Apply by July 31', ''], place: 'Remote · Berlin · Toronto', price: '', badge: 'Remote OK', quote: 'The first job where I’m trusted to do my best work — and given the time to do it.', author: 'Tariq Malik', role: 'Senior Engineer', tags: ['Design', 'Engineering', 'Data', 'Support'], chart: [['2022', 12], ['2023', 28], ['2024', 47], ['2025', 70]], vs: ['Old way', 'Our way'], count: ['14', 'open roles'], ep: 'Role 03', menu: [['Design', '3 roles'], ['Engineering', '6 roles'], ['Data', '2 roles'], ['Support', '3 roles']], person: 'Maya Chen', job: 'Head of Talent', pairs: ['grotesk', 'geo', 'art', 'round', 'rubik'], pals: ['cobalt', 'citrus', 'lavender', 'mint', 'paper'] }
+,
+  // Social occasions. `kw` widens search; `only` keeps solemn copy out of loud layouts.
+  { id: 'birthday', name: 'Birthday', occasion: true, kw: 'birthday party bday celebration invite', brand: 'Maya’s 30th', kicker: 'You’re invited', title: 'Maya Turns Thirty', short: 'Maya turns 30', word: 'Party', sub: 'Cake, karaoke and questionable dancing. Come celebrate three decades of Maya.', cta: 'RSVP by June 1', handle: '#MayaTurns30', url: 'mayaturns30.party', stat: ['30', 'years young'], items: ['Drinks from 7pm', 'Cake at 9', 'Karaoke till late', 'Dress: sparkly'], date: ['14', 'Jun', 'Saturday, June 14', '7:00 pm'], place: 'The Rooftop, 22 Pine St', price: '', badge: 'Save the date', quote: 'Growing old is mandatory. Growing up is optional.', author: 'Walt Disney', role: '', tags: ['Rooftop', 'Cocktails', 'Karaoke'], chart: [['Cake', 9], ['Dancing', 8], ['Sleep', 2], ['Regrets', 0]], vs: ['20s', '30s'], count: ['7', 'days to go'], ep: 'No. 30', menu: [['Welcome drink', '7pm'], ['Dinner', '8pm'], ['Cake', '9pm'], ['Karaoke', '10pm']], person: 'Maya Rodriguez', job: 'Birthday girl', pairs: ['round', 'marker', 'script', 'art', 'geo', 'fatface'], pals: ['citrus', 'pastel', 'lavender', 'blush', 'cobalt', 'tomato'] },
+  { id: 'engagement', name: 'Engagement', occasion: true, kw: 'engagement engaged proposal party', brand: 'Sara & Omar', kicker: 'She said yes', title: 'Sara & Omar Are Engaged', short: 'We’re engaged!', word: 'Yes', sub: 'Join us for an evening of dinner and dancing as we celebrate our engagement.', cta: 'RSVP by May 10', handle: '#SaraAndOmar', url: 'saraandomar.love', stat: ['2', 'rings, one yes'], items: ['Cocktails at 6', 'Dinner at 7', 'Toasts at 8', 'Dancing after'], date: ['24', 'May', 'Saturday, May 24', '6:00 pm'], place: 'The Glasshouse, Riverside', price: '', badge: 'Save the date', quote: 'Whatever our souls are made of, yours and mine are the same.', author: 'Emily Brontë', role: '', tags: ['Cocktails', 'Dinner', 'Dancing'], chart: [['Met', 1], ['Dated', 3], ['Moved in', 5], ['Engaged', 7]], vs: ['Before', 'After'], count: ['30', 'days to go'], ep: 'Est. 2019', menu: [['Cocktails', '6pm'], ['Dinner', '7pm'], ['Toasts', '8pm'], ['Dancing', '9pm']], person: 'Sara Haddad', job: 'Bride-to-be', pairs: ['luxe', 'script', 'instrument', 'editorial', 'classic'], pals: ['blush', 'sand', 'gold', 'paper', 'pastel'] },
+  { id: 'christmas', name: 'Christmas', occasion: true, kw: 'christmas xmas holiday season greetings noel', brand: 'The Okafor Family', kicker: 'Season’s greetings', title: 'Merry Christmas & Happy New Year', short: 'Merry Christmas', word: 'Joy', sub: 'Wishing you warm nights, full tables and a little magic this holiday season.', cta: 'Join us Dec 24', handle: '#OkaforChristmas', url: 'okafor.family', stat: ['25', 'days of cheer'], items: ['Mulled wine at 5', 'Carols by the fire', 'Secret Santa (under $20)', 'Ugly sweaters welcome'], date: ['24', 'Dec', 'Christmas Eve, Dec 24', '5:00 pm'], place: '18 Holly Lane', price: '', badge: 'Ho ho ho', quote: 'Christmas isn’t a season. It’s a feeling.', author: 'Edna Ferber', role: '', tags: ['Family', 'Carols', 'Feast'], chart: [['Cookies', 40], ['Carols', 12], ['Presents', 18], ['Naps', 3]], vs: ['Naughty', 'Nice'], count: ['12', 'days to Christmas'], ep: 'Dec 25', menu: [['Roast turkey', 'main'], ['Honey ham', 'main'], ['Mince pies', 'sweet'], ['Eggnog', 'drink']], person: 'Grace Okafor', job: 'Host', pairs: ['script', 'luxe', 'classic', 'fatface', 'editorial'], pals: ['festive', 'forest', 'gold', 'paper', 'emerald'] },
+  { id: 'eid', name: 'Eid', occasion: true, kw: 'eid mubarak ramadan iftar eid al-fitr eid al-adha', brand: 'The Rahman Family', kicker: 'Eid Mubarak', title: 'Eid Mubarak to You & Yours', short: 'Eid Mubarak', word: 'Eid', sub: 'May this Eid bring peace to your home, joy to your table and light to your days.', cta: 'Join us for Eid lunch', handle: '#EidMubarak', url: 'rahman.family', stat: ['1', 'month of reflection'], items: ['Eid prayer at 8am', 'Lunch from 1pm', 'Sweets & sheer khurma', 'Eidi for the kids'], date: ['31', 'Mar', 'Eid al-Fitr, March 31', '1:00 pm'], place: '42 Crescent Road', price: '', badge: 'Eid Mubarak', quote: 'Whoever is generous, Allah is generous to him.', author: 'Hadith', role: '', tags: ['Family', 'Feast', 'Gratitude'], chart: [['Dates', 30], ['Sweets', 24], ['Guests', 40], ['Hugs', 99]], vs: ['Ramadan', 'Eid'], count: ['3', 'days to Eid'], ep: '1447 AH', menu: [['Biryani', 'main'], ['Haleem', 'main'], ['Sheer khurma', 'sweet'], ['Chai', 'drink']], person: 'Ayesha Rahman', job: 'Host', pairs: ['luxe', 'instrument', 'classic', 'editorial', 'modern-serif'], pals: ['emerald', 'gold', 'midnight', 'sand', 'forest'] },
+  { id: 'puja', name: 'Puja', occasion: true, kw: 'puja durga pooja navratri dussehra pandal festival', brand: 'Sarbojanin Committee', kicker: 'Sharadiya shubhechha', title: 'Durga Puja 2026', short: 'Durga Puja', word: 'Puja', sub: 'Five days of dhak, dhunuchi and bhog. Join us at the pandal for aarti every evening.', cta: 'See the schedule', handle: '#DurgaPuja2026', url: 'parkstreetpuja.org', stat: ['5', 'days of celebration'], items: ['Shashthi: pandal opens', 'Saptami: morning anjali', 'Ashtami: sandhi puja', 'Dashami: sindoor khela'], date: ['18', 'Oct', 'October 18 – 22', 'Aarti at 7pm'], place: 'Park Street Pandal', price: 'Free', badge: 'Shubho Sharodiya', quote: 'Ya Devi sarvabhuteshu shakti-rupena samsthita.', author: 'Devi Mahatmya', role: '', tags: ['Pandal', 'Bhog', 'Dhunuchi'], chart: [['Day 1', 30], ['Day 2', 55], ['Day 3', 80], ['Day 4', 95]], vs: ['Anjali', 'Aarti'], count: ['5', 'days to go'], ep: 'Sharad 1433', menu: [['Khichuri bhog', '1pm'], ['Labra', '1pm'], ['Payesh', 'sweet'], ['Cha', 'all day']], person: 'Ritwik Sen', job: 'Committee Secretary', pairs: ['fatface', 'editorial', 'classic', 'poster', 'bookish'], pals: ['marigold', 'tomato', 'festive', 'gold', 'citrus'] },
+  { id: 'diwali', name: 'Diwali', occasion: true, kw: 'diwali deepavali festival of lights lakshmi', brand: 'The Mehta Family', kicker: 'Happy Diwali', title: 'A Festival of Lights', short: 'Happy Diwali', word: 'Diya', sub: 'May the lamps light your way to a year of prosperity, health and sweetness.', cta: 'Join our Diwali night', handle: '#HappyDiwali', url: 'mehta.family', stat: ['108', 'diyas lit'], items: ['Lakshmi puja at 6', 'Dinner at 8', 'Fireworks at 9', 'Mithai to take home'], date: ['08', 'Nov', 'Sunday, Nov 8', '6:00 pm'], place: '9 Lotus Court', price: '', badge: 'Shubh Deepavali', quote: 'Light a lamp for someone else and it will also brighten your path.', author: 'Buddha', role: '', tags: ['Lights', 'Sweets', 'Family'], chart: [['Diyas', 108], ['Sweets', 60], ['Guests', 45], ['Sparklers', 200]], vs: ['Darkness', 'Light'], count: ['10', 'days to Diwali'], ep: 'Kartik 2083', menu: [['Kaju katli', 'sweet'], ['Chole bhature', 'main'], ['Jalebi', 'sweet'], ['Masala chai', 'drink']], person: 'Priya Mehta', job: 'Host', pairs: ['luxe', 'fatface', 'editorial', 'classic', 'script'], pals: ['marigold', 'gold', 'festive', 'plum', 'midnight'] },
+  { id: 'easter', name: 'Easter', occasion: true, kw: 'easter egg hunt spring bunny', brand: 'Willow Farm', kicker: 'Hop on over', title: 'The Great Easter Egg Hunt', short: 'Easter egg hunt', word: 'Hop', sub: 'Two hundred hidden eggs, a petting zoo and hot cross buns. All ages welcome.', cta: 'Reserve a basket', handle: '@willowfarm', url: 'willowfarm.co', stat: ['200', 'eggs hidden'], items: ['Hunt starts 10am', 'Petting zoo till 2', 'Bunny photos', 'Hot cross buns'], date: ['05', 'Apr', 'Easter Sunday, April 5', '10:00 am'], place: 'Willow Farm, Meadow Field', price: '$8', badge: 'All ages', quote: 'Spring: a lovely reminder of how beautiful change can truly be.', author: 'Unknown', role: '', tags: ['Kids', 'Farm', 'Spring'], chart: [['Eggs', 200], ['Kids', 80], ['Buns', 120], ['Bunnies', 6]], vs: ['Hidden', 'Found'], count: ['200', 'eggs'], ep: 'Spring ’26', menu: [['Egg hunt', '10am'], ['Petting zoo', '11am'], ['Bun stand', 'noon'], ['Photos', '1pm']], person: 'Hannah Willow', job: 'Farm Manager', pairs: ['round', 'script', 'geo', 'bookish', 'fatface'], pals: ['pastel', 'mint', 'sky', 'blush', 'citrus'] },
+  { id: 'thanksgiving', name: 'Thanksgiving', occasion: true, kw: 'thanksgiving friendsgiving gratitude harvest turkey', brand: 'The Nguyen Table', kicker: 'Give thanks', title: 'Friendsgiving at Ours', short: 'Friendsgiving', word: 'Thanks', sub: 'Bring a dish, a story and stretchy pants. We’ll handle the turkey.', cta: 'Claim a dish', handle: '#Friendsgiving', url: 'nguyentable.com', stat: ['22', 'pounds of turkey'], items: ['Doors at 3pm', 'Turkey at 5', 'Pie at 7', 'Leftovers for all'], date: ['27', 'Nov', 'Thursday, Nov 27', '3:00 pm'], place: '7 Maple Drive', price: '', badge: 'Potluck', quote: 'Gratitude turns what we have into enough.', author: 'Anonymous', role: '', tags: ['Potluck', 'Family', 'Pie'], chart: [['Turkey', 22], ['Pies', 6], ['Guests', 18], ['Naps', 18]], vs: ['Hungry', 'Full'], count: ['4', 'days to go'], ep: 'Nov 27', menu: [['Roast turkey', 'main'], ['Stuffing', 'side'], ['Pumpkin pie', 'sweet'], ['Cider', 'drink']], person: 'Linh Nguyen', job: 'Host', pairs: ['bookish', 'classic', 'fatface', 'editorial', 'script'], pals: ['terracotta', 'marigold', 'sand', 'forest', 'gold'] },
+  { id: 'memorial', name: 'Memorial', occasion: true, kw: 'funeral memorial obituary in memoriam remembrance rip service celebration of life', only: ['memorial', 'quote', 'minimal-corner', 'framed-poster', 'circle-portrait', 'photo-quote', 'invitation-classic', 'event-date', 'polaroid', 'photo-caption', 'testimonial', 'card-classic', 'card-split', 'card-qr', 'banner-center', 'banner-type', 'title-slide', 'closing', 'photo-card', 'offset-frame', 'arch-window', 'big-type', 'swiss'], brand: 'The Bennett Family', kicker: 'In loving memory', title: 'Eleanor Grace Bennett', short: 'In loving memory', word: 'Remember', sub: 'Beloved mother, grandmother and friend. Please join us to celebrate a life well lived.', cta: 'Share a memory', handle: '', url: 'rememberingeleanor.com', stat: ['88', 'years of grace'], items: ['Service at 11am', 'Reception to follow', 'In lieu of flowers, donate', 'Wear something blue'], date: ['12', 'Mar', 'Thursday, March 12', '11:00 am'], place: 'St. Andrew’s Chapel, Elm St', price: '', badge: '1938 – 2026', quote: 'To live in hearts we leave behind is not to die.', author: 'Thomas Campbell', role: '', tags: ['Service', 'Reception', 'Memories'], chart: [['1938', 1], ['1962', 2], ['1990', 3], ['2026', 4]], vs: ['Then', 'Always'], count: ['88', 'years'], ep: '1938 – 2026', menu: [['Service', '11am'], ['Eulogies', '11:30'], ['Reception', '12:30'], ['Garden', '2pm']], person: 'Eleanor Grace Bennett', job: '1938 – 2026', pairs: ['classic', 'luxe', 'instrument', 'editorial', 'bookish'], pals: ['ivory', 'sage', 'paper', 'sand', 'mono'] },
+  { id: 'baby', name: 'Baby shower', occasion: true, kw: 'baby shower newborn sprinkle gender reveal', brand: 'Baby Cole', kicker: 'Oh baby', title: 'A Shower for Baby Cole', short: 'Baby shower', word: 'Baby', sub: 'Tiny socks, big cake. Help us welcome the newest member of the family.', cta: 'RSVP by Aug 1', handle: '#BabyCole', url: 'babycole.family', stat: ['1', 'tiny human'], items: ['Brunch at 11', 'Games at noon', 'Gifts at 1', 'Cake at 2'], date: ['16', 'Aug', 'Saturday, Aug 16', '11:00 am'], place: 'The Garden Room, 5 Oak St', price: '', badge: 'It’s a girl', quote: 'A baby fills a place in your heart you never knew was empty.', author: 'Anonymous', role: '', tags: ['Brunch', 'Games', 'Gifts'], chart: [['Wk 20', 20], ['Wk 28', 28], ['Wk 34', 34], ['Wk 40', 40]], vs: ['Sleep', 'Baby'], count: ['6', 'weeks to go'], ep: 'Due Sept', menu: [['Brunch', '11am'], ['Games', 'noon'], ['Gifts', '1pm'], ['Cake', '2pm']], person: 'Jess & Sam Cole', job: 'Parents-to-be', pairs: ['script', 'round', 'bookish', 'instrument', 'geo'], pals: ['pastel', 'blush', 'sky', 'mint', 'paper'] },
+  { id: 'graduation', name: 'Graduation', occasion: true, kw: 'graduation grad commencement class of', brand: 'Class of 2026', kicker: 'We did it', title: 'Class of 2026 Graduation Party', short: 'Grad party', word: 'Grad', sub: 'Four years, one cap toss. Come celebrate Aisha before she takes on the world.', cta: 'RSVP', handle: '#ClassOf2026', url: 'aishagrads.com', stat: ['4', 'years of late nights'], items: ['Ceremony at 10', 'Photos on the lawn', 'BBQ from 1pm', 'Speeches (short ones)'], date: ['20', 'Jun', 'Saturday, June 20', '1:00 pm'], place: 'Backyard, 31 Birch Ave', price: '', badge: 'Cap & gown', quote: 'The future belongs to those who believe in the beauty of their dreams.', author: 'Eleanor Roosevelt', role: '', tags: ['BBQ', 'Photos', 'Speeches'], chart: [['Y1', 60], ['Y2', 70], ['Y3', 82], ['Y4', 95]], vs: ['Freshman', 'Graduate'], count: ['1', 'diploma'], ep: '’26', menu: [['Ceremony', '10am'], ['Photos', 'noon'], ['BBQ', '1pm'], ['Toast', '3pm']], person: 'Aisha Khan', job: 'Graduate, B.Sc.', pairs: ['heavy', 'condensed', 'geo', 'poster', 'grotesk'], pals: ['cobalt', 'citrus', 'midnight', 'gold', 'sky'] },
+  { id: 'anniversary', name: 'Anniversary', occasion: true, kw: 'anniversary golden silver wedding anniversary', brand: 'Ruth & David', kicker: 'Fifty years', title: 'Ruth & David’s Golden Anniversary', short: '50 years together', word: 'Fifty', sub: 'Half a century of Sunday roasts and bad puns. Join us to celebrate the two of them.', cta: 'RSVP by Sept 1', handle: '#RuthAndDavid50', url: 'ruthanddavid.family', stat: ['50', 'years married'], items: ['Reception at 4', 'Dinner at 6', 'Slideshow at 7', 'Dancing till 10'], date: ['27', 'Sep', 'Saturday, Sept 27', '4:00 pm'], place: 'Lakeside Pavilion', price: '', badge: 'Golden', quote: 'Grow old along with me! The best is yet to be.', author: 'Robert Browning', role: '', tags: ['Dinner', 'Slideshow', 'Dancing'], chart: [['1976', 1], ['1990', 2], ['2010', 3], ['2026', 4]], vs: ['1976', '2026'], count: ['50', 'years'], ep: 'Since 1976', menu: [['Reception', '4pm'], ['Dinner', '6pm'], ['Slideshow', '7pm'], ['Dancing', '8pm']], person: 'Ruth & David Miller', job: 'Married 1976', pairs: ['luxe', 'classic', 'script', 'editorial', 'instrument'], pals: ['gold', 'sand', 'paper', 'blush', 'ivory'] },
+  { id: 'newyear', name: 'New Year', occasion: true, kw: 'new year nye countdown party 2027', brand: 'Midnight Society', kicker: 'Countdown', title: 'New Year’s Eve Rooftop Party', short: 'NYE party', word: '2027', sub: 'Champagne, a live band and the best view of the fireworks in the city.', cta: 'Get tickets', handle: '#NYE2027', url: 'midnightsociety.nyc', stat: ['10', '9 8 7…'], items: ['Doors at 9pm', 'Live band at 10', 'Champagne at midnight', 'Fireworks over the river'], date: ['31', 'Dec', 'Wednesday, Dec 31', '9:00 pm'], place: 'Skyline Rooftop, 40th floor', price: '$60', badge: 'Limited', quote: 'Cheers to a new year and another chance for us to get it right.', author: 'Oprah Winfrey', role: '', tags: ['Rooftop', 'Champagne', 'Fireworks'], chart: [['9pm', 20], ['10pm', 55], ['11pm', 85], ['12am', 100]], vs: ['2026', '2027'], count: ['1', 'night'], ep: 'NYE ’26', menu: [['GA', '$60'], ['VIP', '$120'], ['Table', '$600'], ['Bottle service', '$300']], person: 'Dev Patel', job: 'Host', pairs: ['poster', 'luxe', 'art', 'sports', 'impact'], pals: ['gold', 'midnight', 'electric', 'plum', 'festive'] },
+  { id: 'halloween', name: 'Halloween', occasion: true, kw: 'halloween spooky costume trick or treat', brand: 'Hollow House', kicker: 'If you dare', title: 'The Hollow House Halloween', short: 'Halloween party', word: 'Boo', sub: 'Costumes mandatory, screams optional. A haunted maze, a DJ and a cauldron of punch.', cta: 'Get tickets', handle: '#HollowHouse', url: 'hollowhouse.party', stat: ['13', 'rooms of fright'], items: ['Doors at 8pm', 'Costume contest at 10', 'Haunted maze all night', 'Best costume wins $500'], date: ['31', 'Oct', 'Friday, Oct 31', '8:00 pm'], place: 'The Old Mill, Hollow Rd', price: '$25', badge: 'Sold out soon', quote: 'There is magic in the night when pumpkins glow by moonlight.', author: 'Unknown', role: '', tags: ['Costumes', 'Maze', 'DJ'], chart: [['Ghosts', 13], ['Pumpkins', 66], ['Screams', 99], ['Candy', 500]], vs: ['Trick', 'Treat'], count: ['13', 'days to go'], ep: 'Oct 31', menu: [['GA', '$25'], ['Maze pass', '$10'], ['Punch', '$6'], ['VIP crypt', '$80']], person: 'Morgan Blake', job: 'Host', pairs: ['marker', 'poster', 'heavy', 'fatface', 'sports'], pals: ['midnight', 'plum', 'citrus', 'electric', 'marigold'] }
 ].map(t => ({ ...t, email: 'hello@' + t.url.split('/')[0], phone: '+1 (415) 555-0' + (100 + t.id.length * 37).toString().slice(0, 3) }));
 export const TOPIC = Object.fromEntries(TOPICS.map(t => [t.id, t]));
+export const OCCASIONS = TOPICS.filter(t => t.occasion).map(t => t.id);
+const FESTIVE = OCCASIONS.filter(id => id !== 'memorial');
 export { TOPICS };
 
 /* ---------- text metrics ---------- */
@@ -166,6 +246,24 @@ const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^
 const r1 = v => Math.round(v * 10) / 10;
 export const NOFILTER = { b: 1, c: 1, s: 1, bl: 0, g: 0, se: 0, hu: 0 };
 
+/* ---------- sample imagery ---------- */
+// Every frame a template places is filled with a small procedural illustration in
+// the palette's own colours — a cartoon portrait, a landscape or a product — chosen
+// from the frame's label and shape. It is drawn by the renderer as inline SVG, so
+// nothing binary ships and it vanishes the moment a real photo lands in the frame.
+function sampleFor(label, w, h, mask, P, rng, idx = 0) {
+  const l = String(label).toLowerCase();
+  const kind = /portrait|cutout|headshot|speaker|host|face/.test(l) || mask === 'circle' ? 'portrait'
+    : /product|bottle|pack|item/.test(l) ? 'product'
+    : h > w * 1.05 ? 'portrait' : 'landscape';
+  // Offset by the frame's index so two frames in one design never draw the same person.
+  const v = (Math.floor(rng() * 4) + idx) % 4;
+  const c = kind === 'portrait' ? { bg: /cutout/.test(l) ? 'none' : P.tint, halo: mix(P.accent, P.bg, .3), shirt: P.accent, ink: P.ink }
+    : kind === 'product' ? { bg: P.tint, body: P.accent, cap: P.ink, label: P.bg, plinth: mix(P.ink, P.tint, .82) }
+    : { sky: mix(P.accent2, P.bg, .72), sun: lum(P.accent) < .08 ? (lum(P.accent2) < .08 ? P.bg : P.accent2) : P.accent, far: mix(P.accent2, P.bg, .38), near: P.accent2, tree: mix(P.accent2, P.ink, .45), cloud: P.bg };
+  return { kind, v, c };
+}
+
 /* ---------- layout context ---------- */
 function makeCtx(W, H, P, F, C, rng, kind) {
   const u = Math.min(W, H) / 100, ar = W / H;
@@ -191,7 +289,7 @@ function makeCtx(W, H, P, F, C, rng, kind) {
   c.r = (x, y, w, h, o) => c.s('rect', x, y, w, h, o);
   c.o = (x, y, w, h, o) => c.s('ellipse', x, y, w, h, o);
   c.l = (x, y, w, o = {}) => { const sw = o.sw || u * .3, hh = Math.max(sw * 3, 8); return push({ ...base('line', x, y - hh / 2, w, hh, o, 'Line'), stroke: o.stroke || P.ink, sw, dash: !!o.dash, arrow: !!o.arrow }); };
-  c.i = (x, y, w, h, o = {}) => push({ ...base('image', x, y, w, h, o, 'Image'), asset: null, label: o.label || 'Photo', tint: o.tint || P.tint, mask: o.mask || 'none', radius: o.radius || 0, cx: 50, cy: 50, zoom: 1, flip: false, filters: { ...NOFILTER }, border: o.border || null, borderW: o.borderW || 0, shadow: !!o.shadow });
+  c.i = (x, y, w, h, o = {}) => push({ ...base('image', x, y, w, h, o, 'Image'), asset: null, label: o.label || 'Photo', tint: o.tint || P.tint, sample: o.sample === null ? null : sampleFor(o.label || 'Photo', w, h, o.mask, P, rng, c.els.filter(e => e.type === 'image').length), mask: o.mask || 'none', radius: o.radius || 0, cx: 50, cy: 50, zoom: 1, flip: false, filters: { ...NOFILTER }, border: o.border || null, borderW: o.borderW || 0, shadow: !!o.shadow });
   c.q = (x, y, s, value, o = {}) => push({ ...base('qr', x, y, s, s, o, 'QR code'), value, fg: o.fg || P.ink, qbg: o.bg || P.bg });
   c.ch = (x, y, w, h, o = {}) => push({ ...base('chart', x, y, w, h, o, 'Chart'), chart: o.chart || 'bar', data: (o.data || C.chart).map(([l, v]) => ({ l, v })), colors: o.colors || [P.accent, P.accent2, P.ink, P.muted], ink: o.ink || P.ink, font: F.body, labels: true });
   c.btn = (text, x, y, size, o = {}) => {
@@ -229,7 +327,7 @@ function makeCtx(W, H, P, F, C, rng, kind) {
 /* ---------- layouts ---------- */
 export const LAYOUTS = [];
 const A3 = ['wide', 'square', 'tall'];
-const def = (id, name, kinds, cls, fn) => LAYOUTS.push({ id, name, kinds, cls, fn });
+const def = (id, name, kinds, cls, fn, o = {}) => LAYOUTS.push({ id, name, kinds, cls, fn, ...o });
 
 def('big-type', 'Big Type', 'tsdp', A3, c => {
   const { W, H, u, m, P, C } = c; const fy = H - m - u * 3.4;
@@ -260,7 +358,7 @@ def('split-photo', 'Photo Split', 'tsdp', A3, c => {
     const hd = c.hd(C.title, x, 0, W - 2 * m, u * 12, 3, bot - top - k.h - s.h - b.h - u * 12);
     c.vstack([k, hd, s, b], [u * 2.5, u * 3, u * 4.5], top, bot);
   }
-});
+}, { photo: true });
 
 def('photo-band', 'Photo Band', 'tsp', A3, c => {
   const { W, H, u, m, P, C, cls } = c;
@@ -271,7 +369,7 @@ def('photo-band', 'Photo Band', 'tsp', A3, c => {
   const k = c.kick(m, 0, W - 2 * m, { color: P.onAccent });
   const hd = c.hd(C.title, m, 0, W - 2 * m, u * 14, 2, bandH - u * 12 - k.h, { color: P.onAccent });
   c.vstack([k, hd], [u * 2], H - bandH + u * 3, H - u * 3);
-});
+}, { photo: true });
 
 def('circle-portrait', 'Circle Portrait', 'tsp', A3, c => {
   const { W, H, u, m, P, C, cls } = c;
@@ -293,7 +391,7 @@ def('circle-portrait', 'Circle Portrait', 'tsp', A3, c => {
     const hd = c.hd(C.title, m, 0, w, u * 11, 3, H - m - top - k.h - s.h - u * 6, { align: 'center' });
     c.vstack([k, hd, s], [u * 2.5, u * 3], top, H - m);
   }
-});
+}, { photo: true });
 
 def('centered-badge', 'Ring & Badge', 'sdp', A3, c => {
   const { W, H, u, P, C } = c;
@@ -374,7 +472,7 @@ def('grid-four', 'Photo Grid', 'sp', A3, c => {
   const tot = k.h + hd.h + hn.h + u * 5 + u * 10;
   card.h = r1(tot); card.y = r1(H / 2 - tot / 2);
   c.vstack([k, hd, hn], [u * 2.5, u * 2.5], card.y + u * 5, card.y + tot - u * 5);
-});
+}, { photo: true });
 
 def('framed-poster', 'Framed', 'sdp', A3, c => {
   const { W, H, u, P, C } = c; const ins = u * 4;
@@ -406,7 +504,7 @@ def('diagonal', 'Diagonal', 'tsp', A3, c => {
     const hd = c.hd(C.title, m, 0, w, u * 13, 3, H - m - top - k.h - s.h - u * 7, { color: P.onAccent });
     c.vstack([k, hd, s], [u * 2.5, u * 3.5], top, H - m);
   }
-});
+}, { photo: true });
 
 function numberedRows(c, items, x, w, top, bot, o = {}) {
   const { u, P } = c; const d = u * (o.d || 8.5), size = u * (o.size || 3.8); const rows = [];
@@ -482,7 +580,7 @@ def('arch-window', 'Arch Window', 'sp', A3, c => {
     const hd = c.hd(C.title, m, 0, w, u * 11, 2, H - m - top - k.h - s.h - u * 6, { align: 'center' });
     c.vstack([k, hd, s], [u * 2.5, u * 3], top, H - m);
   }
-});
+}, { photo: true });
 
 def('outline-type', 'Outline Type', 'tsp', A3, c => {
   const { W, H, u, m, P, C } = c;
@@ -514,7 +612,7 @@ def('product-spot', 'Spotlight', 'sp', A3, c => {
     c.hd(C.title, m, m + k.h + u * 2, W - 2 * m, u * 9, 2, cy - d / 2 - m - k.h - u * 4, { align: 'center' });
     c.btn(C.cta, W / 2, H - m - u * 7.5, u * 3, { anchor: 'center' });
   }
-});
+}, { photo: true });
 
 def('magazine', 'Magazine Cover', 'sp', ['square', 'tall'], c => {
   const { W, H, u, m, P, C } = c;
@@ -527,7 +625,7 @@ def('magazine', 'Magazine Cover', 'sp', ['square', 'tall'], c => {
   const lines = C.items.slice(0, 3).map(t => c.t('— ' + t, m, 0, w, u * 3.2, { color: '#FFFFFF', weight: 600 }));
   c.vstack([hd, ...lines], [u * 3, u * 1, u * 1], H * .6, H - m);
   c.sticker(C.badge, W - m - u * 10, H * .6, u * 20, { fill: P.accent, rot: 12 });
-});
+}, { photo: true });
 
 def('minimal-corner', 'Minimal', 'sdp', A3, c => {
   const { W, H, u, m, P, C } = c;
@@ -598,7 +696,7 @@ def('polaroid', 'Polaroid', 'sp', A3, c => {
     const hd = c.hd(C.title, m, 0, w, u * 10, 2, H - m - top - k.h - s.h - u * 6, { align: 'center' });
     c.vstack([k, hd, s], [u * 2.5, u * 3], top, H - m);
   }
-});
+}, { photo: true });
 
 def('checklist', 'Checklist Card', 'sdp', A3, c => {
   const { W, H, u, m, P, C, cls } = c;
@@ -622,7 +720,7 @@ def('versus', 'Versus', 'ts', ['wide', 'square'], c => {
   c.sticker('VS', W / 2, H * .55, u * 24, { fill: P.accent, color: P.onAccent, rot: -6, t: { upper: true } });
   c.btn(C.vs[0], W / 4, H - m - u * 9, u * 3.4, { anchor: 'center', fill: P.bg, color: P.ink, upper: true });
   c.btn(C.vs[1], W * .75, H - m - u * 9, u * 3.4, { anchor: 'center', fill: P.accent2, color: P.onAccent2, upper: true });
-});
+}, { photo: true });
 
 def('reaction', 'Reaction', 'ts', ['wide', 'square'], c => {
   const { W, H, u, m, P, C } = c;
@@ -636,7 +734,7 @@ def('reaction', 'Reaction', 'ts', ['wide', 'square'], c => {
   c.vstack(els, els.map(() => u * 1), m, H - m - u * 12);
   c.s('arrow', W * .48, H * .68, u * 16, u * 10, { fill: P.bg, rot: -18, name: 'Arrow' });
   c.btn(C.badge, m, H - m - u * 9, u * 3, { fill: P.ink, color: P.bg, upper: true });
-});
+}, { photo: true });
 
 def('timeline', 'Timeline', 'sdp', A3, c => {
   const { W, H, u, m, P, C, cls } = c;
@@ -666,7 +764,7 @@ def('testimonial', 'Testimonial', 'sdp', A3, c => {
   const r = c.t(C.role || C.brand, m + d + u * 4, 0, W - 2 * m - d - u * 4, u * 3, { color: P.muted });
   const q = c.hd('“' + C.quote + '”', m, 0, W - 2 * m, u * 8, 6, H - 2 * m - u * 34, { upper: false, lh: 1.15 });
   q.y = r1(m + u * 13); av.y = r1(H - m - d); a.y = r1(av.y + d / 2 - a.h + u * .3); r.y = r1(av.y + d / 2 + u * .8);
-});
+}, { photo: true });
 
 def('menu-board', 'Menu', 'sp', ['square', 'tall'], c => {
   const { W, H, u, m, P, C } = c;
@@ -746,7 +844,7 @@ def('collage', 'Tilted Collage', 'sp', A3, c => {
     const hd = c.hd(C.title, m, 0, w, u * 11, 3, H - m - top - k.h - sb.h - u * 6);
     c.vstack([k, hd, sb], [u * 2.5, u * 3], top, H - m);
   }
-});
+}, { photo: true });
 
 def('highlight', 'Highlighter', 'tsp', A3, c => {
   const { W, H, u, m, P, C, F } = c;
@@ -806,7 +904,7 @@ def('episode', 'Episode', 'tsp', A3, c => {
   const hd = c.hd(C.title, x, 0, w, u * 12, 3, H - m - top - b.h - gst.h - wv.h - u * 14);
   c.vstack([b, hd, gst, wv], [u * 3, u * 2, u * 5], top, H - m);
   for (let i = 0; i < n; i++) { const hh = u * (2 + 8 * Math.abs(Math.sin(i * .7 + rng() * 2)) * (0.5 + rng() * .5)); c.r(x + i * bw, wv._y + (u * 10 - hh) / 2, bw * .55, hh, { fill: i < n * .4 ? P.hi : P.line, radius: bw * .27, name: 'Wave' }); }
-});
+}, { photo: true });
 
 def('tags', 'Tags & CTA', 'sdp', A3, c => {
   const { W, H, u, m, P, C } = c;
@@ -831,7 +929,7 @@ def('before-after', 'Before / After', 'ts', ['wide', 'square'], c => {
   c.btn(C.vs[1], m + iw + gw + u * 3, top + u * 3, u * 2.6, { fill: P.accent, upper: true });
   const hd = c.hd(C.short, m, 0, W - 2 * m, u * 10, 1, u * 11, { align: 'center' });
   hd.y = r1(H - m - hd.h);
-});
+}, { photo: true });
 
 def('recipe', 'Info Card', 'sp', ['square', 'tall'], c => {
   const { W, H, u, m, P, C } = c;
@@ -844,16 +942,16 @@ def('recipe', 'Info Card', 'sp', ['square', 'tall'], c => {
   const st = c.t(C.stat[0], m + cw + u * 6, top - u * 1, cw, u * 12, { f: 'd', upper: false, color: P.hi });
   c.t(C.stat[1], m + cw + u * 6, st.y + st.h + u, cw, u * 3, { weight: 600, color: P.muted });
   c.t(C.handle + '  ·  ' + C.url, m, H - m - u * 3, W - 2 * m, u * 2.8, { color: P.muted, weight: 600 });
-});
+}, { photo: true });
 
 /* banners */
 def('banner-type', 'Banner Type', 'b', ['banner'], c => {
   const { W, H, u, m, P, C } = c; const mm = u * 12;
-  const w = W * .58;
+  const d = H * .72, cx = W * .8;
+  const w = Math.min(W * .58, cx - d * .9 - mm - u * 3);
   const s = c.t(C.sub, mm, 0, w, u * 6, { color: P.muted });
   const hd = c.hd(C.title, mm, 0, w, u * 26, 2, H - 2 * mm - s.h - u * 6);
   c.vstack([hd, s], [u * 5], mm, H - mm);
-  const d = H * .72, cx = W * .8;
   c.o(cx - d * .9, H / 2 - d / 2, d, d, { fill: P.accent, name: 'Circle' });
   c.o(cx - d * .35, H / 2 - d / 2, d, d, { fill: P.accent2, op: .9, name: 'Circle' });
   c.o(cx + d * .2, H / 2 - d / 2, d, d, { fill: null, stroke: P.ink, sw: u * 1, name: 'Ring' });
@@ -868,7 +966,7 @@ def('banner-photo', 'Banner Photo', 'b', ['banner'], c => {
   const k = c.kick(mm, 0, w, { color: P.onAccent, size: u * 5.5 });
   const hd = c.hd(C.title, mm, 0, w, u * 24, 2, H - 2 * mm - k.h - u * 5, { color: P.onAccent });
   c.vstack([k, hd], [u * 4], mm, H - mm);
-});
+}, { photo: true });
 def('banner-center', 'Banner Center', 'b', ['banner'], c => {
   const { W, H, u, P, C } = c; const mm = u * 10;
   c.bg(P.accent);
@@ -926,6 +1024,451 @@ def('card-qr', 'Card QR', 'c', ['wide'], c => {
   c.vstack([k, nm, jb, em], [u * 3, u * 1, u * 8], mm, H - mm);
 });
 
+/* ---------- pages, decks & documents ---------- */
+// Multi-page layouts read c.page / c.pages so a section divider numbers itself and a
+// carousel point picks the right item; on a single page they fall back to page 1.
+const pageNo = c => (c.pages > 1 ? `${c.page + 1} / ${c.pages}` : '');
+const footer = (c, left, o = {}) => {
+  const { W, H, u, m, P } = c; const x = o.x ?? m;
+  if (left) c.t(left, x, H - m - u * 3.2, W * .5, u * 3, { color: o.color || P.muted, weight: 600 });
+  const pn = pageNo(c); if (pn) c.t(pn, W - m - u * 14, H - m - u * 3.2, u * 14, u * 3, { align: 'right', color: o.color || P.muted });
+};
+const nthItem = c => c.C.items[(Math.max(1, c.page) - 1) % c.C.items.length];
+
+def('title-slide', 'Title Slide', 'dsp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  const strip = cls === 'tall' ? 0 : u * 6;
+  if (strip) c.r(0, 0, strip, H, { fill: P.accent, name: 'Edge' });
+  const x = m + strip, w = W - x - m;
+  c.t(C.brand, x, m, w / 2, u * 3.2, { weight: 700, upper: true, ls: .12 });
+  c.t(C.date[2], x + w / 2, m, w / 2, u * 3.2, { align: 'right', color: P.muted });
+  const k = c.kick(x, 0, w);
+  const hd = c.hd(C.title, x, 0, w, u * (cls === 'wide' ? 15 : 13), 3, H * .42);
+  const s = c.t(C.sub, x, 0, Math.min(w, u * 70), u * 3.6, { color: P.muted });
+  c.vstack([k, hd, s], [u * 3, u * 4], m + u * 8, H - m - u * 6);
+  c.t(C.person + ' · ' + C.job, x, H - m - u * 3.2, w, u * 3, { color: P.muted });
+});
+
+def('agenda', 'Agenda', 'dp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  const k = c.kick(m, m, W - 2 * m, { text: C.brand });
+  const hd = c.hd('What we’ll cover', m, m + k.h + u * 2.5, cls === 'wide' ? W * .4 : W - 2 * m, u * 11, 2, u * 26);
+  if (cls === 'wide') {
+    c.t(C.sub, m, hd.y + hd.h + u * 4, W * .38, u * 3.4, { color: P.muted });
+    numberedRows(c, C.items.slice(0, 4), W * .5, W * .5 - m, m, H - m - u * 6);
+  } else {
+    numberedRows(c, C.items.slice(0, 4), m, W - 2 * m, hd.y + hd.h + u * 7, H - m - u * 8);
+  }
+  footer(c, '');
+});
+
+def('section-divider', 'Section Divider', 'dp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  c.bg(P.ink);
+  const soft = mix(P.bg, P.ink, .3);
+  c.r(m, m, u * 14, u * 1.2, { fill: P.accent });
+  const num = c.hd(String(c.page || 1).padStart(2, '0'), m, 0, W - 2 * m, u * (cls === 'wide' ? 34 : 30), 1, H * .4, { color: P.accent, upper: false });
+  const hd = c.hd(nthItem(c), m, 0, W - 2 * m, u * (cls === 'wide' ? 12 : 10), 3, H * .3, { color: P.bg });
+  const s = c.t(C.sub, m, 0, Math.min(W - 2 * m, u * 64), u * 3.4, { color: soft });
+  c.vstack([num, hd, s], [u * 2, u * 4], m + u * 6, H - m - u * 6);
+  footer(c, C.brand, { color: soft });
+});
+
+def('two-column', 'Two Column', 'dp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  const k = c.kick(m, m, W - 2 * m);
+  const hd = c.hd(C.title, m, m + k.h + u * 2.5, cls === 'tall' ? W - 2 * m : W * .62, u * 9, 2, u * 22);
+  const top = hd.y + hd.h + u * 6, bot = H - m - u * 7;
+  c.r(m, top - u * 3, W - 2 * m, u * .3, { fill: P.line, name: 'Rule' });
+  const body = C.sub + '\n\n' + C.quote;
+  if (cls === 'tall') {
+    const p = c.t(body, m, top, W - 2 * m, u * 3.4, { lh: 1.5 });
+    numberedRows(c, C.items.slice(0, 3), m, W - 2 * m, p.y + p.h + u * 6, bot, { check: true, d: 6, size: 3.3 });
+  } else {
+    const cw = (W - 2 * m - u * 6) / 2;
+    c.t(body, m, top, cw, u * 3.4, { lh: 1.5 });
+    numberedRows(c, C.items.slice(0, 4), m + cw + u * 6, cw, top, bot, { check: true, d: 6, size: 3.3 });
+  }
+  footer(c, C.brand);
+});
+
+def('closing', 'Closing', 'dsp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  c.bg(P.accent);
+  const w = W - 2 * m;
+  const k = c.kick(m, 0, w, { align: 'center', color: P.onAccent, text: C.brand });
+  const hd = c.hd(C.cta, m, 0, w, u * (cls === 'wide' ? 16 : 14), 3, H * .38, { align: 'center', color: P.onAccent });
+  const s = c.t(C.sub, m + w * .1, 0, w * .8, u * 3.6, { align: 'center', color: P.onAccent });
+  const b = c.btn(C.url, W / 2, 0, u * 3.4, { anchor: 'center', fill: P.onAccent, color: P.accent });
+  c.vstack([k, hd, s, b], [u * 3, u * 4, u * 6], m, H - m - u * 7);
+  c.t(C.handle + '  ·  ' + C.email, m, H - m - u * 3.2, w, u * 3, { align: 'center', color: P.onAccent, weight: 600 });
+});
+
+def('carousel-hook', 'Swipe Hook', 'sd', ['square', 'tall'], c => {
+  const { W, H, u, m, P, C } = c;
+  c.t(C.brand, m, m, W * .6, u * 3.2, { weight: 700, upper: true, ls: .12 });
+  const pn = pageNo(c); if (pn) c.t(pn, W - m - u * 14, m, u * 14, u * 3.2, { align: 'right', color: P.muted, weight: 600 });
+  const hd = c.hd(C.title, m, 0, W - 2 * m, u * 17, 4, H * .5);
+  const s = c.t(C.sub, m, 0, W - 2 * m - u * 10, u * 3.6, { color: P.muted });
+  c.vstack([hd, s], [u * 4], m + u * 8, H - m - u * 12);
+  const b = c.btn('Swipe →', W - m, H - m - u * 8.5, u * 3, { anchor: 'right' });
+  c.t(C.handle, m, b.y + (b.h - u * 3 * 1.35) / 2, W * .5, u * 3, { weight: 700 });
+});
+
+def('carousel-point', 'Carousel Point', 'sd', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  const n = Math.max(1, c.page);
+  c.t(C.brand, m, m, W * .6, u * 3.2, { weight: 700, upper: true, ls: .12 });
+  const pn = pageNo(c); if (pn) c.t(pn, W - m - u * 14, m, u * 14, u * 3.2, { align: 'right', color: P.muted, weight: 600 });
+  const num = c.hd(String(n).padStart(2, '0'), m, 0, W - 2 * m, u * (cls === 'wide' ? 30 : 26), 1, H * .3, { color: P.hi, upper: false });
+  const hd = c.hd(nthItem(c), m, 0, cls === 'wide' ? W * .7 : W - 2 * m, u * (cls === 'wide' ? 12 : 11), 3, H * .3);
+  const s = c.t(C.sub, m, 0, Math.min(W - 2 * m, u * 64), u * 3.4, { color: P.muted });
+  c.vstack([num, hd, s], [u * 1, u * 4], m + u * 6, H - m - u * 10);
+  if (c.pages > 1) { const d = u * 1.6, gap = u * 1.2; for (let i = 0; i < c.pages; i++) c.o(m + i * (d + gap), H - m - d - u * .6, d, d, { fill: i === c.page ? P.accent : P.line, name: 'Progress' }); }
+  c.t(C.handle, W / 2, H - m - u * 3.2, W / 2 - m, u * 3, { align: 'right', weight: 700 });
+});
+
+def('photo-caption', 'Photo & Caption', 'dp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  if (cls === 'wide') {
+    c.i(0, 0, W * .58, H, { label: 'Photo' });
+    const x = W * .58 + m, w = W - x - m;
+    const k = c.kick(x, 0, w); const hd = c.hd(nthItem(c), x, 0, w, u * 10, 4, H * .4); const s = c.t(C.sub, x, 0, w, u * 3.4, { color: P.muted });
+    c.vstack([k, hd, s], [u * 3, u * 4], m, H - m - u * 6);
+    footer(c, '', { x });
+  } else {
+    const ih = H * .6; c.i(0, 0, W, ih, { label: 'Photo' });
+    const k = c.kick(m, 0, W - 2 * m); const hd = c.hd(nthItem(c), m, 0, W - 2 * m, u * 10, 3, H * .2); const s = c.t(C.sub, m, 0, W - 2 * m, u * 3.4, { color: P.muted });
+    c.vstack([k, hd, s], [u * 2.5, u * 3], ih + u * 6, H - m - u * 6);
+    footer(c, C.brand);
+  }
+}, { photo: true });
+
+def('pricing', 'Pricing', 'sdp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  const k = c.kick(m, m, W - 2 * m, { align: 'center' });
+  const hd = c.hd(C.title, m, m + k.h + u * 2.5, W - 2 * m, u * 10, 2, u * 22, { align: 'center' });
+  const items = C.menu.slice(0, cls === 'square' ? 3 : 4), n = items.length, horiz = cls !== 'tall';
+  const top = hd.y + hd.h + u * 8, bot = H - m - u * 8, gap = u * 3;
+  const cw = horiz ? (W - 2 * m - gap * (n - 1)) / n : W - 2 * m;
+  const ch = horiz ? bot - top : (bot - top - gap * (n - 1)) / n;
+  items.forEach(([name, price], i) => {
+    const hi = i === Math.min(1, n - 1), g = nid();
+    const x = horiz ? m + i * (cw + gap) : m, y = horiz ? top : top + i * (ch + gap);
+    const col = hi ? P.onAccent : P.onSurface, mut = hi ? P.onAccent : mix(P.onSurface, P.surface, .35);
+    c.r(x, y, cw, ch, { fill: hi ? P.accent : P.surface, radius: u * 2.5, name: 'Plan' }).groupId = g;
+    const nm = c.t(name, x + u * 3, y + u * 3.5, cw - u * 6, u * 3.2, { weight: 700, upper: true, ls: .1, color: col }); nm.groupId = g;
+    const pr = c.hd(price, x + u * 3, nm.y + nm.h + u * 1.5, cw - u * 6, u * (horiz ? 9 : 8), 1, u * 12, { color: col, upper: false }); pr.groupId = g;
+    c.t(C.items[i % C.items.length], x + u * 3, pr.y + pr.h + u * 2, cw - u * 6, u * 2.9, { color: mut }).groupId = g;
+  });
+  c.t(C.url, m, H - m - u * 3.2, W - 2 * m, u * 3, { align: 'center', color: P.muted, weight: 600 });
+});
+
+def('contact', 'Contact', 'dp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  c.bg(P.surface);
+  const wide = cls === 'wide', w = wide ? W * .5 - m : W - 2 * m;
+  const qs = wide ? Math.min(H * .5, W * .3) : u * 22;
+  const k = c.kick(m, 0, w, { text: 'Get in touch', color: P.hi });
+  const hd = c.hd(C.brand, m, 0, w, u * 13, 2, u * 30, { color: P.onSurface });
+  const rows = [['Email', C.email], ['Phone', C.phone], ['Web', C.url], ['Visit', C.place]].map(([l, v]) => {
+    const g = nid();
+    const a = c.t(l, m, 0, u * 14, u * 2.8, { weight: 700, upper: true, ls: .12, color: mix(P.onSurface, P.surface, .35) });
+    const b = c.t(v, m + u * 16, 0, w - u * 16, u * 3.6, { color: P.onSurface, weight: 600 });
+    a.groupId = b.groupId = g;
+    return { h: b.h, set y(y) { a.y = r1(y + u * .4); b.y = r1(y); } };
+  });
+  c.vstack([k, hd, ...rows], [u * 3, u * 7, u * 2.2, u * 2.2, u * 2.2], m, wide ? H - m : H - m - qs - u * 4);
+  c.q(W - m - qs, wide ? H / 2 - qs / 2 : H - m - qs, qs, 'https://' + C.url, { fg: P.onSurface, bg: P.surface });
+});
+
+def('resume', 'Résumé', 'p', ['tall'], c => {
+  const { W, H, u, m, P, C } = c; const w = W - 2 * m;
+  const nm = c.hd(C.person, m, m, w * .62, u * 11, 2, u * 16, { upper: false });
+  c.t(C.job, m, nm.y + nm.h + u * 1.5, w * .62, u * 4, { color: P.hi, weight: 700, upper: true, ls: .1 });
+  [C.email, C.phone, C.place].forEach((t, i) => c.t(t, W - m - w * .34, m + i * u * 4.2, w * .34, u * 3, { align: 'right', color: i ? P.muted : P.ink }));
+  let y = m + u * 24;
+  c.r(m, y, w, u * .35, { fill: P.ink, name: 'Rule' }); y += u * 4;
+  const section = label => { const t = c.t(label, m, y, w, u * 2.8, { weight: 700, upper: true, ls: .14, color: P.hi }); y += t.h + u * 2.5; };
+  section('Profile');
+  const p = c.t(C.sub, m, y, w, u * 3.3, { lh: 1.5 }); y += p.h + u * 5;
+  section('Experience');
+  C.items.slice(0, 3).forEach((it, i) => {
+    const t = c.t(it, m, y, w * .66, u * 3.6, { weight: 700 });
+    c.t(C.brand, m, y + t.h + u * .4, w * .66, u * 3, { color: P.muted });
+    c.t(`${2024 - i * 2} – ${i ? 2026 - i * 2 : 'Present'}`, W - m - w * .3, y, w * .3, u * 3, { align: 'right', color: P.muted });
+    y += t.h + u * 8.5;
+  });
+  y += u;
+  section('Skills');
+  c.pills(C.tags, m, y, w, u * 2.8);
+});
+
+def('letterhead', 'Letterhead', 'p', ['tall'], c => {
+  const { W, H, u, m, P, C } = c; const w = W - 2 * m;
+  c.r(0, 0, W, u * 2.2, { fill: P.accent, name: 'Band' });
+  const b = c.hd(C.brand, m, m + u * 2, w * .5, u * 7, 1, u * 9, { upper: false });
+  [C.url, C.email, C.phone].forEach((t, i) => c.t(t, W - m - w * .4, m + u * 2 + i * u * 3.8, w * .4, u * 2.8, { align: 'right', color: i ? P.muted : P.ink }));
+  c.r(m, b.y + b.h + u * 5, w, u * .3, { fill: P.line, name: 'Rule' });
+  let y = b.y + b.h + u * 12;
+  const d = c.t(C.date[2], m, y, w, u * 3.2, { color: P.muted }); y += d.h + u * 5;
+  const g = c.t('Dear ' + C.author.split(' ')[0] + ',', m, y, w, u * 3.4, {}); y += g.h + u * 4;
+  const p = c.t(C.sub + '\n\n' + C.quote + '\n\n' + C.items.join(' · ') + '.', m, y, w, u * 3.4, { lh: 1.55 }); y += p.h + u * 6;
+  c.t('Warmly,', m, y, w, u * 3.4, {}); y += u * 9;
+  c.t(C.person, m, y, w, u * 3.6, { weight: 700 });
+  c.t(C.job + ' · ' + C.brand, m, y + u * 4.4, w, u * 3, { color: P.muted });
+  c.t(C.place + '  ·  ' + C.url, m, H - m - u * 3, w, u * 2.8, { align: 'center', color: P.muted });
+});
+
+def('label', 'Product Label', 'p', ['square', 'wide'], c => {
+  const { W, H, u, m, P, C, cls } = c; const inset = u * 4;
+  c.r(inset, inset, W - 2 * inset, H - 2 * inset, { fill: null, stroke: P.ink, sw: u * .6, radius: u * 1.5, name: 'Border' });
+  c.r(inset + u * 1.5, inset + u * 1.5, W - 2 * inset - u * 3, H - 2 * inset - u * 3, { fill: null, stroke: P.ink, sw: u * .25, radius: u, name: 'Inner border' });
+  const x = m + u * 2, w = W - 2 * x;
+  const b = c.t(C.brand, x, 0, w, u * 3.2, { align: 'center', weight: 700, upper: true, ls: .2 });
+  const hd = c.hd(C.word, x, 0, w, u * (cls === 'wide' ? 22 : 20), 1, H * .35, { align: 'center' });
+  const s = c.t(C.short, x, 0, w, u * 3.6, { align: 'center', color: P.muted });
+  const ln = c.r(W / 2 - u * 6, 0, u * 12, u * .5, { fill: P.accent });
+  const pr = c.t(C.price ? C.price + '  ·  ' + C.ep : C.ep, x, 0, w, u * 3, { align: 'center', weight: 700, upper: true, ls: .12 });
+  c.vstack([b, hd, s, ln, pr], [u * 3, u * 2.5, u * 3.5, u * 3.5], m + u * 2, H - m - u * 2);
+});
+
+def('badge', 'Name Badge', 'p', ['wide', 'square'], c => {
+  const { W, H, u, m, P, C } = c; const bh = H * .26, w = W - 2 * m;
+  c.r(0, 0, W, bh, { fill: P.accent, name: 'Band' });
+  c.t(C.brand, m, bh / 2 - u * 2, W * .6, u * 3.6, { weight: 700, upper: true, ls: .14, color: P.onAccent });
+  c.t(C.date[2], W - m - W * .35, bh / 2 - u * 1.8, W * .35, u * 3.2, { align: 'right', color: P.onAccent });
+  const hello = c.t('Hello, my name is', m, 0, w, u * 3.4, { align: 'center', color: P.muted });
+  const nm = c.hd(C.person, m, 0, w, u * 16, 2, H * .36, { align: 'center', upper: false });
+  const jb = c.t(C.job + ' · ' + C.place, m, 0, w, u * 3.4, { align: 'center', color: P.hi, weight: 700 });
+  c.vstack([hello, nm, jb], [u * 2, u * 2.5], bh + u * 4, H - m);
+});
+
+/* ---------- photo-first layouts ---------- */
+// Text on an unknown photo always sits on a scrim, a band or a solid shape (spec §6).
+const onScrim = P => (contrast(P.accent, P.ink) >= 3 ? P.accent : P.bg);
+
+def('hero-photo', 'Hero Photo', 'tsdp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  c.i(0, 0, W, H, { label: 'Full-bleed photo' });
+  const sh = cls === 'wide' ? H * .5 : H * .42;
+  c.r(0, H - sh, W, sh, { fill: P.ink, op: .62, name: 'Scrim' });
+  const w = cls === 'wide' ? W * .6 : W - 2 * m;
+  const k = c.kick(m, 0, w, { color: onScrim(P) });
+  const hd = c.hd(C.title, m, 0, w, u * (cls === 'wide' ? 14 : 12), 3, sh - u * 22, { color: P.bg });
+  const s = c.t(C.sub, m, 0, Math.min(w, u * 60), u * 3.4, { color: mix(P.bg, P.ink, .15) });
+  const b = c.btn(C.cta, m, 0, u * 3, { fill: P.accent, color: P.onAccent });
+  c.vstack([k, hd, s, b], [u * 2.5, u * 3, u * 4], H - sh + u * 5, H - m);
+}, { photo: true });
+
+def('photo-duo', 'Two Photos', 'sdp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const g = u * 2.5;
+  if (cls === 'wide') {
+    const pw = W * .28; c.i(W - m - pw * 2 - g, m, pw, H - 2 * m, { label: 'Photo 1', mask: 'rounded' }); c.i(W - m - pw, m, pw, H - 2 * m, { label: 'Photo 2', mask: 'rounded' });
+    const w = W - 2 * m - pw * 2 - g - u * 6;
+    const k = c.kick(m, 0, w); const hd = c.hd(C.title, m, 0, w, u * 13, 4, H * .45); const s = c.t(C.sub, m, 0, w, u * 3.4, { color: P.muted }); const b = c.btn(C.cta, m, 0, u * 3);
+    c.vstack([k, hd, s, b], [u * 3, u * 4, u * 5], m, H - m);
+  } else {
+    const ph = H * (cls === 'tall' ? .46 : .48), pw = (W - 2 * m - g) / 2;
+    c.i(m, m, pw, ph, { label: 'Photo 1', mask: 'rounded' }); c.i(m + pw + g, m, pw, ph, { label: 'Photo 2', mask: 'rounded' });
+    const top = m + ph + u * 6, w = W - 2 * m;
+    const k = c.kick(m, 0, w); const hd = c.hd(C.title, m, 0, w, u * 11, 3, H - top - m - u * 20); const s = c.t(C.sub, m, 0, w, u * 3.4, { color: P.muted }); const b = c.btn(C.cta, m, 0, u * 3);
+    c.vstack([k, hd, s, b], [u * 2.5, u * 3, u * 4.5], top, H - m);
+  }
+}, { photo: true });
+
+def('offset-frame', 'Offset Frame', 'sp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
+  const pw = wide ? W * .42 : W - 2 * m - u * 5, ph = wide ? H - 2 * m - u * 5 : H * (cls === 'tall' ? .46 : .42);
+  const px = wide ? W - m - pw - u * 4 : m, py = m;
+  c.r(px + u * 4, py + u * 4, pw, ph, { fill: P.accent, name: 'Offset' });
+  c.i(px, py, pw, ph, { label: 'Photo', border: P.ink, borderW: u * .5 });
+  const w = wide ? px - m - u * 8 : W - 2 * m, top = wide ? m : py + ph + u * 10;
+  const k = c.kick(m, 0, w); const hd = c.hd(C.title, m, 0, w, u * (wide ? 13 : 11), 4, wide ? H * .5 : H - top - m - u * 16); const s = c.t(C.sub, m, 0, w, u * 3.4, { color: P.muted });
+  const hn = c.t(C.handle, m, 0, w, u * 3, { weight: 700 });
+  c.vstack([k, hd, s, hn], [u * 3, u * 4, u * 5], top, H - m);
+}, { photo: true });
+
+def('cutout-stage', 'Cutout Stage', 'tsp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
+  const d = wide ? H * .8 : Math.min(W * .74, H * .46);
+  const cx = wide ? W - m - d * .62 : W / 2, cy = wide ? H / 2 : m + d * .62;
+  c.o(cx - d / 2, cy - d / 2, d, d, { fill: P.accent, name: 'Stage' });
+  c.o(cx - d * .62, cy - d * .62, d * 1.24, d * 1.24, { fill: null, stroke: P.accent, sw: u * .35, dash: true, name: 'Ring' });
+  c.i(cx - d * .4, cy - d * .55, d * .8, d * 1.02, { label: 'Cutout · remove background', tint: mix(P.accent, P.bg, .35) });
+  c.sticker(C.badge, cx + d * .42, cy - d * .42, u * 15, { fill: P.accent2, color: P.onAccent2, rot: 12 });
+  if (wide) {
+    const w = cx - d * .62 - m - u * 4;
+    const k = c.kick(m, 0, w); const hd = c.hd(C.title, m, 0, w, u * 15, 4, H * .5); const s = c.t(C.sub, m, 0, w, u * 3.4, { color: P.muted }); const b = c.btn(C.cta, m, 0, u * 3.2);
+    c.vstack([k, hd, s, b], [u * 3, u * 4, u * 5], m, H - m);
+  } else {
+    const top = cy + d * .62 + u * 4, w = W - 2 * m;
+    const k = c.kick(m, 0, w, { align: 'center' }); const hd = c.hd(C.title, m, 0, w, u * 11, 3, H - top - m - u * 16, { align: 'center' }); const b = c.btn(C.cta, W / 2, 0, u * 3.2, { anchor: 'center' });
+    c.vstack([k, hd, b], [u * 2.5, u * 4], top, H - m);
+  }
+}, { photo: true });
+
+def('photo-quote', 'Photo Quote', 'sdp', A3, c => {
+  const { W, H, u, m, P, C, cls, F } = c; const wide = cls === 'wide';
+  const pw = wide ? W * .45 : W, ph = wide ? H : H * .5;
+  c.i(0, 0, pw, ph, { label: 'Photo' });
+  const x = wide ? pw + m : m, w = wide ? W - pw - 2 * m : W - 2 * m, top = wide ? m : ph + m, bot = H - m;
+  c.t('“', x - u, top - u * 4, u * 20, u * 26, { f: 'd', font: F.display === 'Anton' || F.upper ? 'Playfair Display' : F.display, color: P.hi, lh: 1, upper: false, name: 'Quote mark' });
+  const q = c.hd(C.quote, x, 0, w, u * (wide ? 7.5 : 7), 6, (bot - top) * .55, { upper: false, lh: 1.15 });
+  const a = c.t(C.author, x, 0, w, u * 3.4, { weight: 700 }); const r = c.t(C.role || C.brand, x, 0, w, u * 3, { color: P.muted });
+  const ln = c.r(x, 0, u * 10, u * .8, { fill: P.accent });
+  c.vstack([q, ln, a, r], [u * 4, u * 3, u * .6], top + u * 14, bot);
+}, { photo: true });
+
+def('photo-stat', 'Photo & Stat', 'sdp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
+  const pw = wide ? W * .5 : W, ph = wide ? H : H * .46;
+  c.i(wide ? W - pw : 0, 0, pw, ph, { label: 'Photo' });
+  const w = wide ? W - pw - 2 * m : W - 2 * m, top = wide ? m : ph + m * .8;
+  const k = c.kick(m, 0, w);
+  const st = c.hd(C.stat[0], m, 0, w, u * (wide ? 26 : 22), 1, u * 26, { color: P.hi, upper: false });
+  const sl = c.t(C.stat[1], m, 0, w, u * 3.8, { weight: 700 });
+  const hd = c.hd(C.title, m, 0, w, u * 7, 2, u * 16);
+  const s = c.t(C.sub, m, 0, w, u * 3.2, { color: P.muted });
+  c.vstack([k, st, sl, hd, s], [u * 2, u * 1, u * 4, u * 2.5], top, H - m);
+}, { photo: true });
+
+def('photo-strip', 'Photo Strip', 'sp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const g = u * 2, n = 3;
+  const pw = (W - 2 * m - g * (n - 1)) / n;
+  if (cls === 'tall') {
+    const ph = H * .5;
+    for (let i = 0; i < n; i++) c.i(m + i * (pw + g), m, pw, ph, { label: 'Photo ' + (i + 1), mask: 'rounded' });
+    const top = m + ph + u * 7, w = W - 2 * m;
+    const k = c.kick(m, 0, w); const hd = c.hd(C.title, m, 0, w, u * 12, 3, H - top - m - u * 14); const s = c.t(C.sub, m, 0, w, u * 3.4, { color: P.muted });
+    c.vstack([k, hd, s], [u * 2.5, u * 3.5], top, H - m);
+  } else {
+    const ph = H * (cls === 'wide' ? .42 : .38);
+    for (let i = 0; i < n; i++) c.i(m + i * (pw + g), H - m - ph, pw, ph, { label: 'Photo ' + (i + 1), mask: 'rounded' });
+    const w = W - 2 * m, bot = H - m - ph - u * 6;
+    const k = c.kick(m, 0, w); const hd = c.hd(C.title, m, 0, cls === 'wide' ? W * .7 : w, u * (cls === 'wide' ? 12 : 11), 2, bot - m - u * 12); const s = c.t(C.sub, m, 0, Math.min(w, u * 70), u * 3.4, { color: P.muted });
+    c.vstack([k, hd, s], [u * 2.5, u * 3], m, bot);
+  }
+}, { photo: true });
+
+def('photo-card', 'Photo Card', 'sp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  const mut = mix(P.onSurface, P.surface, .3);
+  if (cls === 'wide') {
+    c.i(0, 0, W, H, { label: 'Full-bleed photo' });
+    const cw = W * .46, ch = H - 2 * m, x = m + u * 5, w = cw - u * 10;
+    c.r(m, m, cw, ch, { fill: P.surface, radius: u * 3, shadow: true, name: 'Card' });
+    const k = c.kick(x, 0, w); const hd = c.hd(C.title, x, 0, w, u * 11, 4, ch * .5, { color: P.onSurface }); const s = c.t(C.sub, x, 0, w, u * 3.3, { color: mut }); const b = c.btn(C.cta, x, 0, u * 3);
+    c.vstack([k, hd, s, b], [u * 2.5, u * 3, u * 4], m + u * 5, m + ch - u * 5);
+  } else {
+    const ph = H * (cls === 'tall' ? .58 : .55);
+    c.i(0, 0, W, ph, { label: 'Photo' });
+    const cy = ph - u * 8, ch = H - cy - m, x = m + u * 5, w = W - 2 * m - u * 10;
+    c.r(m, cy, W - 2 * m, ch, { fill: P.surface, radius: u * 3, shadow: true, name: 'Card' });
+    const k = c.kick(x, 0, w); const hd = c.hd(C.title, x, 0, w, u * 10, 3, ch * .45, { color: P.onSurface }); const s = c.t(C.sub, x, 0, w, u * 3.3, { color: mut }); const b = c.btn(C.cta, x, 0, u * 3);
+    c.vstack([k, hd, s, b], [u * 2.5, u * 3, u * 4], cy + u * 5, H - m - u * 5);
+  }
+}, { photo: true });
+
+def('photo-slant', 'Photo Slant', 'ts', ['wide', 'square'], c => {
+  const { W, H, u, m, P, C } = c;
+  c.i(W * .48, 0, W * .52, H, { label: 'Photo' });
+  c.s('poly', W * .42, 0, W * .14, H, { pts: [[0, 0], [1, 0], [.5, 1], [0, 1]], fill: P.accent, name: 'Slant' });
+  c.r(0, 0, W * .42 + 1, H, { fill: P.accent, name: 'Block' });
+  const w = W * .42 - m - u * 2;
+  const k = c.kick(m, 0, w, { color: P.onAccent }); const hd = c.hd(C.title, m, 0, w, u * 14, 4, H * .55, { color: P.onAccent }); const b = c.btn(C.cta, m, 0, u * 3.2, { fill: P.onAccent, color: P.accent });
+  c.vstack([k, hd, b], [u * 3, u * 5], m, H - m);
+}, { photo: true });
+
+def('feature-grid', 'Feature Grid', 'sp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const g = u * 2, wide = cls === 'wide';
+  const gw = wide ? W * .55 : W - 2 * m, gh = wide ? H - 2 * m : H * .52, gx = wide ? W - m - gw : m, gy = m;
+  const big = wide ? gw * .62 : gh * .62;
+  if (wide) {
+    c.i(gx, gy, big, gh, { label: 'Photo 1', mask: 'rounded' });
+    c.i(gx + big + g, gy, gw - big - g, (gh - g) / 2, { label: 'Photo 2', mask: 'rounded' });
+    c.i(gx + big + g, gy + (gh + g) / 2, gw - big - g, (gh - g) / 2, { label: 'Photo 3', mask: 'rounded' });
+  } else {
+    c.i(gx, gy, gw, big, { label: 'Photo 1', mask: 'rounded' });
+    c.i(gx, gy + big + g, (gw - g) / 2, gh - big - g, { label: 'Photo 2', mask: 'rounded' });
+    c.i(gx + (gw + g) / 2, gy + big + g, (gw - g) / 2, gh - big - g, { label: 'Photo 3', mask: 'rounded' });
+  }
+  const w = wide ? gx - m - u * 6 : W - 2 * m, top = wide ? m : gy + gh + u * 6;
+  const k = c.kick(m, 0, w); const hd = c.hd(C.title, m, 0, w, u * (wide ? 12 : 10), 3, wide ? H * .45 : H - top - m - u * 14); const s = c.t(C.sub, m, 0, w, u * 3.3, { color: P.muted });
+  c.vstack([k, hd, s], [u * 2.5, u * 3.5], top, H - m);
+}, { photo: true });
+
+def('photo-list', 'Photo & List', 'sdp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
+  const pw = wide ? W * .44 : W, ph = wide ? H : H * .4;
+  c.i(0, 0, pw, ph, { label: 'Photo' });
+  const x = wide ? pw + m : m, w = wide ? W - pw - 2 * m : W - 2 * m, top = wide ? m : ph + m * .8;
+  const k = c.kick(x, top, w); const hd = c.hd(C.title, x, k.y + k.h + u * 2, w, u * 9, 2, u * 20);
+  numberedRows(c, C.items.slice(0, wide ? 4 : 3), x, w, hd.y + hd.h + u * 6, H - m);
+}, { photo: true });
+
+def('banner-hero', 'Banner Hero', 'b', ['banner'], c => {
+  const { W, H, u, P, C } = c; const mm = u * 12;
+  c.i(0, 0, W, H, { label: 'Full-bleed photo' });
+  c.r(0, 0, W * .55, H, { fill: P.ink, op: .7, name: 'Scrim' });
+  const w = W * .5 - mm;
+  const k = c.kick(mm, 0, w, { color: onScrim(P), size: u * 5.5 });
+  const hd = c.hd(C.title, mm, 0, w, u * 24, 2, H - 2 * mm - k.h - u * 5, { color: P.bg });
+  c.vstack([k, hd], [u * 4], mm, H - mm);
+}, { photo: true });
+
+/* ---------- occasions ---------- */
+def('celebration', 'Celebration', 'tsp', A3, c => {
+  const { W, H, u, m, P, C, cls, rng } = c;
+  const cols = [P.accent, P.accent2, P.ink];
+  // Confetti keeps to the top and bottom bands so the invitation text stays clean.
+  for (let i = 0; i < 26; i++) {
+    const x = rng() * W, y = rng() < .5 ? rng() * H * .2 : H - rng() * H * .2, sz = u * (1.2 + rng() * 2), round = rng() < .4;
+    c.s(round ? 'ellipse' : 'rect', x, y, sz, round ? sz : sz * 2.2, { fill: cols[i % 3], rot: Math.round(rng() * 90), op: .9, name: 'Confetti' });
+  }
+  const w = W - 2 * m;
+  const k = c.kick(m, 0, w, { align: 'center' });
+  const hd = c.hd(C.title, m, 0, w, u * (cls === 'wide' ? 15 : 13), 3, H * .36, { align: 'center' });
+  const s = c.t(C.sub, m + w * .1, 0, w * .8, u * 3.4, { align: 'center', color: P.muted });
+  const d = c.t(C.date[2] + (C.date[3] ? '  ·  ' + C.date[3] : ''), m, 0, w, u * 3.4, { align: 'center', weight: 700 });
+  const pl = c.t(C.place, m, 0, w, u * 3.2, { align: 'center', color: P.muted });
+  const b = c.btn(C.cta, W / 2, 0, u * 3.2, { anchor: 'center' });
+  c.vstack([k, hd, s, d, pl, b], [u * 3, u * 3.5, u * 5, u * 1, u * 5], m + u * 6, H - m - u * 6);
+}, { topics: FESTIVE });
+
+def('invitation-classic', 'Classic Invitation', 'sp', A3, c => {
+  const { W, H, u, m, P, C, cls, F } = c; const inset = u * 5;
+  c.r(inset, inset, W - 2 * inset, H - 2 * inset, { fill: null, stroke: P.accent, sw: u * .35, name: 'Frame' });
+  c.r(inset + u * 1.2, inset + u * 1.2, W - 2 * inset - u * 2.4, H - 2 * inset - u * 2.4, { fill: null, stroke: P.accent, sw: u * .15, name: 'Inner frame' });
+  const w = W - 2 * m - u * 4, x = m + u * 2;
+  const k = c.t(C.kicker, x, 0, w, u * 2.8, { align: 'center', upper: true, ls: .25, weight: 600, color: P.muted });
+  const hd = c.hd(C.title, x, 0, w, u * (cls === 'wide' ? 13 : 12), 3, H * .32, { align: 'center', upper: false, lh: 1.05 });
+  const s = c.t(C.sub, x + w * .1, 0, w * .8, u * 3.2, { align: 'center', color: P.muted, italic: F.display !== F.body });
+  const orn = c.s('diamond', W / 2 - u * 1.4, 0, u * 2.8, u * 2.8, { fill: P.accent, name: 'Ornament' });
+  const d = c.t(C.date[2], x, 0, w, u * 3.6, { align: 'center', weight: 700, upper: true, ls: .12 });
+  const t = c.t((C.date[3] ? C.date[3] + '  ·  ' : '') + C.place, x, 0, w, u * 3.1, { align: 'center', color: P.muted });
+  const r = c.t(C.cta, x, 0, w, u * 2.8, { align: 'center', upper: true, ls: .2, weight: 600, color: P.hi });
+  c.vstack([k, hd, s, orn, d, t, r], [u * 3, u * 3, u * 4, u * 4, u * 1.2, u * 5], m + u * 4, H - m - u * 4);
+}, { topics: ['wedding', 'engagement', 'anniversary', 'baby', 'graduation', 'eid', 'puja', 'diwali', 'christmas', 'thanksgiving', 'memorial', 'birthday'] });
+
+def('memorial', 'In Memoriam', 'sp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  c.bg(P.surface);
+  const wide = cls === 'wide';
+  const d = wide ? H * .5 : Math.min(W * .42, H * .26);
+  const cx = wide ? W * .28 : W / 2, cy = wide ? H / 2 : m + u * 6 + d / 2;
+  c.o(cx - d / 2 - u * 1.5, cy - d / 2 - u * 1.5, d + u * 3, d + u * 3, { fill: null, stroke: P.accent, sw: u * .3, name: 'Ring' });
+  c.i(cx - d / 2, cy - d / 2, d, d, { mask: 'circle', label: 'Portrait' });
+  const x = wide ? W * .5 : m, w = wide ? W * .5 - m : W - 2 * m, al = wide ? 'left' : 'center';
+  const k = c.t(C.kicker, x, 0, w, u * 2.8, { align: al, upper: true, ls: .25, weight: 600, color: P.muted });
+  const nm = c.hd(C.title, x, 0, w, u * (wide ? 10 : 9), 2, u * 22, { align: al, upper: false, color: P.onSurface });
+  const yrs = c.t(C.ep, x, 0, w, u * 3.6, { align: al, color: P.hi, weight: 600, ls: .08 });
+  const q = c.t('“' + C.quote + '”', x + (wide ? 0 : w * .08), 0, wide ? w : w * .84, u * 3.3, { align: al, italic: true, color: mix(P.onSurface, P.surface, .25), lh: 1.5 });
+  const dt = c.t(C.date[2] + '  ·  ' + C.date[3], x, 0, w, u * 3.1, { align: al, weight: 700 });
+  const pl = c.t(C.place, x, 0, w, u * 3, { align: al, color: P.muted });
+  c.vstack([k, nm, yrs, q, dt, pl], [u * 2.5, u * 1.5, u * 5, u * 6, u * 1], wide ? m : cy + d / 2 + u * 6, H - m);
+}, { topics: ['memorial'], photo: true });
+
 export const LAYOUT = Object.fromEntries(LAYOUTS.map(l => [l.id, l]));
 export const PAIRING = Object.fromEntries(PAIRINGS.map(p => [p.id, p]));
 export const PALETTE = Object.fromEntries(PALETTES.map(p => [p.id, p]));
@@ -937,24 +1480,41 @@ export function catalog() {
   if (_cat) return _cat;
   const out = [];
   FORMATS.forEach((f, fi) => {
-    const cls = clsOf(f.w / f.h);
-    const Ls = LAYOUTS.filter(l => l.kinds.includes(f.kind) && l.cls.includes(f.kind === 'c' ? 'wide' : cls));
-    const per = Math.max(2, Math.ceil(52 / Ls.length));
+    const [sw, sh] = f.safe || [f.w, f.h];
+    const cls = clsOf(sw / sh);
+    // `only` pins a format to purpose-built layouts (a résumé is a résumé); otherwise
+    // every layout whose kinds and aspect classes fit is eligible.
+    const Ls = LAYOUTS.filter(l => (f.only ? f.only.includes(l.id) : l.kinds.includes(f.kind)) && l.cls.includes(f.kind === 'c' ? 'wide' : cls));
+    if (!Ls.length) return;
+    const per = Math.min(12, Math.max(2, Math.ceil(52 / Ls.length)));
     Ls.forEach((l, li) => {
-      for (let j = 0; j < per; j++) {
-        const t = TOPICS[(li * 5 + fi * 3 + j * 7) % TOPICS.length];
+      // Designs built around a photo are what most people come for; weight them up.
+      const n = l.photo ? Math.ceil(per * 1.5) : per;
+      // A layout can name the copy packs it suits (an invitation frame wants occasions);
+      // a copy pack can name the layouts it tolerates (memorial copy never gets a burst).
+      const pool = l.topics ? l.topics.map(id => TOPIC[id]) : TOPICS;
+      for (let j = 0; j < n; j++) {
+        const ti = (li * 5 + fi * 3 + j * 7) % pool.length;
+        let t = pool[ti];
+        for (let g = 1; g <= pool.length && t.only && !t.only.includes(l.id); g++) t = pool[(ti + g) % pool.length];
+        if (t.only && !t.only.includes(l.id)) continue;
         const pair = t.pairs[(li + j * 2 + fi) % t.pairs.length];
         const pal = t.pals[(li * 2 + j + fi) % t.pals.length];
-        out.push({ id: `${f.id}~${l.id}~${t.id}~${j}`, fmt: f.id, layout: l.id, topic: t.id, pair, pal, name: t.title, layoutName: l.name, topicName: t.name, cat: f.cat, fmtName: f.name, w: f.w, h: f.h, pages: f.pages || 1, search: `${t.title} ${t.name} ${l.name} ${f.name} ${f.cat} ${PALETTE[pal].name} ${PAIRING[pair].name}`.toLowerCase() });
+        out.push({ id: `${f.id}~${l.id}~${t.id}~${j}`, fmt: f.id, layout: l.id, topic: t.id, pair, pal, name: t.title, layoutName: l.name, topicName: t.name, cat: f.cat, fmtName: f.name, w: f.w, h: f.h, pages: f.pages || 1, search: `${t.title} ${t.name} ${t.kw || ''} ${l.name} ${f.name} ${f.cat} ${PALETTE[pal].name} ${PAIRING[pair].name}`.toLowerCase() });
       }
     });
   });
   _cat = out; return out;
 }
 
-function runLayout(l, W, H, theme, pair, topic, seed, kind) {
-  const c = makeCtx(W, H, theme, pair, topic, seeded(seed), kind);
+function runLayout(l, f, theme, pair, topic, seed, page = 0, pages = 1) {
+  const [sw, sh] = f.safe || [f.w, f.h];
+  const c = makeCtx(sw, sh, theme, pair, topic, seeded(seed), f.kind);
+  c.page = page; c.pages = pages;
   l.fn(c);
+  // Platform safe zones (YouTube channel art, for one): the layout runs inside the
+  // safe box and is centred on the full page, which the background colour fills.
+  if (f.safe) { const dx = (f.w - sw) / 2, dy = (f.h - sh) / 2; c.els.forEach(e => { e.x = r1(e.x + dx); e.y = r1(e.y + dy); }); }
   return { id: nid(), bg: c.bgc, els: c.els };
 }
 function backOfCard(W, H, theme, pair, topic) {
@@ -965,15 +1525,45 @@ function backOfCard(W, H, theme, pair, topic) {
   c.vstack([hd, s], [u * 4], 0, H);
   return { id: nid(), bg: c.bgc, els: c.els };
 }
+
+// Story arcs for multi-page formats. Page 1 is the template's own layout; the rest
+// follow the arc so a deck reads like a deck and a carousel like a carousel. `open`
+// pages come first, `middle` fills the remaining space (rotating from a seeded start
+// so sibling templates differ), and `close` ends it. `repeat` keeps one middle
+// layout for every page, which is what a numbered carousel wants.
+const ARCS = {
+  deck: { open: ['agenda'], middle: ['section-divider', 'photo-duo', 'two-column', 'photo-stat', 'numbered-list', 'hero-photo', 'stat-chart', 'photo-caption', 'quote', 'pricing', 'photo-list', 'testimonial', 'timeline', 'checklist'], close: 'closing' },
+  carousel: { open: [], middle: ['carousel-point', 'photo-caption'], alternate: true, close: 'closing' },
+  report: { open: ['two-column'], middle: ['photo-stat', 'stat-chart', 'photo-caption', 'numbered-list', 'photo-duo', 'timeline', 'quote', 'pricing'], close: 'contact' },
+  booklet: { open: [], middle: ['hero-photo', 'photo-caption', 'two-column', 'photo-duo', 'numbered-list', 'quote'], close: 'contact' },
+  newsletter: { open: [], middle: ['photo-list', 'two-column', 'photo-caption'], close: null },
+  menu: { open: [], middle: ['pricing', 'menu-board'], close: null },
+  greeting: { open: [], middle: ['quote'], close: null },
+  photobook: { open: [], middle: ['photo-duo', 'grid-four', 'feature-grid', 'photo-caption', 'photo-strip', 'polaroid', 'hero-photo', 'collage'], close: null },
+  resume: { open: [], middle: ['two-column'], close: null }
+};
+function arcPages(arc, n, first, seed) {
+  const a = ARCS[arc] || ARCS.booklet, out = [];
+  const total = n - 1, body = a.close ? total - 1 : total;
+  const mid = a.middle.filter(x => x !== first).length ? a.middle.filter(x => x !== first) : a.middle;
+  let k = seed % mid.length;
+  for (let i = 0; i < body; i++) {
+    if (i < a.open.length) out.push(a.open[i]);
+    else if (a.alternate) out.push(mid[(i - a.open.length) % mid.length]);
+    else out.push(mid[k++ % mid.length]);
+  }
+  if (a.close && total > 0) out.push(a.close);
+  return out;
+}
+
 export function build(desc) {
   const f = FORMAT[desc.fmt], l = LAYOUT[desc.layout], t = TOPIC[desc.topic];
   const theme = makeTheme(PALETTE[desc.pal]), pair = PAIRING[desc.pair];
   const seed = hash(desc.id);
-  const pages = [runLayout(l, f.w, f.h, theme, pair, t, seed, f.kind)];
+  const n = f.kind === 'c' ? 2 : (f.pages || 1);
+  const run = (lay, i) => runLayout(lay, f, theme, pair, t, seed + i, i, n);
+  const pages = [run(l, 0)];
   if (f.kind === 'c') pages.push(backOfCard(f.w, f.h, theme, pair, t));
-  else if ((f.pages || 1) > 1) {
-    const pool = ['numbered-list', 'stat-chart', 'quote', 'checklist', 'timeline', 'testimonial'].filter(x => x !== l.id);
-    for (let i = 1; i < f.pages; i++) pages.push(runLayout(LAYOUT[pool[(seed + i * 2) % pool.length]], f.w, f.h, theme, pair, t, seed + i, f.kind));
-  }
+  else if (n > 1) arcPages(f.arc || (f.kind === 'd' ? 'deck' : 'booklet'), n, l.id, seed).forEach((id, i) => pages.push(run(LAYOUT[id], i + 1)));
   return { name: t.title, w: f.w, h: f.h, fmt: f.id, tpl: desc.id, theme: { ...theme, display: pair.display, body: pair.body, pairId: pair.id }, pages };
 }
