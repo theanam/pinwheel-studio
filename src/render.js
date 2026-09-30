@@ -83,22 +83,28 @@ function sampleArt(h, s) {
   const { kind, v, c } = s, k = [];
   if (kind === 'portrait') {
     const skin = SKIN[v % 4], hair = HAIR[(v + 1) % 4];
+    // Features are always dark: the palette's ink can be cream on a dark theme, and
+    // cream eyes without pupils are the stuff of nightmares.
+    const ink = '#2B2118', white = '#FFFFFF';
     if (c.bg !== 'none') { k.push(h('rect', { key: 'bg', width: 100, height: 130, fill: c.bg })); k.push(h('circle', { key: 'halo', cx: 50, cy: 66, r: 44, fill: c.halo })); }
     if (v === 1) k.push(h('path', { key: 'hairL', d: 'M24 60 C22 24 78 24 76 60 L80 96 L20 96 Z', fill: hair }));
+    if (v === 3) { k.push(h('ellipse', { key: 'afro', cx: 50, cy: 40, rx: 31, ry: 24, fill: hair })); [[22, 50], [24, 32], [36, 20], [50, 15], [64, 20], [76, 32], [78, 50]].forEach(([x, y], i) => k.push(h('circle', { key: 'puff' + i, cx: x, cy: y, r: 10, fill: hair }))); }
     k.push(h('path', { key: 'body', d: 'M8 130 C8 102 30 94 50 94 C70 94 92 102 92 130 Z', fill: c.shirt }));
+    k.push(h('path', { key: 'collar', d: 'M40 94 L50 104 L60 94 Z', fill: skin }));
     k.push(h('rect', { key: 'neck', x: 42, y: 76, width: 16, height: 20, fill: skin }));
     k.push(h('circle', { key: 'earL', cx: 28, cy: 60, r: 5, fill: skin })); k.push(h('circle', { key: 'earR', cx: 72, cy: 60, r: 5, fill: skin }));
     k.push(h('ellipse', { key: 'head', cx: 50, cy: 56, rx: 23, ry: 27, fill: skin }));
     if (v === 0) k.push(h('path', { key: 'hair', d: 'M27 54 C27 26 73 26 73 54 C66 40 34 40 27 54 Z', fill: hair }));
     if (v === 1) k.push(h('path', { key: 'hair', d: 'M27 50 C29 26 71 26 73 50 C62 38 38 38 27 50 Z', fill: hair }));
     if (v === 2) { k.push(h('path', { key: 'hair', d: 'M27 52 C27 28 73 28 73 52 C68 42 32 42 27 52 Z', fill: hair })); k.push(h('circle', { key: 'bun', cx: 50, cy: 28, r: 9, fill: hair })); }
-    if (v === 3) [30, 40, 50, 60, 70].forEach((x, i) => k.push(h('circle', { key: 'curl' + i, cx: x, cy: 34 + (i % 2) * 3, r: 8, fill: hair })));
-    k.push(h('circle', { key: 'eyeL', cx: 41, cy: 58, r: 2.4, fill: c.ink })); k.push(h('circle', { key: 'eyeR', cx: 59, cy: 58, r: 2.4, fill: c.ink }));
-    if (v === 2) { k.push(h('circle', { key: 'gL', cx: 41, cy: 58, r: 6.5, fill: 'none', stroke: c.ink, strokeWidth: 1.4 })); k.push(h('circle', { key: 'gR', cx: 59, cy: 58, r: 6.5, fill: 'none', stroke: c.ink, strokeWidth: 1.4 })); k.push(h('path', { key: 'gB', d: 'M47.5 58 L52.5 58', stroke: c.ink, strokeWidth: 1.4 })); }
-    k.push(h('path', { key: 'browL', d: 'M36 51 Q41 48 46 51', stroke: c.ink, strokeWidth: 1.6, fill: 'none', strokeLinecap: 'round' }));
-    k.push(h('path', { key: 'browR', d: 'M54 51 Q59 48 64 51', stroke: c.ink, strokeWidth: 1.6, fill: 'none', strokeLinecap: 'round' }));
-    k.push(h('path', { key: 'smile', d: 'M43 69 Q50 76 57 69', stroke: c.ink, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
-    k.push(h('circle', { key: 'chL', cx: 35, cy: 66, r: 3.5, fill: '#E8674A', opacity: .25 })); k.push(h('circle', { key: 'chR', cx: 65, cy: 66, r: 3.5, fill: '#E8674A', opacity: .25 }));
+    if (v === 3) k.push(h('path', { key: 'hairline', d: 'M27 50 C30 34 70 34 73 50 C64 42 36 42 27 50 Z', fill: hair }));
+    [41, 59].forEach((x, i) => { k.push(h('ellipse', { key: 'eyeW' + i, cx: x, cy: 58, rx: 3.6, ry: 4, fill: white })); k.push(h('circle', { key: 'eye' + i, cx: x + .6, cy: 58.6, r: 2.2, fill: ink })); k.push(h('circle', { key: 'glint' + i, cx: x + 1.4, cy: 57.4, r: .8, fill: white })); });
+    if (v === 2) { k.push(h('circle', { key: 'gL', cx: 41, cy: 58, r: 6.5, fill: 'none', stroke: ink, strokeWidth: 1.4 })); k.push(h('circle', { key: 'gR', cx: 59, cy: 58, r: 6.5, fill: 'none', stroke: ink, strokeWidth: 1.4 })); k.push(h('path', { key: 'gB', d: 'M47.5 58 L52.5 58', stroke: ink, strokeWidth: 1.4 })); }
+    k.push(h('path', { key: 'browL', d: 'M36 50 Q41 47.5 46 50', stroke: hair, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
+    k.push(h('path', { key: 'browR', d: 'M54 50 Q59 47.5 64 50', stroke: hair, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
+    k.push(h('path', { key: 'nose', d: 'M50 61 L48 66 L52 66', stroke: ink, strokeWidth: 1, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round', opacity: .5 }));
+    k.push(h('path', { key: 'smile', d: 'M44.5 70 Q50 75 55.5 70', stroke: ink, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
+    k.push(h('circle', { key: 'chL', cx: 35, cy: 66, r: 3.5, fill: '#E8674A', opacity: .22 })); k.push(h('circle', { key: 'chR', cx: 65, cy: 66, r: 3.5, fill: '#E8674A', opacity: .22 }));
     return { vb: '0 0 100 130', k };
   }
   if (kind === 'product') {

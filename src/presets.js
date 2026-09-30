@@ -276,7 +276,11 @@ function sampleFor(label, w, h, mask, P, rng, idx = 0, scene = null) {
     : h > w * 1.05 ? 'portrait' : 'landscape';
   // Offset by the frame's index so two frames in one design never draw the same person.
   const v = (Math.floor(rng() * 4) + idx) % 4;
-  const c = kind === 'portrait' ? { bg: /cutout/.test(l) ? 'none' : P.tint, halo: mix(P.accent, P.bg, .3), shirt: P.accent, ink: P.ink }
+  // The shirt must read against what the figure sits on: the tint, or for a cutout the
+  // accent stage behind it — on a gold stage a gold shirt leaves a floating neck.
+  const ground = /cutout/.test(l) ? P.accent : P.tint;
+  const shirt = [P.accent, P.accent2, P.ink, P.bg].find(x => contrast(x, ground) >= 1.8) || P.ink;
+  const c = kind === 'portrait' ? { bg: /cutout/.test(l) ? 'none' : P.tint, halo: mix(P.accent, P.bg, .3), shirt, ink: P.ink }
     : kind === 'product' ? { bg: P.tint, body: P.accent, cap: P.ink, label: P.bg, plinth: mix(P.ink, P.tint, .82) }
     : scene === 'winter' ? { sky: mix('#DCE9F5', P.accent2, .18), sun: '#F6D98A', far: '#F3F6F8', near: '#FFFFFF', tree: lum(P.accent2) < .3 ? P.accent2 : '#2F6B3A', cloud: '#FFFFFF' }
     : scene === 'night' ? { sky: mix('#0E1730', P.accent2, .22), sun: '#FFF1BF', far: mix('#0E1730', P.accent2, .42), near: mix('#0E1730', P.accent2, .58), tree: '#0A1020', cloud: '#FFFFFF' }
