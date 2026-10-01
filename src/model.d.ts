@@ -32,14 +32,60 @@ export type Theme = Record<ThemeRole, Color> & {
   pairId?: string;
 };
 
-export interface BrandKit {
+/** The four colour roles and two fonts a design is themed from. */
+export interface BrandColors {
   bg: Color;
   ink: Color;
   accent: Color;
   accent2: Color;
+}
+
+/** A saved colour scheme inside a brand. */
+export interface BrandPalette extends BrandColors {
+  id: string;
+  name: string;
+}
+
+/** A saved text style. Colours are theme roles where they matched one, else literal;
+ *  shadow offsets and blur are fractions of the font size; outlineW is for a 40 px size. */
+export interface BrandTextStyle {
+  id: string;
+  name: string;
+  custom: true;
+  font: string;
+  weight: number;
+  italic?: boolean;
+  upper?: boolean;
+  ls?: number;
+  color: ThemeRole | Color;
+  bg?: ThemeRole | Color;
+  outline?: ThemeRole | Color;
+  outlineW?: number;
+  outlineFill?: boolean;
+  shadow?: { x: number; y: number; blur: number; color: ThemeRole | Color; long?: boolean };
+  softShadow?: boolean;
+}
+
+/** What a design file records about the brand it was made with. */
+export interface BrandKit extends BrandColors {
+  id?: string;
+  name?: string;
   heading: string;
   body: string;
   logo: AssetId | null;
+}
+
+/** A brand as stored on the device and packed into a brand-kit file. Several can
+ *  coexist; one is active. `assets` is the brand's own image library (the logo is
+ *  one of them), inline in IndexedDB and written to assets/ in a kit file. */
+export interface Brand extends BrandKit {
+  id: string;
+  name: string;
+  created: number;
+  updated: number;
+  assets: Record<AssetId, Asset>;
+  palettes: BrandPalette[];
+  textStyles: BrandTextStyle[];
 }
 
 export interface BaseElement {
@@ -192,6 +238,8 @@ export interface Page {
 }
 
 export interface PinwheelDocument {
+  /** Stable identity, so the recents list updates in place as the design changes. */
+  id?: string;
   name: string;
   /** Page size in px. */
   w: number;
@@ -215,22 +263,55 @@ export interface Asset {
   alpha?: boolean;
 }
 
-/** manifest.json inside a .pinwheel zip (spec §5). */
-export interface PinwheelManifest {
+export type AssetIndex = Record<AssetId, {
+  path: string;
+  mime: string;
+  name: string;
+  bytes: number;
+  w?: number;
+  h?: number;
+}>;
+
+/** manifest.json inside a .pinwheel zip (spec §5). The file is a zip either way;
+ *  `kind` says what is in it. Version 2 added `kind`; a manifest without it is a
+ *  version-1 design. */
+export interface ManifestBase {
   format: 'pinwheel';
   version: number;
   app: string;
   created: ISODate;
   modified: ISODate;
   name: string;
+  assets: AssetIndex;
+}
+
+/** A design: document.json plus assets/ and thumbnail.png. */
+export interface DesignManifest extends ManifestBase {
+  kind?: 'design';
   size: { w: number; h: number; unit: 'px' };
   pages: number;
-  assets: Record<AssetId, {
-    path: string;
-    mime: string;
-    name: string;
-    bytes: number;
-    w?: number;
-    h?: number;
-  }>;
+}
+
+/** A brand kit: brand.json (a Brand whose assets carry no bytes) plus assets/. */
+export interface BrandManifest extends ManifestBase {
+  kind: 'brand';
+}
+
+export type PinwheelManifest = DesignManifest | BrandManifest;
+
+/** A row in the recents list (IndexedDB `recents`). The full document and assets
+ *  sit in `docs` under the same id; this record is what the home page lists and
+ *  renders a live thumbnail from, so it carries page 1 with low-res images only. */
+export interface RecentDesign {
+  id: string;
+  name: string;
+  fmt: FormatId | 'custom';
+  w: number;
+  h: number;
+  pages: number;
+  created: ISODate;
+  /** Epoch ms of the last change. The hundred newest are kept. */
+  updated: number;
+  tpl: TemplateId | null;
+  preview: { page: Page; assets: Record<AssetId, Asset> };
 }

@@ -10,10 +10,11 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test:visual": "node scripts/visual-baselines.mjs",
+    "test:browser": "node tests/browser/smoke.mjs",
     "vendor": "node scripts/vendor.mjs",
     "build:offline": "node scripts/vendor.mjs --model && VITE_VENDOR=1 vite build",
     "icons": "node scripts/make-icons.mjs",
-    "test": "node tests/suggest.test.mjs && node scripts/visual-baselines.mjs"
+    "test": "node tests/suggest.test.mjs && node tests/brand.test.mjs && node scripts/visual-baselines.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

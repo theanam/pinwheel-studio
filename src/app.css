@@ -4,9 +4,11 @@
    token from lib/tokens.css, which is what makes dark mode a palette swap. */
 @import './lib/tokens.css';
 
-html, body { margin: 0; height: 100%; background: var(--pw-app); color: var(--pw-ink); -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; height: 100%; background: var(--pw-app); color: var(--pw-ink); -webkit-font-smoothing: antialiased; overscroll-behavior: none; }
 * { box-sizing: border-box; }
 #root { height: 100%; }
+/* The shell fills the dynamic viewport, so a phone's URL bar cannot hide the tab bar. */
+.pw-root { height: 100vh; height: 100dvh; }
 
 a { color: var(--pw-accent-deep); text-decoration: none; }
 a:hover { color: var(--pw-accent-line); text-decoration: underline; }
@@ -20,6 +22,20 @@ input[type=range] { accent-color: var(--pw-accent); width: 100%; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--pw-line-strong); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+
+/* Bottom sheets on phones and tablets rise in. */
+.pw-sheet { animation: pw-up .18s ease-out; }
+@keyframes pw-up { from { transform: translateY(14px); opacity: 0; } }
+
+/* A recent design's remove button shows on hover, and always on touch screens. */
+.pw-recent .pw-recent-x { opacity: 0; transition: opacity .12s; }
+.pw-recent:hover .pw-recent-x, .pw-recent:focus-within .pw-recent-x { opacity: 1; }
+@media (pointer: coarse) {
+  .pw-recent .pw-recent-x { opacity: .9; }
+  /* Finger-sized targets for the controls that are small on a desktop. */
+  input[type=range] { height: 28px; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }

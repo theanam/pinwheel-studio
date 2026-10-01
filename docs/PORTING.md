@@ -22,7 +22,7 @@ value in the UI was retyped by hand.
 
 | Output | Script | Notes |
 |---|---|---|
-| `src/StudioView.jsx` | `node scripts/dc-to-jsx.mjs` | Template → JSX |
+| `src/StudioView.jsx` | `node scripts/dc-to-jsx.mjs` | Template → JSX. **Now hand-maintained**; see below. Re-running the script would discard the responsive shell. |
 | `src/lib/hover.css` | same script | `style-hover` attributes → real `:hover` rules |
 | `public/spec.html` | `node scripts/dc-spec-to-html.mjs` | The spec is static HTML; it only needed the wrapper removed |
 
@@ -74,6 +74,23 @@ four things differ from `_source/Pinwheel Studio.dc.html`:
    lists every family in its own face; the shared menu backdrop closes it.
 8. The Layers panel reorders by drag and drop (`layerDragStart` and friends); the
    template rows carry the drag handlers and a grip, and the arrow buttons are gone.
+9. Storage moved from `localStorage` to IndexedDB (`src/store.js`). The autosave
+   became a recents list: every design touched is kept, up to the last hundred, with
+   page 1 and low-res copies of its images so the home page can draw live
+   thumbnails. The one brand kit became many (`src/brand.js`), each with its own
+   image library, colour schemes and text styles, and a three-step brand builder
+   (`startWizard`) that reads colour kits out of a logo (`src/palette.js`).
+10. `.pinwheel` became type-aware: the manifest carries `kind: "design" | "brand"`,
+    and `openProject` returns whichever it finds. Files leave the app through
+    `io.js`'s `openSink` / `deliver`: a save dialog with a writable handle on desktop
+    Chromium (so ⌘S saves in place), the share sheet on phones, else a download.
+11. `StudioView.jsx` is no longer regenerated. It gained a responsive shell driven by
+    `Studio#layout` (phone < 720 px, tablet < 1080 px): a compact top bar with one
+    overflow menu, a bottom tab bar in place of the rail, and the flyout and
+    properties panels as bottom sheets; on tablets the flyout floats over the canvas.
+    Touch gestures live in `Studio.jsx`: one-finger pan on the page background, pinch
+    to zoom (`onCanvasPointerDownCapture`), double-tap to edit, and `drag()` follows a
+    single pointer id so a second finger cannot steer a move.
 
 `src/presets.js` has grown well past the prototype — 72 formats with safe zones and
 story arcs, 74 layouts including photo-first and occasion layouts, 31 copy packs, and
@@ -82,6 +99,16 @@ procedural sample art on every frame — and `src/render.js` draws that sample a
 
 `src/io.js` is the prototype file unchanged apart from the CDN-vs-vendor indirection
 at the top.
+
+## Browser smoke test
+
+`npm run test:browser` (`tests/browser/smoke.mjs`) drives a local headless Chrome
+over the DevTools protocol with no dependencies beyond Node: it builds a brand from a
+generated logo, checks the `.pinwheel` round trips for designs and kits, fills the
+recents list past its cap, and exercises the phone layout with touch drags and a
+pinch. It needs the dev server running and writes screenshots to
+`tests/browser/shots/`. In development the editor instance is exposed as
+`window.__studio` for it.
 
 ## Things the spec calls for that are not built yet
 
@@ -92,7 +119,5 @@ at the top.
   element model instead — deterministic, no browser, and it catches the same layout
   regressions without committing hundreds of PNGs. Pixel diffs would need a headless
   browser in CI.
-- **IndexedDB autosave.** Autosave writes to `localStorage` and skips assets past
-  ~4.5 MB, which is what the prototype does; spec §11 wants IndexedDB in production.
 - **Accessible layer tree** for canvas elements, and everything marked v1.1+ in the
   spec (animation, vector PDF, high-detail matting).

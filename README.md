@@ -21,6 +21,8 @@ templates. No account, no server, no uploads: your files never leave your machin
   original assets. Easy to share, diff, archive and open again later.
 - **Installable and offline.** It is a PWA: install it to your dock, open it without a
   connection, and double-click `.pinwheel` files to open them in the studio.
+- **Works on a phone.** The same app on a phone or tablet: the panels become bottom
+  sheets, you drag and pinch on the canvas, and exports go to the share sheet.
 - **Free to use, free to build on.** The app is MIT licensed and the presets are CC0,
   so designs you make from them are yours, with no attribution required.
 
@@ -36,8 +38,9 @@ templates. No account, no server, no uploads: your files never leave your machin
 | **Background removal** | One click, on your device, using an on-device neural network. The original is kept so you can restore it. |
 | **Layout** | Snapping to page and element edges, alignment, grouping, box select, a layers panel with drag to reorder, hide and lock, and 150 steps of undo. |
 | **Charts and QR codes** | Bar, line, pie and donut charts from a few lines of data, and QR codes for links. |
-| **Brand kit** | Four colours, two fonts and a logo, saved on your device and applied to any design in one click. |
-| **Export** | Multi-page PDF, PNG, JPG and SVG, with fonts embedded, at standard, high or print resolution. |
+| **Brands** | As many brand kits as you like, switched from the home page. Each holds four colours, two fonts, a logo, saved colour schemes, saved text styles and a library of images that stay on your device. Build one from a logo: the studio reads its colours and offers several kits to pick from. Download a brand as one `.pinwheel` file and open it on another device. |
+| **Recents** | The last 100 designs you touched, saved or not, with live thumbnails on the home page. Kept on your device until you clear the browser's site data. |
+| **Export** | Multi-page PDF, PNG, JPG and SVG, with fonts embedded, at standard, high or print resolution. On desktop Chrome and Edge a real save dialog, and Save writes back to the file you opened; on phones the share sheet; elsewhere a download. |
 
 The full product and technical spec is at [pinwheelstudio.org/spec.html](https://pinwheelstudio.org/spec.html).
 
@@ -80,14 +83,27 @@ PNG or SVG is self-contained.
 
 ## The `.pinwheel` file
 
-A `.pinwheel` file is a zip:
+A `.pinwheel` file is a zip, and the manifest says what kind of thing is inside. A
+design:
 
 ```
-manifest.json     format version, size, page count, asset index
+manifest.json     format, kind "design", version, size, page count, asset index
 document.json     the document: pages, elements, theme
 assets/           the original images, by id
 thumbnail.png     a preview of the first page
 ```
+
+A brand kit, as downloaded from the Brand panel:
+
+```
+manifest.json     format, kind "brand", version, asset index
+brand.json        colours, fonts, logo id, colour schemes, text styles
+assets/           the logo and every image saved to the brand
+```
+
+Opening either kind, from the Open button, a double-click or a drop onto the home
+page, does the right thing: a design opens in the editor, a brand kit is added to
+your brands. Files without a `kind` are version-1 designs.
 
 The document model is declared in [`src/model.d.ts`](src/model.d.ts). Coordinates are
 CSS pixels in page space, elements are a flat list per page in z-order, and every
@@ -102,18 +118,24 @@ src/
   render.js      Element model → React tree. The canvas, the gallery thumbnails
                  and every export go through it, so what you see is what you export.
   io.js          Export pipeline, .pinwheel pack and unpack, image import,
-                 on-device background removal.
+                 on-device background removal, and how files leave the app
+                 (save dialog, share sheet or download).
+  store.js       IndexedDB: recent designs, brands and settings.
+  brand.js       Brand kits as data: defaults, migration, the kit file shape.
+  palette.js     Colour kits from a logo's pixels. Pure.
   Studio.jsx     The editor: state, history, selection, pointer gestures,
                  snapping and panels. The only stateful module.
-  StudioView.jsx Presentation only, generated from the design prototype.
+  StudioView.jsx Presentation only. Started as output from the design prototype
+                 and is now maintained by hand.
   model.d.ts     The document model and .pinwheel manifest as types.
 ```
 
-Dependencies run one way: `presets → render → io → editor`. The first two never
-touch the DOM, which is what lets the template checks run in Node without a browser.
+Dependencies run one way: `presets → render → io → editor`. The first two, and
+`brand.js` and `palette.js`, never touch the DOM, which is what lets the template
+checks and the brand tests run in Node without a browser.
 
-`StudioView.jsx` and `public/spec.html` are generated from the design prototype in
-`_source/`; see [`docs/PORTING.md`](docs/PORTING.md) before editing them by hand. UI
+`public/spec.html` is generated from the design prototype in `_source/`, and
+`StudioView.jsx` started that way; see [`docs/PORTING.md`](docs/PORTING.md). UI
 colours are tokens from `scripts/ui-tokens.js`, which is how dark mode is a palette
 swap.
 
@@ -124,7 +146,8 @@ swap.
 | `npm run dev` | Development server on port 5185 |
 | `npm run build` | Production build into `dist/`, with the PWA manifest and service worker |
 | `npm run preview` | Serve the production build locally |
-| `npm test` | Suggestion-ranking tests and the template baselines |
+| `npm test` | Suggestion-ranking tests, brand and palette tests, and the template baselines |
+| `npm run test:browser` | Drives headless Chrome through the home page, brand builder, recents, and the phone and tablet layouts (needs the dev server and a local Chrome) |
 | `npm run typecheck` | `tsc --noEmit` against the model declarations |
 | `npm run build:offline` | Vendor every third-party file and build with no external hosts |
 | `npm run icons` | Regenerate the brand mark and PWA icons |

@@ -8,17 +8,25 @@ import React from 'react';
 import StudioView from './StudioView.jsx';
 import './lib/hover.css';
 
+let firstBrand = null;
+
 export default class Studio extends React.Component {
   state = {
     ready: false, loadError: null, screen: 'home', doc: null, assets: {}, uploads: [], sel: [], page: 0, zoom: .5,
     panel: 'templates', editingId: null, guides: [], marquee: null, hoverId: null, dragInfo: null,
     galCat: 'All', galOcc: null, galQ: '', galLimit: 48, tplQ: '', tplSame: true, tplLimit: 24, menu: null, busy: null, toast: null,
     cropMode: false, exportScale: 2, relayout: true,
-    brand: { bg: '#FBF7F0', ink: '#1F1B16', accent: '#1F7D62', accent2: '#2F6F73', heading: 'DM Serif Display', body: 'DM Sans', logo: null },
-    hasAutosave: false, autosaveName: '', customW: 1080, customH: 1080, fmtsAll: false,
+    brand: { bg: '#FBF7F0', ink: '#1F1B16', accent: '#1F7D62', accent2: '#2F6F73', heading: 'DM Serif Display', body: 'DM Sans', logo: null, assets: {}, palettes: [], textStyles: [] },
+    brands: [], recents: [], recentsAll: false, wiz: null, propsOpen: false, phoneMenu: null,
+    customW: 1080, customH: 1080, fmtsAll: false,
     helpOpen: false, layerDrag: null, layerOver: null, fontQ: '', fontCat: 'all', fontAnchor: null,
+    vw: typeof window !== 'undefined' ? window.innerWidth : 1280,
     theme: (() => { try { return localStorage.getItem('pinwheel.theme') || 'system'; } catch (e) { return 'system'; } })()
   };
+  // Responsive breakpoints. Phones get a single column with bottom sheets, tablets
+  // keep the rail but the flyout floats over the canvas, desktops get three columns.
+  get layout() { const w = this.state.vw; return w < 720 ? 'phone' : w < 1080 ? 'tablet' : 'desktop'; }
+  get coarse() { return typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches; }
   hist = []; fut = []; thumbCache = new Map(); builtCache = new Map(); clip = null;
   CORAL = 'var(--pw-accent-line)';
   /** Resolved value of a UI token, for the few places that need a literal (SVG fills). */
@@ -46,8 +54,8 @@ export default class Studio extends React.Component {
   /** Resolve a text style's roles against the document theme at a given size. */
   styleProps(sty, size) {
     const t = this.state.doc.theme, role = c => ({ ink: t.ink, bg: t.bg, accent: t.accent, accent2: t.accent2, onAccent: t.onAccent, muted: t.muted }[c] || c);
-    const sh = sty.shadow ? { x: Math.round(sty.shadow.x * size), y: Math.round(sty.shadow.y * size), blur: Math.round(sty.shadow.blur * size), color: role(sty.shadow.color), ...(sty.shadow.long ? { long: true } : {}) } : null;
-    return { font: sty.font, weight: sty.weight, italic: false, upper: !!sty.upper, ls: sty.ls || 0, color: role(sty.color), bg: sty.bg ? role(sty.bg) : null, outline: sty.outline ? role(sty.outline) : null, outlineW: sty.outlineW ? Math.max(1, Math.round(sty.outlineW * size / 40 * 10) / 10) : undefined, outlineFill: !!sty.outlineFill, shadow: sh };
+    const sh = sty.shadow ? { x: Math.round(sty.shadow.x * size), y: Math.round(sty.shadow.y * size), blur: Math.round(sty.shadow.blur * size), color: role(sty.shadow.color), ...(sty.shadow.long ? { long: true } : {}) } : sty.softShadow ? true : null;
+    return { font: sty.font, weight: sty.weight, italic: !!sty.italic, upper: !!sty.upper, ls: sty.ls || 0, color: role(sty.color), bg: sty.bg ? role(sty.bg) : null, outline: sty.outline ? role(sty.outline) : null, outlineW: sty.outlineW ? Math.max(1, Math.round(sty.outlineW * size / 40 * 10) / 10) : undefined, outlineFill: !!sty.outlineFill, shadow: sh };
   }
   applyTextStyle(sty) {
     const d = this.state.doc, sel = this.selEls().filter(e => e.type === 'text');
@@ -59,6 +67,7 @@ export default class Studio extends React.Component {
   setImgInput = n => { this.imgInput = n; };
   setFileInput = n => { this.fileInput = n; };
   setLogoInput = n => { this.logoInput = n; };
+  setBrandAssetInput = n => { this.brandAssetInput = n; };
 
   // 'system' follows prefers-color-scheme; 'light' / 'dark' pin it via data-theme.
   applyTheme(t) { const r = document.documentElement; if (t === 'system') delete r.dataset.theme; else r.dataset.theme = t; }
@@ -67,36 +76,141 @@ export default class Studio extends React.Component {
   stopClick = e => e.stopPropagation();
   toggleTheme = () => { const t = this.isDark() ? 'light' : 'dark'; try { localStorage.setItem('pinwheel.theme', t); } catch (e) { } this.applyTheme(t); this.setState({ theme: t }); };
   componentDidMount() {
+    if (import.meta.env.DEV) window.__studio = this; // for the browser smoke tests
     this.applyTheme(this.state.theme);
     this._mq = matchMedia('(prefers-color-scheme: dark)'); this._mqFn = () => this.forceUpdate(); this._mq.addEventListener('change', this._mqFn);
     this._key = e => this.onKey(e); window.addEventListener('keydown', this._key);
     this._paste = e => this.onPaste(e); window.addEventListener('paste', this._paste);
-    this._rs = () => { clearTimeout(this._rst); this._rst = setTimeout(() => this.state.screen === 'editor' && this.fitZoom(), 150); }; window.addEventListener('resize', this._rs);
+    this._rs = () => { const vw = window.innerWidth; if (vw !== this.state.vw) this.setState({ vw }); clearTimeout(this._rst); this._rst = setTimeout(() => this.state.screen === 'editor' && this.fitZoom(), 150); }; window.addEventListener('resize', this._rs);
+    this._bu = () => this.flushAutosave(); window.addEventListener('pagehide', this._bu);
     // Spec §5: the PWA registers a .pinwheel file handler, so opening a file from the
     // OS launches the studio with that file.
     if ('launchQueue' in window && 'LaunchParams' in window && 'files' in window.LaunchParams.prototype) {
-      window.launchQueue.setConsumer(async ({ files }) => { if (files && files.length) this.openProjectFile(await files[0].getFile()); });
+      window.launchQueue.setConsumer(async ({ files }) => { if (files && files.length) this.openProjectFile(await files[0].getFile(), files[0]); });
     }
-    Promise.all([import('./presets.js'), import('./render.js'), import('./io.js'), import('./suggest.js')]).then(([P, R, IO, S]) => {
-      this.P = P; this.R = R; this.IO = IO; this.S = S;
+    Promise.all([import('./presets.js'), import('./render.js'), import('./io.js'), import('./suggest.js'), import('./store.js'), import('./brand.js'), import('./palette.js')]).then(async ([P, R, IO, S, DB, B, PAL]) => {
+      this.P = P; this.R = R; this.IO = IO; this.S = S; this.DB = DB; this.B = B; this.PAL = PAL;
       this.profile = S.loadProfile(); this._pv = 0; this._rankCache = new Map();
       // The renderer reads window.qrcode synchronously; pull it in now and repaint.
       IO.lib('qr').then(() => this.forceUpdate()).catch(() => { });
       P.FONTS.forEach(f => { const href = P.fontURL(f); if (document.querySelector(`link[href="${href}"]`)) return; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; l.crossOrigin = 'anonymous'; document.head.appendChild(l); });
-      let has = false, name = '', brand = null;
-      try { const a = localStorage.getItem('pinwheel.autosave'); if (a) { has = true; name = JSON.parse(a).doc.name; } brand = JSON.parse(localStorage.getItem('pinwheel.brand') || 'null'); } catch (e) { }
       P.catalog();
-      this.setState({ ready: true, hasAutosave: has, autosaveName: name, brand: brand || this.state.brand }, () => {
-        if (this._pendingFile) { const f = this._pendingFile; this._pendingFile = null; this.openProjectFile(f); }
+      const { brands, brand } = await this.loadBrands();
+      await this.migrateLocalStorage(brand);
+      const recents = await this.loadRecents();
+      this.setState({ ready: true, brands, brand, recents, assets: { ...this.state.assets, ...brand.assets } }, () => {
+        if (this._pendingFile) { const [f, h] = this._pendingFile; this._pendingFile = null; this.openProjectFile(f, h); }
         else if (this.props.startScreen === 'editor') this.newDoc('ig-post');
       });
     }).catch(err => { console.error(err); this.setState({ loadError: String(err) }); });
   }
-  componentWillUnmount() { this._mq.removeEventListener('change', this._mqFn); window.removeEventListener('keydown', this._key); window.removeEventListener('paste', this._paste); window.removeEventListener('resize', this._rs); }
+  componentWillUnmount() { this._mq.removeEventListener('change', this._mqFn); window.removeEventListener('keydown', this._key); window.removeEventListener('paste', this._paste); window.removeEventListener('resize', this._rs); window.removeEventListener('pagehide', this._bu); }
   componentDidUpdate(pp, ps) {
     if (this.state.doc && this.state.doc !== ps.doc) { this.scheduleMeasure(); this.scheduleAutosave(); }
-    if (this.state.brand !== ps.brand) try { localStorage.setItem('pinwheel.brand', JSON.stringify(this.state.brand)); } catch (e) { }
+    if (this.state.brand !== ps.brand && this.state.ready) this.saveBrandSoon();
   }
+
+  /* ---------- storage: brands ---------- */
+  // Several brands live side by side in IndexedDB; one is active. The active brand's
+  // assets are merged into the editor's asset table so its logo and images can be
+  // placed like any upload.
+  async loadBrands() {
+    const B = this.B, DB = this.DB; let brands = [];
+    try { brands = (await DB.listBrands()).map(B.migrateBrand); } catch (e) { console.warn('Could not read brands', e); }
+    if (!brands.length) {
+      // First run on this device: the v1 kit in localStorage becomes the first brand.
+      // Single-flight, because a development double-mount boots twice at once.
+      firstBrand ||= (async () => {
+        let old = null; try { old = JSON.parse(localStorage.getItem('pinwheel.brand') || 'null'); } catch (e) { }
+        const b = B.migrateBrand(old ? { ...old, logo: null } : null);
+        try { await DB.putBrand(b); localStorage.removeItem('pinwheel.brand'); } catch (e) { }
+        return b;
+      })();
+      brands = [await firstBrand];
+    }
+    let id = null; try { id = await DB.getKV('brandId'); } catch (e) { }
+    const brand = brands.find(b => b.id === id) || brands[0];
+    return { brands, brand };
+  }
+  async migrateLocalStorage() {
+    try {
+      const a = JSON.parse(localStorage.getItem('pinwheel.autosave') || 'null');
+      if (a && a.doc) { const doc = a.doc; if (!doc.id) doc.id = this.B.bid('d'); await this.writeRecent(doc, a.assets || {}); }
+      localStorage.removeItem('pinwheel.autosave');
+    } catch (e) { }
+  }
+  saveBrandSoon() { clearTimeout(this._bt); this._bt = setTimeout(() => { const b = this.state.brand; this.DB.putBrand(b).catch(e => console.warn('Could not save brand', e)); this.DB.setKV('brandId', b.id).catch(() => { }); }, 400); }
+  /** Shallow update of the active brand, mirrored into the brands list. */
+  setBrand(patch) { this.setState(s => { const b = { ...s.brand, ...patch, updated: Date.now() }; return { brand: b, brands: s.brands.map(x => x.id === b.id ? b : x) }; }); }
+  activateBrand = id => { const b = this.state.brands.find(x => x.id === id); if (!b) return; this.setState(s => ({ brand: b, assets: { ...s.assets, ...b.assets }, menu: null })); this.DB.setKV('brandId', id).catch(() => { }); };
+  createBrand(partial) { const b = this.B.newBrand(partial); this.setState(s => ({ brands: [...s.brands, b], brand: b, assets: { ...s.assets, ...b.assets } }), () => this.saveBrandSoon()); return b; }
+  renameBrand = () => { const n = prompt('Brand name', this.state.brand.name); if (n && n.trim()) this.setBrand({ name: n.trim() }); };
+  duplicateBrand = () => { const { id, ...rest } = structuredClone(this.state.brand); this.createBrand({ ...rest, name: rest.name + ' copy', created: Date.now() }); this.toast('Brand duplicated'); };
+  deleteBrand = () => {
+    const b = this.state.brand; if (!confirm(`Delete the brand “${b.name}”? Its saved images, colour schemes and text styles go with it.`)) return;
+    this.setState(s => { const brands = s.brands.filter(x => x.id !== b.id); const next = brands[0] || this.B.newBrand(); return { brands: brands.length ? brands : [next], brand: next, assets: { ...s.assets, ...next.assets }, menu: null }; }, () => { this.DB.deleteBrand(b.id).catch(() => { }); this.saveBrandSoon(); });
+  };
+  /** A kit opened from a .pinwheel file: replaces a brand with the same id, else is added. */
+  importBrandKit(json, assets) {
+    const b = this.B.brandFromKit(json, assets);
+    this.setState(s => { const exists = s.brands.some(x => x.id === b.id); if (exists && !confirm(`Replace the brand “${b.name}” with the one in this file?`)) return null; return { brands: exists ? s.brands.map(x => x.id === b.id ? b : x) : [...s.brands, b], brand: b, assets: { ...s.assets, ...b.assets }, menu: null, wiz: null }; }, () => { this.saveBrandSoon(); this.toast('Imported brand kit “' + b.name + '”'); });
+  }
+  exportBrandKit = async () => {
+    const b = this.state.brand, name = this.IO.safe(b.name) + '-brand-kit.pinwheel';
+    const sink = await this.IO.openSink(name, this.IO.TYPES.pinwheel); if (sink === 'cancel') return;
+    this.setState({ busy: 'Packing brand kit…', menu: null, phoneMenu: null });
+    try { const blob = await this.IO.packBrandKit(b, this.B.brandForKit(b)); if (sink) await sink.write(blob); else await this.IO.deliver(blob, name, b.name + ' brand kit'); this.toast('Brand kit ready'); }
+    catch (err) { console.error(err); this.toast('Could not pack the brand kit — ' + (err.message || err)); }
+    this.setState({ busy: null });
+  };
+  // Brand assets persist with the brand; the logo is one of them.
+  onBrandAssetFile = async e => {
+    const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+    this.setState({ busy: 'Adding to brand…' });
+    try { for (const f of files) { const r = await this.IO.readImageFile(f); const id = 'a' + this.P.nid(); this.setState(s => ({ assets: { ...s.assets, [id]: r } })); this.setBrand({ assets: { ...this.state.brand.assets, [id]: r }, logo: this._assetFor === 'logo' ? id : this.state.brand.logo }); } }
+    catch (err) { this.toast('Could not read that image'); }
+    this._assetFor = null; this.setState({ busy: null });
+  };
+  pickBrandAsset = kind => { this._assetFor = kind; this.brandAssetInput && this.brandAssetInput.click(); };
+  removeBrandAsset(id) { const b = this.state.brand; const assets = { ...b.assets }; delete assets[id]; this.setBrand({ assets, logo: b.logo === id ? null : b.logo }); }
+  savePaletteToBrand = () => { const t = this.state.doc.theme; const n = this.state.brand.palettes.length + 1; this.setBrand({ palettes: [...this.state.brand.palettes, this.B.paletteFrom(t, 'Scheme ' + n)] }); this.toast('Colour scheme saved to brand'); };
+  saveTextStyleToBrand = () => {
+    const el = this.selEls().find(e => e.type === 'text'); if (!el) return this.toast('Select some text first');
+    const n = this.state.brand.textStyles.length + 1; this.setBrand({ textStyles: [...this.state.brand.textStyles, this.B.textStyleFrom(el, this.state.doc.theme, 'Style ' + n)] }); this.toast('Text style saved to brand');
+  };
+
+  /* ---------- storage: recents ---------- */
+  // Every design the user touches is kept, saved or not, up to the last hundred.
+  // The list record carries page 1 with low-res copies of its images so the home
+  // page can draw live thumbnails without loading whole documents.
+  async loadRecents() { try { const recents = await this.DB.listRecents(); this.setState({ recents }); return recents; } catch (e) { console.warn('Could not read recents', e); return []; } }
+  async lowResFor(id, a) {
+    this._lr ||= new Map(); const key = id + '|' + a.src.length;
+    if (!this._lr.has(key)) this._lr.set(key, await this.IO.lowRes(a.src, 200, a.alpha));
+    return this._lr.get(key);
+  }
+  async writeRecent(doc, assets) {
+    const used = {}; doc.pages.forEach(p => { if (p.bgAsset && assets[p.bgAsset]) used[p.bgAsset] = assets[p.bgAsset]; p.els.forEach(e => { if (e.asset && assets[e.asset]) used[e.asset] = assets[e.asset]; if (e.origAsset && assets[e.origAsset]) used[e.origAsset] = assets[e.origAsset]; }); });
+    const p1 = doc.pages[0], thumbs = {};
+    for (const id of Object.keys(used)) { if (p1.bgAsset === id || p1.els.some(e => e.asset === id)) thumbs[id] = { ...used[id], src: await this.lowResFor(id, used[id]) }; }
+    const meta = { id: doc.id, name: doc.name, fmt: doc.fmt, w: doc.w, h: doc.h, pages: doc.pages.length, created: doc.created, updated: Date.now(), tpl: doc.tpl || null, preview: { page: p1, assets: thumbs } };
+    await this.DB.putRecent(meta, { id: doc.id, doc, assets: used });
+    return meta;
+  }
+  scheduleAutosave() { clearTimeout(this._as); this._as = setTimeout(() => this.flushAutosave(), 1200); }
+  flushAutosave() {
+    clearTimeout(this._as); const { doc, assets } = this.state; if (!doc || !doc.id) return Promise.resolve();
+    if (!doc.pages.some(p => p.els.length)) return Promise.resolve();
+    return (this._asp = (this._asp || Promise.resolve()).then(() => this.writeRecent(doc, assets)).catch(e => console.warn('Autosave failed', e)));
+  }
+  openRecent = async id => {
+    this.setState({ busy: 'Opening…' });
+    try { const r = await this.DB.getRecentDoc(id); if (!r) throw new Error('That design is no longer stored'); this.fileHandle = null; this.openDoc(r.doc, r.assets || {}); }
+    catch (err) { this.toast(err.message || 'Could not open that design'); await this.loadRecents(); }
+    this.setState({ busy: null });
+  };
+  deleteRecent = async id => { await this.DB.deleteRecent(id).catch(() => { }); this.setState(s => ({ recents: s.recents.filter(r => r.id !== id) })); };
+  clearRecents = async () => { if (!confirm('Remove all recent designs from this device? Files you saved are not affected.')) return; await this.DB.clearRecents().catch(() => { }); this.setState({ recents: [] }); };
 
   /* ---------- infra ---------- */
   // Suggestions: what the gallery shows before anyone asks, and in what order. See
@@ -133,17 +247,6 @@ export default class Studio extends React.Component {
       if (fixes.length) this.setState(s => { const doc = structuredClone(s.doc); fixes.forEach(([pi, id, hh]) => { const e = doc.pages[pi] && doc.pages[pi].els.find(x => x.id === id); if (e) e.h = hh; }); return { doc }; });
     });
   }
-  scheduleAutosave() {
-    clearTimeout(this._as);
-    this._as = setTimeout(() => {
-      try {
-        const { doc, assets } = this.state; const used = {};
-        doc.pages.forEach(p => p.els.forEach(e => { if (e.asset && assets[e.asset]) used[e.asset] = assets[e.asset]; }));
-        let s = JSON.stringify({ doc, assets: used }); if (s.length > 4.5e6) s = JSON.stringify({ doc, assets: {} });
-        localStorage.setItem('pinwheel.autosave', s);
-      } catch (e) { }
-    }, 1200);
-  }
   reId(els) { const gm = {}; return els.map(e => { const n = structuredClone(e); n.id = this.P.nid(); if (n.groupId) n.groupId = gm[n.groupId] ||= this.P.nid(); return n; }); }
 
   /* ---------- documents ---------- */
@@ -151,23 +254,25 @@ export default class Studio extends React.Component {
   newDoc(fmtId, w, h) {
     this.note('format', fmtId, 1);
     const f = this.P.FORMAT[fmtId]; const W = f ? f.w : Math.max(16, Math.min(8000, w | 0)), H = f ? f.h : Math.max(16, Math.min(8000, h | 0));
+    this.fileHandle = null;
     this.openDoc({ name: 'Untitled ' + (f ? f.name : 'design'), w: W, h: H, fmt: f ? f.id : 'custom', theme: this.brandTheme(), created: new Date().toISOString(), pages: [{ id: this.P.nid(), bg: 'var(--pw-surface)', els: [] }] }, {});
   }
   openDoc(doc, assets) {
-    this.hist = []; this.fut = [];
-    this.setState(s => ({ screen: 'editor', doc, assets: { ...s.assets, ...assets }, uploads: [...new Set([...s.uploads, ...Object.keys(assets)])], sel: [], page: 0, editingId: null, cropMode: false, menu: null, tplSame: true, tplLimit: 24 }), () => { setTimeout(() => this.fitZoom(), 40); this.ensureAlpha(assets); });
+    this.hist = []; this.fut = []; if (!doc.id) doc.id = this.B.bid('d');
+    const brandIds = new Set(Object.keys(this.state.brand.assets || {}));
+    this.setState(s => ({ screen: 'editor', doc, assets: { ...s.assets, ...assets }, uploads: [...new Set([...s.uploads, ...Object.keys(assets).filter(id => !brandIds.has(id))])], sel: [], page: 0, editingId: null, cropMode: false, menu: null, phoneMenu: null, propsOpen: false, tplSame: true, tplLimit: 24 }), () => { setTimeout(() => this.fitZoom(), 40); this.ensureAlpha(assets); this.scheduleAutosave(); });
   }
+  goHome = () => { this.flushAutosave().then(() => this.loadRecents()); this.setState({ screen: 'home', sel: [], editingId: null, menu: null, phoneMenu: null, propsOpen: false, wiz: null }); };
   // Assets restored from an autosave written before alpha detection existed.
   ensureAlpha(assets) { Object.entries(assets).forEach(([id, a]) => { if (!a || a.alpha !== undefined || !a.src) return; this.IO.hasAlpha(a.src).then(v => this.setState(s => s.assets[id] ? { assets: { ...s.assets, [id]: { ...s.assets[id], alpha: v } } } : null)); }); }
   fromTemplate(desc) {
-    this.note('topic', desc.topic, 1.5); this.note('format', desc.fmt, 1); const b = this.P.build(desc); b.created = new Date().toISOString(); this.openDoc(b, {}); }
+    this.note('topic', desc.topic, 1.5); this.note('format', desc.fmt, 1); const b = this.P.build(desc); b.created = new Date().toISOString(); this.fileHandle = null; this.openDoc(b, {}); }
   applyTemplate(desc) {
     const b = this.P.build(desc); this.pushHist();
     this.setState(s => ({ doc: { ...s.doc, w: b.w, h: b.h, fmt: b.fmt, tpl: b.tpl, theme: b.theme, pages: b.pages, name: s.doc.name.startsWith('Untitled') ? b.name : s.doc.name }, sel: [], page: 0, editingId: null }), () => setTimeout(() => this.fitZoom(), 30));
   }
-  fitZoom = () => { const n = this.canvasEl, d = this.state.doc; if (!n || !d) return; const z = Math.min((n.clientWidth - 100) / d.w, (n.clientHeight - 110) / d.h, 3); this.setState({ zoom: Math.max(.04, Math.floor(z * 100) / 100) }); };
+  fitZoom = () => { const n = this.canvasEl, d = this.state.doc; if (!n || !d) return; const ph = this.layout === 'phone'; const z = Math.min((n.clientWidth - (ph ? 32 : 100)) / d.w, (n.clientHeight - (ph ? 70 : 110)) / d.h, 3); this.setState({ zoom: Math.max(.04, Math.floor(z * 100) / 100) }); };
   setZoom(z) { this.setState({ zoom: Math.max(.04, Math.min(4, Math.round(z * 100) / 100)) }); }
-  resumeAutosave = () => { try { const a = JSON.parse(localStorage.getItem('pinwheel.autosave')); this.openDoc(a.doc, a.assets || {}); } catch (e) { this.toast('Could not restore the autosave'); } };
   resizeDoc(fid) {
     const f = this.P.FORMAT[fid]; if (!f) return; const d = this.state.doc; this.setState({ menu: null });
     if (this.state.relayout && d.tpl) {
@@ -291,11 +396,36 @@ export default class Studio extends React.Component {
 
   /* ---------- pointer ---------- */
   toPage(e, pid) { const n = document.querySelector(`[data-page-node="${pid}"]`); const r = n.getBoundingClientRect(); const z = this.state.zoom; return { x: (e.clientX - r.left) / z, y: (e.clientY - r.top) / z }; }
-  drag(move, up) { const mm = ev => move(ev); const uu = ev => { window.removeEventListener('pointermove', mm); window.removeEventListener('pointerup', uu); up && up(ev); }; window.addEventListener('pointermove', mm); window.addEventListener('pointerup', uu); }
+  // Gestures follow one pointer: a second finger (a pinch) must not steer a drag.
+  drag(move, up, e) {
+    const pid = e ? e.pointerId : null; const mm = ev => { if (pid == null || ev.pointerId === pid) move(ev); };
+    const uu = ev => { if (pid != null && ev.pointerId !== pid) return; window.removeEventListener('pointermove', mm); window.removeEventListener('pointerup', uu); window.removeEventListener('pointercancel', uu); up && up(ev); };
+    window.addEventListener('pointermove', mm); window.addEventListener('pointerup', uu); window.addEventListener('pointercancel', uu);
+  }
+  // Pinch to zoom on touch screens. The canvas container sees every pointer first;
+  // with two down, their distance drives the zoom and any element drag is left alone.
+  onCanvasPointerDownCapture = e => {
+    if (e.pointerType !== 'touch') return;
+    this._pts ||= new Map(); this._pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this._pts.size === 2) {
+      const [a, b] = [...this._pts.values()]; this._pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), z0: this.state.zoom }; this._dragging = true;
+      if (!this._pinchMove) {
+        this._pinchMove = ev => { const p = this._pts.get(ev.pointerId); if (!p || !this._pinch) return; p.x = ev.clientX; p.y = ev.clientY; if (this._pts.size < 2) return; const [m, n] = [...this._pts.values()]; const d = Math.hypot(m.x - n.x, m.y - n.y); cancelAnimationFrame(this._pz); this._pz = requestAnimationFrame(() => this.setZoom(this._pinch.z0 * d / this._pinch.d0)); };
+        this._pinchUp = ev => { this._pts.delete(ev.pointerId); if (this._pts.size < 2) { this._pinch = null; this._dragging = false; } if (!this._pts.size) { window.removeEventListener('pointermove', this._pinchMove); window.removeEventListener('pointerup', this._pinchUp); window.removeEventListener('pointercancel', this._pinchUp); this._pinchOn = false; } };
+      }
+      if (!this._pinchOn) { this._pinchOn = true; window.addEventListener('pointermove', this._pinchMove); window.addEventListener('pointerup', this._pinchUp); window.addEventListener('pointercancel', this._pinchUp); }
+    }
+    const rm = ev => { if (ev.pointerId !== e.pointerId) return; window.removeEventListener('pointerup', rm); window.removeEventListener('pointercancel', rm); if (!this._pinchOn) this._pts.delete(e.pointerId); };
+    window.addEventListener('pointerup', rm); window.addEventListener('pointercancel', rm);
+  };
   pageIdxOf(id) { return this.state.doc.pages.findIndex(p => p.els.some(e => e.id === id)); }
   onElDown = (e, el) => {
     if (e.button !== 0) return; e.stopPropagation();
     if (this.state.editingId === el.id) return;
+    if (this._pinch) return;
+    // Touch screens do not send dblclick reliably: a second tap on the same element
+    // within 350 ms edits it (text), toggles crop (image) or picks a file (frame).
+    if (e.pointerType === 'touch') { const now = Date.now(); if (this._tapId === el.id && now - this._tapT < 350) { this._tapT = 0; this.onElDbl(e, el); return; } this._tapId = el.id; this._tapT = now; }
     const pi = this.pageIdxOf(el.id); const page = this.state.doc.pages[pi];
     const grp = el.groupId ? page.els.filter(x => x.groupId === el.groupId).map(x => x.id) : [el.id];
     let sel = pi === this.state.page ? this.state.sel : [];
@@ -318,6 +448,7 @@ export default class Studio extends React.Component {
     const snapOn = this.props.snapping ?? true, thrPx = this.props.snapThreshold ?? 6;
     let moved = false;
     this.drag(ev => {
+      if (this._pinch) return;
       let dx = (ev.clientX - sx) / z, dy = (ev.clientY - sy) / z;
       if (!moved && Math.hypot(dx, dy) * z < 3) return;
       if (!moved) { moved = true; this._dragging = true; this.pushHist(); }
@@ -329,11 +460,11 @@ export default class Studio extends React.Component {
         const by = best([bb0.y + dy, bb0.y + dy + bb0.h / 2, bb0.y + dy + bb0.h], vy); if (by) { dy += by.d; guides.push({ y: by.v }); }
       }
       this.setState(s => { const doc = structuredClone(s.doc); const p = doc.pages[pi]; start.forEach(st => { const el = p.els.find(x => x.id === st.id); if (el) { el.x = Math.round(st.x + dx); el.y = Math.round(st.y + dy); } }); return { doc, guides, dragInfo: `${Math.round(bb0.x + dx)}, ${Math.round(bb0.y + dy)}` }; });
-    }, () => { this._dragging = false; this.setState({ guides: [], dragInfo: null }); });
+    }, () => { this._dragging = false; this.setState({ guides: [], dragInfo: null }); }, e);
   }
   startCropPan(e, el) {
     const sx = e.clientX, sy = e.clientY, z = this.state.zoom, c0 = { cx: el.cx ?? 50, cy: el.cy ?? 50 }; this.pushHist();
-    this.drag(ev => { const dx = (ev.clientX - sx) / z, dy = (ev.clientY - sy) / z; const k = 100 / Math.max(40, Math.min(el.w, el.h)) / (el.zoom || 1); this.setDoc((d, p) => { const x = p.els.find(q => q.id === el.id); x.cx = Math.max(0, Math.min(100, c0.cx - dx * k)); x.cy = Math.max(0, Math.min(100, c0.cy - dy * k)); }, false); });
+    this.drag(ev => { const dx = (ev.clientX - sx) / z, dy = (ev.clientY - sy) / z; const k = 100 / Math.max(40, Math.min(el.w, el.h)) / (el.zoom || 1); this.setDoc((d, p) => { const x = p.els.find(q => q.id === el.id); x.cx = Math.max(0, Math.min(100, c0.cx - dx * k)); x.cy = Math.max(0, Math.min(100, c0.cy - dy * k)); }, false); }, null, e);
   }
   startResize(e, dir) {
     e.stopPropagation(); e.preventDefault();
@@ -358,7 +489,7 @@ export default class Studio extends React.Component {
           else { x.w = Math.round(nw); x.h = Math.round(nh); }
           x.x = Math.round(ncx - x.w / 2); x.y = Math.round((e0.type === 'text' ? ncy - (corner ? nh : e0.h) / 2 : ncy - x.h / 2));
           return { doc: d, dragInfo: `${x.w} × ${Math.round(e0.type === 'text' ? (corner ? nh : e0.h) : x.h)}` }; });
-      }, () => { this._dragging = false; this.setState({ dragInfo: null }); });
+      }, () => { this._dragging = false; this.setState({ dragInfo: null }); }, e);
     } else {
       const B = this.bbox(els), starts = structuredClone(els);
       this.drag(ev => {
@@ -367,24 +498,26 @@ export default class Studio extends React.Component {
         let kx = Math.max(.05, nw / B.w), ky = Math.max(.05, nh / B.h); if (corner || true) { const k = corner ? Math.max(kx, ky) : (hasE || hasW ? kx : ky); kx = ky = k; }
         const ax = hasW ? B.x + B.w : B.x, ay = hasN ? B.y + B.h : B.y;
         this.setState(s => { const d = structuredClone(s.doc); starts.forEach(st => { const x = d.pages[page].els.find(q => q.id === st.id); x.x = Math.round(ax + (st.x - ax) * kx); x.y = Math.round(ay + (st.y - ay) * ky); x.w = Math.round(st.w * kx); x.h = Math.round(st.h * ky); if (x.type === 'text') x.size = Math.round(st.size * kx * 10) / 10; if (x.sw) x.sw = st.sw * kx; }); return { doc: d }; });
-      }, () => { this._dragging = false; });
+      }, () => { this._dragging = false; }, e);
     }
   }
   startRotate = e => {
     e.stopPropagation(); e.preventDefault(); const el = this.selEls()[0]; if (!el) return;
     const n = document.querySelector(`[data-page-node="${this.pg.id}"]`).getBoundingClientRect(), z = this.state.zoom;
     const cx = n.left + (el.x + el.w / 2) * z, cy = n.top + (el.y + el.h / 2) * z; this.pushHist(); this._dragging = true;
-    this.drag(ev => { let a = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI + 90; if (ev.shiftKey) a = Math.round(a / 15) * 15; else { const r = Math.round(a / 45) * 45; if (Math.abs(a - r) < 3) a = r; } a = ((Math.round(a) % 360) + 540) % 360 - 180; this.setDoc((d, p) => { p.els.find(q => q.id === el.id).rot = a; }, false); this.setState({ dragInfo: a + '°' }); }, () => { this._dragging = false; this.setState({ dragInfo: null }); });
+    this.drag(ev => { let a = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI + 90; if (ev.shiftKey) a = Math.round(a / 15) * 15; else { const r = Math.round(a / 45) * 45; if (Math.abs(a - r) < 3) a = r; } a = ((Math.round(a) % 360) + 540) % 360 - 180; this.setDoc((d, p) => { p.els.find(q => q.id === el.id).rot = a; }, false); this.setState({ dragInfo: a + '°' }); }, () => { this._dragging = false; this.setState({ dragInfo: null }); }, e);
   };
   onPageDown(e, i) {
     if (e.button !== 0) return; e.stopPropagation();
     const pid = this.state.doc.pages[i].id; const shift = e.shiftKey; const base = shift && i === this.state.page ? this.state.sel : [];
     this.setState({ page: i, sel: base, editingId: null, cropMode: false });
+    // A finger on the page background pans the canvas; a mouse draws a marquee.
+    if (e.pointerType === 'touch') { const c = this.canvasEl; if (!c) return; const sx = e.clientX, sy = e.clientY, sl = c.scrollLeft, st = c.scrollTop; this.drag(ev => { if (this._pinch) return; c.scrollLeft = sl - (ev.clientX - sx); c.scrollTop = st - (ev.clientY - sy); }, null, e); return; }
     const p0 = this.toPage(e, pid);
     this.drag(ev => { const p = this.toPage(ev, pid); this.setState({ marquee: { pi: i, x: Math.min(p0.x, p.x), y: Math.min(p0.y, p.y), w: Math.abs(p.x - p0.x), h: Math.abs(p.y - p0.y) } }); }, () => {
       const m = this.state.marquee; if (m && m.w > 3 && m.h > 3) { const els = this.state.doc.pages[i].els.filter(el => !el.locked && !el.hidden && el.x < m.x + m.w && el.x + el.w > m.x && el.y < m.y + m.h && el.y + el.h > m.y); this.setState({ sel: [...new Set([...base, ...els.map(x => x.id)])] }); }
       this.setState({ marquee: null });
-    });
+    }, e);
   }
   onCanvasDown = e => { if (e.target === e.currentTarget || e.target.parentElement === e.currentTarget) this.setState({ sel: [], editingId: null, cropMode: false }); };
   onCanvasDragOver = e => { e.preventDefault(); };
@@ -410,7 +543,15 @@ export default class Studio extends React.Component {
     this.setState({ busy: null });
   };
   onPaste(e) { if (this.state.screen !== 'editor' || this.state.editingId) return; const t = e.target; if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName)) return; const f = [...(e.clipboardData && e.clipboardData.files || [])].find(f => f.type.startsWith('image/')); if (f) { e.preventDefault(); this._pastedImage = Date.now(); this.ingest(f).then(id => this.addImageAsset(id)); } }
-  onLogoFile = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const id = await this.ingest(f); this.setState(s => ({ brand: { ...s.brand, logo: id } })); };
+  onLogoFile = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      const r = await this.IO.readImageFile(f); const id = 'a' + this.P.nid();
+      if (this._logoFor === 'wiz') return this.wizLogo(id, r);
+      this.setState(s => ({ assets: { ...s.assets, [id]: r } })); this.setBrand({ assets: { ...this.state.brand.assets, [id]: r }, logo: id });
+    } catch (err) { this.toast('Could not read that image'); }
+  };
+  uploadLogo = () => { this._logoFor = null; this.logoInput && this.logoInput.click(); };
   addLogo = () => { const id = this.state.brand.logo; if (id && this.state.doc) this.addImageAsset(id); };
 
   onKey(e) {
@@ -419,7 +560,7 @@ export default class Studio extends React.Component {
     const mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase(), sel = this.state.sel;
     if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? this.redo() : this.undo(); return; }
     if (mod && k === 'y') { e.preventDefault(); this.redo(); return; }
-    if (mod && k === 's') { e.preventDefault(); this.saveProject(); return; }
+    if (mod && k === 's') { e.preventDefault(); this.saveProject(e.shiftKey); return; }
     if (mod && (k === '=' || k === '+')) { e.preventDefault(); this.setZoom(this.state.zoom * 1.2); return; }
     if (mod && k === '-') { e.preventDefault(); this.setZoom(this.state.zoom / 1.2); return; }
     if (mod && k === '0') { e.preventDefault(); this.fitZoom(); return; }
@@ -443,29 +584,99 @@ export default class Studio extends React.Component {
   /* ---------- files & export ---------- */
   pageNodes(scope) { const d = this.state.doc; return (scope === 'page' ? [this.pg] : d.pages).map(p => document.querySelector(`[data-page-node="${p.id}"]`)).filter(Boolean); }
   async prep(msg) { this.setState({ menu: null, sel: [], editingId: null, hoverId: null, cropMode: false, busy: msg }); await new Promise(r => setTimeout(r, 150)); }
+  // Where a file goes is decided before the slow rendering starts: a save dialog
+  // (desktop Chromium) has to open inside the click, and on a phone the finished
+  // file goes to the share sheet. Anywhere else it is a download. See io.js.
   async doExport(kind, scope) {
-    const doc = this.state.doc; await this.prep('Preparing export…');
-    const opt = { scale: this.state.exportScale, onProgress: t => this.setState({ busy: t }) };
+    const doc = this.state.doc, IO = this.IO; const pages = scope === 'page' ? 1 : doc.pages.length;
+    const name = IO.exportName(doc, kind, pages), type = IO.TYPES[name.endsWith('.zip') ? 'zip' : kind];
+    const sink = await IO.openSink(name, type); if (sink === 'cancel') { this.setState({ menu: null, phoneMenu: null }); return; }
+    const send = sink ? (blob => sink.write(blob)) : ((blob, n) => IO.deliver(blob, n, doc.name));
+    await this.prep('Preparing export…');
+    const opt = { scale: this.state.exportScale, onProgress: t => this.setState({ busy: t }), send };
     try {
       const nodes = this.pageNodes(scope);
-      if (kind === 'pdf') await this.IO.exportPDF(nodes, doc, opt);
-      else if (kind === 'svg') await this.IO.exportSVG(nodes, doc);
-      else await this.IO.exportImages(nodes, doc, { ...opt, fmt: kind });
-      this.toast('Export ready');
+      if (kind === 'pdf') await IO.exportPDF(nodes, doc, opt);
+      else if (kind === 'svg') await IO.exportSVG(nodes, doc, opt);
+      else await IO.exportImages(nodes, doc, { ...opt, fmt: kind });
+      this.toast(sink ? 'Saved ' + name : 'Export ready');
     } catch (err) { console.error(err); this.toast('Export failed — ' + (err.message || err)); }
     this.setState({ busy: null });
   }
-  saveProject = async () => { const doc = this.state.doc; if (!doc) return; await this.prep('Packing .pinwheel file…'); try { await this.IO.saveProject({ ...doc, brand: this.state.brand }, this.state.assets, this.pageNodes('all')[0]); this.toast('Saved ' + doc.name + '.pinwheel'); } catch (err) { console.error(err); this.toast('Save failed — ' + err.message); } this.setState({ busy: null }); };
-  openFile = () => { this.setState({ menu: null }); this.fileInput && this.fileInput.click(); };
-  onProjectFile = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) this.openProjectFile(f); };
-  // Shared by the file input and the PWA file handler. A file can arrive before the
-  // io module has finished loading, so hold it until the modules are in.
-  openProjectFile = async f => {
-    if (!this.IO) { this._pendingFile = f; return; }
-    this.setState({ busy: 'Opening ' + f.name + '…' });
-    try { const { doc, assets } = await this.IO.openProject(f); this.openDoc(doc, assets); this.toast('Opened ' + doc.name); }
-    catch (err) { console.error(err); this.toast(err.message || 'Could not open that file'); }
+  // ⌘S writes back to the file the design came from when the browser gave us a
+  // handle; ⇧⌘S (or the first save) asks where. Elsewhere it is a download or share.
+  saveProject = async (as = false) => {
+    const doc = this.state.doc, IO = this.IO; if (!doc) return; const name = IO.safe(doc.name) + '.pinwheel';
+    let sink = null;
+    if (IO.canPick()) {
+      if (this.fileHandle && as !== true) sink = { handle: this.fileHandle, write: b => IO.writeHandle(this.fileHandle, b) };
+      else { sink = await IO.openSink(name, IO.TYPES.pinwheel); if (sink === 'cancel') { this.setState({ menu: null, phoneMenu: null }); return; } if (sink) this.fileHandle = sink.handle; }
+    }
+    await this.prep('Packing .pinwheel file…');
+    try {
+      const blob = await IO.packProject({ ...doc, brand: this.B.brandForFile(this.state.brand) }, this.state.assets, this.pageNodes('all')[0]);
+      if (sink) { await sink.write(blob); this.toast('Saved ' + (sink.handle && sink.handle.name || name)); }
+      else { const r = await IO.deliver(blob, name, doc.name); if (r !== 'cancelled') this.toast(r === 'shared' ? 'Shared ' + name : 'Saved ' + name); }
+    } catch (err) { console.error(err); this.fileHandle = null; this.toast('Save failed — ' + err.message); }
     this.setState({ busy: null });
+  };
+  saveProjectAs = () => this.saveProject(true);
+  openFile = async () => {
+    this.setState({ menu: null, phoneMenu: null });
+    if (this.IO && this.IO.canPick()) { try { const r = await this.IO.pickOpenFile(); if (r) this.openProjectFile(r.file, r.handle); return; } catch (e) { } }
+    this.fileInput && this.fileInput.click();
+  };
+  onProjectFile = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) this.openProjectFile(f, null); };
+  onHomeDrop = async e => { const f = [...(e.dataTransfer.files || [])].find(f => /\.(pinwheel|zip)$/i.test(f.name)); if (f) { e.preventDefault(); this.openProjectFile(f, null); } };
+  // Shared by the file input, the open dialog, drag-and-drop and the PWA file
+  // handler. A file can arrive before the io module has finished loading, so hold it
+  // until the modules are in. The manifest says whether it is a design or a brand kit.
+  openProjectFile = async (f, handle) => {
+    if (!this.IO) { this._pendingFile = [f, handle]; return; }
+    this.setState({ busy: 'Opening ' + f.name + '…' });
+    try {
+      const r = await this.IO.openProject(f);
+      if (r.kind === 'brand') this.importBrandKit(r.brand, r.assets);
+      else { this.fileHandle = handle && typeof handle.createWritable === 'function' ? handle : null; this.openDoc(r.doc, r.assets); this.toast('Opened ' + r.doc.name); }
+    } catch (err) { console.error(err); this.toast(err.message || 'Could not open that file'); }
+    this.setState({ busy: null });
+  };
+
+  /* ---------- brand builder ---------- */
+  // A short wizard: name and logo, then a colour kit (several generated from the
+  // logo, or curated ones without), then fonts. Editing an existing brand starts
+  // from its values and writes back to it.
+  startWizard = (edit = null, step = 1) => {
+    const b = edit ? this.state.brands.find(x => x.id === edit) : null; const P = this.P;
+    const curated = P.PALETTES.slice(0, 8).map(p => ({ id: p.id, name: p.name, note: 'Curated palette', bg: p.bg, ink: p.ink, accent: p.accent, accent2: p.accent2 }));
+    const wiz = { step, editId: b ? b.id : null, name: b ? b.name : '', logo: null, logoId: b ? b.logo : null, kits: curated, fromLogo: false, kit: 0, bg: b ? b.bg : curated[0].bg, ink: b ? b.ink : curated[0].ink, accent: b ? b.accent : curated[0].accent, accent2: b ? b.accent2 : curated[0].accent2, heading: b ? b.heading : 'DM Serif Display', body: b ? b.body : 'DM Sans', busy: false };
+    if (b && b.logo && b.assets[b.logo]) { wiz.logo = b.assets[b.logo]; this.setState({ wiz, menu: null, phoneMenu: null }, () => this.wizKits(b.assets[b.logo].src)); return; }
+    this.setState({ wiz, menu: null, phoneMenu: null });
+  };
+  wizSet = patch => this.setState(s => s.wiz ? { wiz: { ...s.wiz, ...patch } } : null);
+  closeWizard = () => this.setState({ wiz: null });
+  pickWizLogo = () => { this._logoFor = 'wiz'; this.logoInput && this.logoInput.click(); };
+  wizLogo(id, asset) { this._logoFor = null; this.wizSet({ logo: asset, logoId: id, newLogo: true }); this.wizKits(asset.src); }
+  async wizKits(src) {
+    this.wizSet({ busy: true });
+    try { const px = await this.IO.imagePixels(src, 48); const kits = this.PAL.kitsFromPixels(px); if (kits.length) { const k = kits[0]; this.wizSet({ kits, fromLogo: true, kit: 0, bg: k.bg, ink: k.ink, accent: k.accent, accent2: k.accent2, busy: false }); return; } }
+    catch (e) { console.warn('Palette extraction failed', e); }
+    this.wizSet({ busy: false });
+  }
+  wizPickKit = i => { const k = this.state.wiz.kits[i]; if (k) this.wizSet({ kit: i, bg: k.bg, ink: k.ink, accent: k.accent, accent2: k.accent2 }); };
+  wizFinish = () => {
+    const w = this.state.wiz; if (!w) return; const name = w.name.trim() || 'My brand';
+    const vals = { name, bg: w.bg, ink: w.ink, accent: w.accent, accent2: w.accent2, heading: w.heading, body: w.body };
+    const logoAssets = w.logo && w.logoId && w.newLogo ? { [w.logoId]: w.logo } : {};
+    if (w.editId) {
+      const b = this.state.brands.find(x => x.id === w.editId); if (!b) return this.closeWizard();
+      const nb = { ...b, ...vals, assets: { ...b.assets, ...logoAssets }, logo: w.logoId || b.logo, updated: Date.now() };
+      this.setState(s => ({ brands: s.brands.map(x => x.id === nb.id ? nb : x), brand: nb, assets: { ...s.assets, ...logoAssets }, wiz: null }), () => this.saveBrandSoon());
+      this.toast('Brand updated');
+    } else {
+      this.createBrand({ ...vals, assets: logoAssets, logo: w.logoId && w.logo ? w.logoId : null });
+      this.setState({ wiz: null }); this.toast('Brand “' + name + '” is ready');
+    }
   };
   removeBg = async () => {
     const el = this.selEls()[0]; if (!el || !el.asset) return;
@@ -703,7 +914,8 @@ export default class Studio extends React.Component {
         const dirs = one ? (e0.type === 'text' ? ['nw', 'ne', 'se', 'sw', 'e', 'w'] : e0.type === 'line' ? ['e', 'w'] : e0.type === 'qr' ? ['nw', 'ne', 'se', 'sw'] : ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) : ['nw', 'ne', 'se', 'sw'];
         const pos = { nw: [0, 0], n: [.5, 0], ne: [1, 0], e: [1, .5], se: [1, 1], s: [.5, 1], sw: [0, 1], w: [0, .5] };
         const cur = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' };
-        out.handles = dirs.map(d => { const [fx, fy] = pos[d]; const side = d.length === 1; const hw = side ? (d === 'e' || d === 'w' ? 6 : 18) : 11, hh = side ? (d === 'e' || d === 'w' ? 18 : 6) : 11; return { onDown: e => this.startResize(e, d), style: { position: 'absolute', left: `calc(${fx * 100}% - ${hw / 2}px)`, top: `calc(${fy * 100}% - ${hh / 2}px)`, width: hw, height: hh, background: 'var(--pw-surface)', border: `1.5px solid ${C}`, borderRadius: side ? 4 : '50%', pointerEvents: 'auto', cursor: cur[d], boxShadow: '0 1px 3px rgba(0,0,0,.18)' } }; });
+        const big = this.coarse ? 1.6 : 1;
+        out.handles = dirs.map(d => { const [fx, fy] = pos[d]; const side = d.length === 1; const hw = (side ? (d === 'e' || d === 'w' ? 6 : 18) : 11) * big, hh = (side ? (d === 'e' || d === 'w' ? 18 : 6) : 11) * big; return { onDown: e => this.startResize(e, d), style: { position: 'absolute', left: `calc(${fx * 100}% - ${hw / 2}px)`, top: `calc(${fy * 100}% - ${hh / 2}px)`, width: hw, height: hh, background: 'var(--pw-surface)', border: `1.5px solid ${C}`, borderRadius: side ? 4 : '50%', pointerEvents: 'auto', cursor: cur[d], boxShadow: '0 1px 3px rgba(0,0,0,.18)' } }; });
         out.showRot = one && e0.type !== 'line' ? true : one; out.onRot = this.startRotate;
       }
       if (!one) out.multi = els.map(e => ({ position: 'absolute', left: e.x * z, top: e.y * z, width: e.w * z, height: e.h * z, transform: `rotate(${e.rot || 0}deg)`, outline: `1px dashed ${C}`, pointerEvents: 'none', zIndex: 2 }));
@@ -714,12 +926,46 @@ export default class Studio extends React.Component {
     return out;
   }
 
+  /* ---------- brand builder view ---------- */
+  wizVals() {
+    const w = this.state.wiz, P = this.P, h = React.createElement, C = this.CORAL; if (!w) return null;
+    const steps = ['Name & logo', 'Colours', 'Fonts'];
+    const sw = k => [k.bg, k.ink, k.accent, k.accent2].map(c => ({ flex: 1, background: c }));
+    const sample = k => ({ background: k.bg, color: k.ink, borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4, minHeight: 64, justifyContent: 'center' });
+    return {
+      title: w.editId ? 'Edit brand' : 'Create a brand', step: w.step, stepLabel: `Step ${w.step} of 3 · ${steps[w.step - 1]}`,
+      steps: steps.map((l, i) => ({ label: l, style: { flex: 1, height: 4, borderRadius: 2, background: i < w.step ? C : 'var(--pw-line-strong)' } })),
+      isName: w.step === 1, isColors: w.step === 2, isFonts: w.step === 3, isLast: w.step === 3, isFirst: w.step === 1,
+      name: w.name, onName: e => this.wizSet({ name: e.target.value }), namePh: 'e.g. Northwind Coffee',
+      hasLogo: !!w.logo, logoStyle: { width: '100%', height: '100%', backgroundImage: w.logo ? `url("${w.logo.src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' },
+      pickLogo: this.pickWizLogo, logoLabel: w.logo ? 'Replace logo' : 'Upload a logo', busy: w.busy,
+      logoNote: w.logo ? (w.fromLogo ? 'Colour kits on the next step were drawn from this logo.' : 'Reading the colours in this logo…') : 'Optional. With a logo, the next step offers colour kits taken from it.',
+      kitsTitle: w.fromLogo ? 'Kits from your logo' : 'Curated kits',
+      kits: w.kits.map((k, i) => ({ name: k.name, note: k.note, sw: sw(k), on: w.kit === i, onClick: () => this.wizPickKit(i), sampleStyle: sample(k), hStyle: { fontFamily: `'${w.heading}'`, fontSize: 18, lineHeight: 1.1, fontWeight: this.ONEW.includes(w.heading) ? 400 : 700, color: k.ink }, aStyle: { display: 'inline-block', padding: '2px 8px', borderRadius: 10, background: k.accent, color: k.ink === k.accent ? k.bg : (P.contrast(k.accent, k.ink) >= 3 ? k.ink : k.bg), fontSize: 11, fontWeight: 700, alignSelf: 'flex-start' }, style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 8, border: '2px solid ' + (w.kit === i ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 10, cursor: 'pointer', textAlign: 'left', color: 'var(--pw-ink)', minWidth: 0 } })),
+      colors: [['bg', 'Background'], ['ink', 'Text'], ['accent', 'Primary'], ['accent2', 'Secondary']].map(([k, l]) => ({ label: l, value: w[k], onChange: e => this.wizSet({ [k]: e.target.value.toUpperCase(), kit: -1 }) })),
+      pairs: P.PAIRINGS.slice(0, 10).map(p => ({ display: p.name, body: `${p.display} + ${p.body}`, on: w.heading === p.display && w.body === p.body, onClick: () => this.wizSet({ heading: p.display, body: p.body }), dStyle: { fontFamily: `'${p.display}'`, fontWeight: p.dw, fontSize: 20, lineHeight: 1.1, textTransform: p.upper ? 'uppercase' : 'none', letterSpacing: p.track + 'em', color: 'var(--pw-ink)' }, bStyle: { fontFamily: `'${p.body}'`, fontSize: 12, color: 'var(--pw-muted)' }, style: { display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start', padding: '10px 12px', border: '1px solid ' + (w.heading === p.display && w.body === p.body ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', textAlign: 'left' } })),
+      fonts: [['heading', 'Headings'], ['body', 'Body']].map(([k, l]) => ({ label: l, selectNode: this.fontPickerEl('font:wiz:' + k, w[k], val => this.wizSet({ [k]: val }), true) })),
+      previewStyle: { background: w.bg, color: w.ink, borderRadius: 10, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--pw-line-soft)' },
+      previewH: { fontFamily: `'${w.heading}'`, fontSize: 26, lineHeight: 1.05, fontWeight: this.ONEW.includes(w.heading) ? 400 : 700, color: w.ink, margin: 0 },
+      previewB: { fontFamily: `'${w.body}'`, fontSize: 14, lineHeight: 1.4, color: P.mix(w.ink, w.bg, .25), margin: 0 },
+      previewBtn: { alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 8, background: w.accent, color: P.contrast(w.accent, w.bg) >= 3 && P.contrast(w.accent, w.ink) < 3 ? w.bg : (P.contrast(w.accent, '#FFFFFF') >= 3 ? '#FFFFFF' : '#111111'), fontFamily: `'${w.body}'`, fontWeight: 700, fontSize: 13 },
+      previewTag: { alignSelf: 'flex-start', padding: '3px 8px', borderRadius: 8, background: w.accent2, color: P.contrast(w.accent2, '#FFFFFF') >= 3 ? '#FFFFFF' : '#111111', fontFamily: `'${w.body}'`, fontWeight: 600, fontSize: 11 },
+      previewName: w.name.trim() || 'Your brand',
+      back: () => this.wizSet({ step: Math.max(1, w.step - 1) }), next: () => this.wizSet({ step: Math.min(3, w.step + 1) }), finish: this.wizFinish, close: this.closeWizard,
+      finishLabel: w.editId ? 'Save brand' : 'Create brand'
+    };
+  }
+
   renderVals() {
     const st = this.state, P = this.P, R = this.R, h = React.createElement;
+    const layout = this.layout, phone = layout === 'phone', tablet = layout === 'tablet';
     const base = { loading: !st.ready, loadingText: st.loadError ? 'Could not start: ' + st.loadError : 'Warming up the studio…', isHome: false, isEditor: false, hasBusy: !!st.busy, busyText: st.busy || '', hasToast: !!st.toast, toastText: st.toast || '',
       hasHelp: st.helpOpen, toggleHelp: this.toggleHelp, stopClick: this.stopClick, helpVersion: 'Pinwheel Studio ' + (import.meta.env.VITE_APP_VERSION || '1.0'),
       toggleTheme: this.toggleTheme, themeGlyph: this.isDark() ? '☀' : '☾', themeTitle: this.isDark() ? 'Switch to light mode' : 'Switch to dark mode',
-      setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, openFile: this.openFile };
+      phone, tablet, desktop: layout === 'desktop',
+      setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, setBrandAssetInput: this.setBrandAssetInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, onBrandAssetFile: this.onBrandAssetFile, openFile: this.openFile,
+      hasWiz: !!st.wiz, wiz: st.ready ? this.wizVals() : null, wizCardStyle: phone ? { position: 'fixed', inset: 0, borderRadius: 0, width: '100%', maxHeight: '100%', padding: '16px 16px calc(16px + env(safe-area-inset-bottom))' } : { width: 'min(720px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 40px)', borderRadius: 16, padding: 24 },
+      menuOpen: !!st.menu, closeMenus: () => this.setState({ menu: null }) };
     if (!st.ready) return base;
     const cat = P.catalog();
     if (st.screen === 'home') {
@@ -727,36 +973,84 @@ export default class Studio extends React.Component {
       const explicit = !!q || !!st.galOcc;
       const list = this.ranked(!explicit).filter(t => (st.galCat === 'All' || t.cat === st.galCat) && (!st.galOcc || t.topic === st.galOcc) && (!q || q.split(/\s+/).every(w => t.search.includes(w))));
       const soon = this.S.upcoming(Object.keys(this.S.SENSITIVE)).map(x => ({ ...x, name: P.TOPIC[x.id].name }));
-      const rowH = this.props.galleryRowHeight ?? 190;
+      const rowH = this.props.galleryRowHeight ?? (phone ? 136 : 190);
       const cats = ['All', ...new Set(P.FORMATS.map(f => f.cat))];
-      return { ...base, isHome: true,
+      const recH = phone ? 110 : 140, recMax = phone ? 8 : 12;
+      const b = st.brand;
+      return { ...base, isHome: true, onHomeDrop: this.onHomeDrop, onHomeDragOver: e => { if ([...(e.dataTransfer.types || [])].includes('Files')) e.preventDefault(); },
+        // Spacing and type scale shrink with the viewport; the structure stays the same.
+        headerStyle: { display: 'flex', alignItems: 'center', gap: phone ? 8 : 18, padding: phone ? '10px 16px' : '12px 32px', borderBottom: '1px solid var(--pw-line)', background: 'var(--pw-panel)', position: 'sticky', top: 0, zIndex: 10 },
+        mainStyle: { maxWidth: 1360, margin: '0 auto', padding: phone ? '22px 16px 80px' : tablet ? '32px 24px 96px' : '40px 32px 96px', display: 'flex', flexDirection: 'column', gap: phone ? 26 : 36 },
+        h1Style: { margin: 0, fontSize: phone ? 28 : tablet ? 34 : 40, lineHeight: 1.1, letterSpacing: '-0.02em', fontWeight: 700, textWrap: 'pretty' },
+        rowStyle: phone ? { display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, scrollSnapType: 'x proximity' } : { display: 'flex', flexWrap: 'wrap', gap: 10 },
+        openLabel: phone ? 'Open' : 'Open .pinwheel file',
         statLine: `${cat.length.toLocaleString()} templates across ${P.FORMATS.length} formats · ${P.LAYOUTS.length} layouts, ${P.PALETTES.length} palettes and ${P.PAIRINGS.length} type pairings — every one fully editable.`,
         galQ: st.galQ, onGalQ: e => { this.noteQuery(e.target.value); this.setState({ galQ: e.target.value, galLimit: 48 }); },
         galHint: !explicit && soon.length ? 'Coming up: ' + soon.map(x => x.days === 0 ? `${x.name} today` : `${x.name} in ${x.days} day${x.days === 1 ? '' : 's'}`).join(' · ') : '',
-        hasAutosave: st.hasAutosave, autosaveName: st.autosaveName, resumeAutosave: this.resumeAutosave,
+        // Recents: every design touched on this device, newest first, drawn live from
+        // its first page. Nothing here was necessarily saved as a file.
+        hasRecents: st.recents.length > 0, recentsCount: `${st.recents.length} on this device`, clearRecents: this.clearRecents,
+        recents: st.recents.slice(0, st.recentsAll ? this.DB.RECENTS_MAX : recMax).map(r => {
+          const ar = (r.w || 1) / (r.h || 1); const w = Math.round(Math.max(recH * .6, Math.min(recH * ar, recH * 2.2)));
+          const key = `rec|${r.id}|${r.updated}|${w}|${recH}`; let thumb = this.thumbCache.get(key); if (!thumb && this.thumbCache.size > 800) this.thumbCache.clear();
+          if (!thumb) { try { thumb = R.renderThumb(h, { w: r.w, h: r.h }, r.preview.page, w, recH, { assets: r.preview.assets || {} }); } catch (e) { thumb = null; } this.thumbCache.set(key, thumb); }
+          const f = P.FORMAT[r.fmt];
+          return { name: r.name || 'Untitled', meta: `${f ? f.name : `${r.w} × ${r.h}`}${r.pages > 1 ? ` · ${r.pages} pages` : ''} · ${this.B.ago(r.updated)}`, title: 'Open ' + (r.name || 'Untitled'), thumb, onClick: () => this.openRecent(r.id), onDelete: e => { e.stopPropagation(); this.deleteRecent(r.id); },
+            cardStyle: { width: w, display: 'flex', flexDirection: 'column', gap: 5, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', flex: 'none', position: 'relative', scrollSnapAlign: 'start' },
+            boxStyle: { width: w, height: recH, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--pw-canvas)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(36,33,29,.08), 0 4px 14px rgba(36,33,29,.06)' } };
+        }),
+        recentsHasMore: st.recents.length > recMax, recentsMoreLabel: st.recentsAll ? 'Show fewer' : `All ${st.recents.length} →`, toggleRecents: () => this.setState(s => ({ recentsAll: !s.recentsAll })),
+        recentsRowStyle: phone ? { display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 6, scrollSnapType: 'x proximity' } : { display: 'flex', flexWrap: 'wrap', gap: '22px 18px', alignItems: 'flex-start' },
+        // Brands: switch, edit, or build a new one.
+        brandCards: st.brands.map(x => { const on = x.id === b.id; const logo = x.logo && x.assets[x.logo]; return { name: x.name, on, hint: on ? 'Active brand' : 'Tap to use', hasLogo: !!logo, logoStyle: { width: 40, height: 40, borderRadius: 8, flex: 'none', background: x.bg, backgroundImage: logo ? `url("${logo.src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', border: '1px solid var(--pw-line-soft)' }, sw: [x.bg, x.ink, x.accent, x.accent2].map(c => ({ flex: 1, background: c })), onClick: () => this.activateBrand(x.id), onEdit: e => { e.stopPropagation(); this.startWizard(x.id); },
+          style: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px 10px 10px', borderRadius: 12, border: '1px solid ' + (on ? 'var(--pw-accent-line)' : 'var(--pw-line)'), background: on ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', cursor: 'pointer', textAlign: 'left', color: 'var(--pw-ink)', flex: 'none', minWidth: phone ? 200 : 220, scrollSnapAlign: 'start' } }; }),
+        newBrand: () => this.startWizard(), importBrand: this.openFile,
         fmts: (st.fmtsAll ? P.FORMATS : P.FORMATS.slice(0, 12)).map(f => { const s = 28 / Math.max(f.w, f.h); return { name: f.name, dims: `${f.w} × ${f.h}`, onClick: () => this.newDoc(f.id), iconStyle: { width: Math.max(6, f.w * s), height: Math.max(6, f.h * s), border: '1.5px solid var(--pw-ink)', borderRadius: 2 } }; }),
         fmtsHasMore: P.FORMATS.length > 12, fmtsMoreLabel: st.fmtsAll ? 'Show fewer' : `All ${P.FORMATS.length} formats →`, toggleFmts: () => this.setState(s => ({ fmtsAll: !s.fmtsAll })),
         customW: st.customW, customH: st.customH, onCustomW: e => this.setState({ customW: e.target.value }), onCustomH: e => this.setState({ customH: e.target.value }), createCustom: () => this.newDoc(null, +st.customW, +st.customH),
-        galOccs: [{ id: null, name: 'Any' }, ...P.OCCASIONS.map(id => P.TOPIC[id]).map(o => { const up = soon.find(x => x.id === o.id); return { ...o, up, order: !this.S.SENSITIVE[o.id] ? 0 : up ? 1 : 2 }; }).sort((a, b) => a.order - b.order || (a.up && b.up ? a.up.days - b.up.days : 0))].map(o => ({ label: o.up ? `${o.name} · ${o.up.days === 0 ? 'today' : o.up.days + 'd'}` : o.name, onClick: () => { this.note('topic', o.id, 1); this.setState({ galOcc: o.id, galLimit: 48 }); }, style: { height: 30, padding: '0 12px', borderRadius: 15, border: '1px solid ' + (st.galOcc === o.id ? 'var(--pw-accent-line)' : 'var(--pw-line-2)'), background: st.galOcc === o.id ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', color: st.galOcc === o.id ? 'var(--pw-accent-deep)' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer' } })),
-        galCats: cats.map(c => ({ label: c, onClick: () => this.setState({ galCat: c, galLimit: 48 }), style: { height: 32, padding: '0 14px', borderRadius: 16, border: '1px solid ' + (st.galCat === c ? 'var(--pw-ink)' : 'var(--pw-line-2)'), background: st.galCat === c ? 'var(--pw-ink)' : 'var(--pw-surface)', color: st.galCat === c ? 'var(--pw-surface)' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer' } })),
+        galOccs: [{ id: null, name: 'Any' }, ...P.OCCASIONS.map(id => P.TOPIC[id]).map(o => { const up = soon.find(x => x.id === o.id); return { ...o, up, order: !this.S.SENSITIVE[o.id] ? 0 : up ? 1 : 2 }; }).sort((a, b) => a.order - b.order || (a.up && b.up ? a.up.days - b.up.days : 0))].map(o => ({ label: o.up ? `${o.name} · ${o.up.days === 0 ? 'today' : o.up.days + 'd'}` : o.name, onClick: () => { this.note('topic', o.id, 1); this.setState({ galOcc: o.id, galLimit: 48 }); }, style: { height: 30, padding: '0 12px', borderRadius: 15, border: '1px solid ' + (st.galOcc === o.id ? 'var(--pw-accent-line)' : 'var(--pw-line-2)'), background: st.galOcc === o.id ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', color: st.galOcc === o.id ? 'var(--pw-accent-deep)' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer', flex: 'none' } })),
+        galCats: cats.map(c => ({ label: c, onClick: () => this.setState({ galCat: c, galLimit: 48 }), style: { height: 32, padding: '0 14px', borderRadius: 16, border: '1px solid ' + (st.galCat === c ? 'var(--pw-ink)' : 'var(--pw-line-2)'), background: st.galCat === c ? 'var(--pw-ink)' : 'var(--pw-surface)', color: st.galCat === c ? 'var(--pw-surface)' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer', flex: 'none' } })),
+        chipRowStyle: phone ? { display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, alignItems: 'center' } : { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
         galCount: `${list.length.toLocaleString()} ${st.galOcc ? P.TOPIC[st.galOcc].name.toLowerCase() + ' ' : ''}${st.galCat === 'All' ? '' : st.galCat + ' '}templates`,
         galItems: list.slice(0, st.galLimit).map(t => { const ar = t.w / t.h; const w = Math.round(Math.min(rowH * ar, rowH * 2.5)); return { name: t.name, title: `${t.name} — ${t.layoutName}`, meta: `${t.fmtName} · ${t.layoutName}`, onClick: () => this.fromTemplate(t), thumb: this.thumbFor(t, w, rowH),
           cardStyle: { width: w, display: 'flex', flexDirection: 'column', gap: 5, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', flex: 'none' },
           boxStyle: { width: w, height: rowH, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--pw-canvas)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(36,33,29,.08), 0 4px 14px rgba(36,33,29,.06)' } }; }),
+        galGridStyle: { display: 'flex', flexWrap: 'wrap', gap: phone ? '18px 12px' : '28px 22px', alignItems: 'flex-start' },
         galEmpty: !list.length, galHasMore: list.length > st.galLimit, galMore: () => this.setState(s => ({ galLimit: s.galLimit + 48 }))
       };
     }
     const d = st.doc, z = st.zoom, C = this.CORAL;
     const panels = [['templates', 'Templates', '▦'], ['styles', 'Styles', '◐'], ['elements', 'Elements', '△'], ['text', 'Text', 'T'], ['uploads', 'Uploads', '⇪'], ['data', 'Charts', '▥'], ['brand', 'Brand', '◆'], ['layers', 'Layers', '☰']];
-    const v = { ...base, isEditor: true, goHome: () => this.setState({ screen: 'home', sel: [], editingId: null, hasAutosave: true, autosaveName: d.name }),
+    const canPick = this.IO.canPick(), mobile = this.IO.isMobile();
+    // Menus hang from the top bar on a desktop and rise from the bottom on a phone.
+    const popover = (pos, w) => phone ? { position: 'fixed', left: 8, right: 8, bottom: 'calc(68px + env(safe-area-inset-bottom))', maxHeight: '64vh', overflow: 'auto', zIndex: 31, display: 'flex', flexDirection: 'column', background: 'var(--pw-surface)', border: '1px solid var(--pw-line)', borderRadius: 14, boxShadow: '0 12px 32px rgba(36,33,29,.18)', padding: 8 }
+      : { position: 'absolute', top: 46, ...pos, width: w, maxHeight: '70vh', overflow: 'auto', background: 'var(--pw-surface)', border: '1px solid var(--pw-line)', borderRadius: 12, boxShadow: '0 12px 32px rgba(36,33,29,.14)', padding: 6, zIndex: 31, display: 'flex', flexDirection: 'column' };
+    const saveLabel = canPick && this.fileHandle ? 'Save' : mobile ? 'Share .pinwheel' : 'Save .pinwheel';
+    const v = { ...base, isEditor: true, goHome: this.goHome,
       docName: d.name, onDocName: e => { const n = e.target.value; this.setState(s => ({ doc: { ...s.doc, name: n } })); },
       undo: this.undo, redo: this.redo,
       undoStyle: { width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 18, color: this.hist.length ? 'var(--pw-ink)' : 'var(--pw-disabled)' }, redoStyle: { width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 18, color: this.fut.length ? 'var(--pw-ink)' : 'var(--pw-disabled)' },
       sizeLabel: `${d.w}×${d.h}`, zoomLabel: Math.round(z * 100) + '%', zoomIn: () => this.setZoom(z * 1.2), zoomOut: () => this.setZoom(z / 1.2), zoomFit: this.fitZoom,
       menuOpen: !!st.menu, closeMenus: () => this.setState({ menu: null }),
       toggleFile: () => this.setState(s => ({ menu: s.menu === 'file' ? null : 'file' })), toggleResize: () => this.setState(s => ({ menu: s.menu === 'resize' ? null : 'resize' })), toggleExport: () => this.setState(s => ({ menu: s.menu === 'export' ? null : 'export' })),
-      fileOpen: st.menu === 'file', resizeOpen: st.menu === 'resize', exportOpen: st.menu === 'export', saveProject: this.saveProject,
-      fileItems: [{ label: 'New design', hint: '', onClick: () => this.setState({ screen: 'home', menu: null, hasAutosave: true, autosaveName: d.name }) }, { label: 'Open .pinwheel…', hint: '', onClick: this.openFile }, { label: 'Save .pinwheel', hint: '⌘S', onClick: this.saveProject }, { label: 'Import image…', hint: '', onClick: () => { this.setState({ menu: null }); this.imgInput && this.imgInput.click(); } }, { label: 'Help & support', hint: '', onClick: this.toggleHelp }],
+      fileOpen: st.menu === 'file', resizeOpen: st.menu === 'resize', exportOpen: st.menu === 'export', saveProject: this.saveProject, saveLabel: canPick && this.fileHandle ? 'Save' : 'Save',
+      saveTitle: canPick && this.fileHandle ? `Save to ${this.fileHandle.name} (⌘S)` : 'Save .pinwheel (⌘S)',
+      fileMenuStyle: popover({ left: 120 }, 260), resizeMenuStyle: popover({ left: 170 }, 340), exportMenuStyle: { ...popover({ right: 12 }, 300), padding: 12, gap: 10 },
+      fileItems: [
+        { label: 'New design', hint: '', onClick: this.goHome }, { label: 'Open .pinwheel…', hint: '', onClick: this.openFile },
+        { label: saveLabel, hint: '⌘S', onClick: () => this.saveProject(false) },
+        ...(canPick ? [{ label: 'Save as…', hint: '⇧⌘S', onClick: this.saveProjectAs }] : []),
+        { label: 'Import image…', hint: '', onClick: () => { this.setState({ menu: null }); this.imgInput && this.imgInput.click(); } }, { label: 'Help & support', hint: '', onClick: this.toggleHelp }],
+      // Phone: one overflow menu holds what the desktop top bar spreads out.
+      phoneMenuOpen: st.menu === 'phone', togglePhoneMenu: () => this.setState(s => ({ menu: s.menu === 'phone' ? null : 'phone' })),
+      phoneMenuItems: [
+        { label: 'Export…', hint: 'PDF, PNG, JPG, SVG', onClick: () => this.setState({ menu: 'export' }) },
+        { label: saveLabel, hint: 'Editable file', onClick: () => this.saveProject(false) },
+        { label: 'Open .pinwheel…', hint: '', onClick: this.openFile },
+        { label: 'Resize…', hint: `${d.w}×${d.h}`, onClick: () => this.setState({ menu: 'resize' }) },
+        { label: 'Import image…', hint: '', onClick: () => { this.setState({ menu: null }); this.imgInput && this.imgInput.click(); } },
+        { label: this.isDark() ? 'Light mode' : 'Dark mode', hint: '', onClick: () => { this.toggleTheme(); this.setState({ menu: null }); } },
+        { label: 'Help & support', hint: '', onClick: this.toggleHelp }],
       canRelayout: !!d.tpl, toggleRelayout: () => this.setState(s => ({ relayout: !s.relayout })), relayoutBox: { width: 16, height: 16, borderRadius: 4, flex: 'none', marginTop: 2, border: '1.5px solid ' + (st.relayout ? C : 'var(--pw-line-strong)'), background: st.relayout ? C : 'var(--pw-surface)' },
       resizeItems: P.FORMATS.map(f => ({ label: f.name, dims: `${f.w}×${f.h}`, onClick: () => this.resizeDoc(f.id), style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, height: 34, padding: '0 10px', border: 'none', background: f.id === d.fmt ? 'var(--pw-accent-tint)' : 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 13.5, color: 'var(--pw-ink)', textAlign: 'left', flex: 'none' } })),
       scaleOpts: [[1, 'Standard'], [2, 'High'], [3, 'Print']].map(([s, l]) => ({ label: `${l} ${s}×`, onClick: () => this.setState({ exportScale: s }), style: this.segStyle(st.exportScale === s) })),
@@ -768,7 +1062,23 @@ export default class Studio extends React.Component {
         { label: 'SVG', hint: 'Scalable, fonts embedded', onClick: () => this.doExport('svg', 'all') },
         { label: 'Pinwheel project (.pinwheel)', hint: 'Editable file with all assets', onClick: this.saveProject }
       ],
-      rail: panels.map(([id, label, glyph]) => { const on = st.panel === id; return { label, glyph, onClick: () => this.setState(s => ({ panel: s.panel === id ? null : id })), style: { width: 64, height: 58, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, border: 'none', borderRadius: 10, cursor: 'pointer', background: on ? 'var(--pw-accent-tint)' : 'transparent', color: on ? 'var(--pw-accent-deep)' : 'var(--pw-text-2)' } }; }),
+      rail: panels.map(([id, label, glyph]) => { const on = st.panel === id; return { label, glyph, onClick: () => this.setState(s => ({ panel: s.panel === id ? null : id, propsOpen: false })), style: phone
+        ? { flex: '1 0 64px', height: 52, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, border: 'none', borderRadius: 10, cursor: 'pointer', background: on ? 'var(--pw-accent-tint)' : 'transparent', color: on ? 'var(--pw-accent-deep)' : 'var(--pw-text-2)', padding: 0 }
+        : { width: tablet ? 56 : 64, height: tablet ? 52 : 58, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, border: 'none', borderRadius: 10, cursor: 'pointer', background: on ? 'var(--pw-accent-tint)' : 'transparent', color: on ? 'var(--pw-accent-deep)' : 'var(--pw-text-2)' } }; }),
+      railStyle: { width: tablet ? 64 : 76, flex: 'none', background: 'var(--pw-panel)', borderRight: '1px solid var(--pw-line)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0', gap: 2, overflowY: 'auto' },
+      tabbarStyle: { flex: 'none', display: 'flex', overflowX: 'auto', gap: 2, padding: '4px 6px calc(4px + env(safe-area-inset-bottom))', background: 'var(--pw-panel)', borderTop: '1px solid var(--pw-line)', zIndex: 22 },
+      // The flyout: a column on a desktop, floating over the canvas on a tablet, a
+      // bottom sheet on a phone. The properties panel likewise.
+      panelStyle: phone ? { position: 'absolute', left: 0, right: 0, bottom: 0, height: '58%', zIndex: 21, background: 'var(--pw-panel)', borderTop: '1px solid var(--pw-line)', borderRadius: '14px 14px 0 0', boxShadow: '0 -8px 30px rgba(36,33,29,.14)', display: 'flex', flexDirection: 'column', minHeight: 0 }
+        : tablet ? { position: 'absolute', left: 64, top: 0, bottom: 0, width: 300, zIndex: 21, background: 'var(--pw-panel)', borderRight: '1px solid var(--pw-line)', boxShadow: '8px 0 30px rgba(36,33,29,.08)', display: 'flex', flexDirection: 'column', minHeight: 0 }
+        : { width: 320, flex: 'none', background: 'var(--pw-panel)', borderRight: '1px solid var(--pw-line)', display: 'flex', flexDirection: 'column', minHeight: 0 },
+      propsStyle: phone ? { position: 'absolute', left: 0, right: 0, bottom: 0, height: '58%', zIndex: 21, background: 'var(--pw-panel)', borderTop: '1px solid var(--pw-line)', borderRadius: '14px 14px 0 0', boxShadow: '0 -8px 30px rgba(36,33,29,.14)', display: 'flex', flexDirection: 'column', minHeight: 0 }
+        : { width: tablet ? 264 : 292, flex: 'none', background: 'var(--pw-panel)', borderLeft: '1px solid var(--pw-line)', display: 'flex', flexDirection: 'column', minHeight: 0 },
+      showProps: !phone || st.propsOpen, propsOpen: st.propsOpen, closeProps: () => this.setState({ propsOpen: false }), showPill: phone && !st.panel && !st.propsOpen && !st.menu && !st.wiz && !st.helpOpen,
+      togglePropsSheet: () => this.setState(s => ({ propsOpen: !s.propsOpen, panel: s.propsOpen ? s.panel : null })),
+      propsPill: st.sel.length ? 'Edit' : 'Page', propsPillStyle: { position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)', zIndex: 20, height: 40, padding: '0 18px', borderRadius: 20, border: 'none', background: 'var(--pw-ink)', color: 'var(--pw-surface)', fontWeight: 700, fontSize: 14, boxShadow: '0 8px 24px rgba(0,0,0,.22)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 },
+      canvasPadStyle: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: phone ? 18 : 28, padding: phone ? '16px 16px 90px' : '36px 48px 64px', minWidth: 'max-content' },
+      onCanvasPointerDownCapture: this.onCanvasPointerDownCapture,
       panelOpen: !!st.panel, panelTitle: (panels.find(p => p[0] === st.panel) || [])[1] || '', closePanel: () => this.setState({ panel: null }),
       pTemplates: st.panel === 'templates', pStyles: st.panel === 'styles', pElements: st.panel === 'elements', pText: st.panel === 'text', pUploads: st.panel === 'uploads', pData: st.panel === 'data', pBrand: st.panel === 'brand', pLayers: st.panel === 'layers',
       setCanvasRef: this.setCanvasRef, onCanvasDown: this.onCanvasDown, onCanvasDrop: this.onCanvasDrop, onCanvasDragOver: this.onCanvasDragOver,
@@ -785,6 +1095,7 @@ export default class Studio extends React.Component {
     }
     if (st.panel === 'styles') {
       Object.assign(v, { shuffleStyle: this.shuffleStyle,
+        hasBrandPals: st.brand.palettes.length > 0, brandPalItems: st.brand.palettes.map(p => ({ name: p.name, onClick: () => this.applyPalette(p), sw: [p.bg, p.ink, p.accent, p.accent2].map(c => ({ flex: 1, background: c })), style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 7, border: '1px solid ' + (d.theme.id === p.id ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', textAlign: 'left' } })),
         palItems: P.PALETTES.map(p => ({ name: p.name, onClick: () => this.applyPalette(p), sw: [p.bg, p.ink, p.accent, p.accent2].map(c => ({ flex: 1, background: c })), style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 7, border: '1px solid ' + (d.theme.id === p.id ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', textAlign: 'left' } })),
         pairItems: P.PAIRINGS.map(p => ({ display: p.name, body: `${p.display} + ${p.body}`, onClick: () => this.applyPairing(p), dStyle: { fontFamily: `'${p.display}'`, fontWeight: p.dw, fontSize: 22, lineHeight: 1.1, textTransform: p.upper ? 'uppercase' : 'none', letterSpacing: p.track + 'em', color: 'var(--pw-ink)' }, bStyle: { fontFamily: `'${p.body}'`, fontSize: 12, color: 'var(--pw-muted)' }, style: { display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start', padding: '10px 12px', border: '1px solid ' + (d.theme.pairId === p.id ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', textAlign: 'left' } })) });
     }
@@ -800,7 +1111,7 @@ export default class Studio extends React.Component {
       const t = d.theme;
       Object.assign(v, {
         textBtns: [['heading', 'Add a heading', { fontFamily: `'${t.display}'`, fontSize: 24, fontWeight: this.ONEW.includes(t.display) ? 400 : 700 }], ['sub', 'Add a subheading', { fontFamily: `'${t.body}'`, fontSize: 17, fontWeight: 700 }], ['body', 'Add body text', { fontFamily: `'${t.body}'`, fontSize: 14, fontWeight: 400 }]].map(([k, l, fs]) => ({ label: l, onClick: () => this.addText(k), style: { ...fs, textAlign: 'left', padding: '12px 14px', border: '1px solid var(--pw-line-soft)', background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', color: 'var(--pw-ink)' } })),
-        styleItems: this.TEXT_STYLES.map(sty => { const pr = this.styleProps(sty, 26); const css = R.textStyle({ ...pr, size: 26, lh: 1, align: 'center' }); return { label: sty.name, sample: sty.upper ? 'Aa' : 'Aa', onClick: () => this.applyTextStyle(sty), style: { ...css, display: 'block', padding: pr.bg ? '2px 8px' : 0, borderRadius: pr.bg ? 6 : 0, whiteSpace: 'nowrap' } }; }),
+        styleItems: [...st.brand.textStyles, ...this.TEXT_STYLES].map(sty => { const pr = this.styleProps(sty, 26); const css = R.textStyle({ ...pr, size: 26, lh: 1, align: 'center' }); return { label: sty.custom ? sty.name + ' ◆' : sty.name, sample: 'Aa', onClick: () => this.applyTextStyle(sty), style: { ...css, display: 'block', padding: pr.bg ? '2px 8px' : 0, borderRadius: pr.bg ? 6 : 0, whiteSpace: 'nowrap' } }; }),
         comboItems: P.PAIRINGS.map(p => ({ display: p.upper ? 'HELLO' : 'Hello', body: p.display + ' · ' + p.body, onClick: () => this.addCombo(p), dStyle: { fontFamily: `'${p.display}'`, fontWeight: p.dw, fontSize: 24, lineHeight: 1.1, letterSpacing: p.track + 'em' }, bStyle: { fontFamily: `'${p.body}'`, fontSize: 10.5, color: 'var(--pw-muted)', textAlign: 'center' } }))
       });
     }
@@ -810,12 +1121,27 @@ export default class Studio extends React.Component {
       Object.assign(v, { chartItems: [['bar', 'Bar'], ['line', 'Line'], ['pie', 'Pie'], ['donut', 'Donut']].map(([k, l]) => ({ label: l, thumb: mk(k), onClick: () => this.addChart(k) })), addQR: this.addQR, qrThumb: this.miniEl({ type: 'qr', w: 44, h: 44, value: 'pinwheel', fg: 'var(--pw-ink)', qbg: 'var(--pw-surface)' }, 48) });
     }
     if (st.panel === 'brand') {
-      const b = st.brand; const setB = (k, val) => this.setState(s => ({ brand: { ...s.brand, [k]: val } }));
+      const b = st.brand; const setB = (k, val) => this.setBrand({ [k]: val }); const t = d.theme;
+      const small = { height: 30, padding: '0 10px', borderRadius: 7, border: '1px solid var(--pw-line-2)', background: 'var(--pw-surface)', color: 'var(--pw-ink)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', flex: '1 1 auto' };
+      const tiny = { width: 22, height: 22, borderRadius: 11, border: 'none', background: 'rgba(0,0,0,.55)', color: '#FFF', fontSize: 11, cursor: 'pointer', padding: 0, lineHeight: 1 };
+      const canSaveStyle = this.selEls().some(e => e.type === 'text');
       Object.assign(v, {
+        brandSelect: this.selectEl(b.id, [...st.brands.map(x => ({ value: x.id, label: x.name })), { value: '__new', label: '＋ New brand…' }], e => e.target.value === '__new' ? this.startWizard() : this.activateBrand(e.target.value), { height: 36, border: '1px solid var(--pw-line-2)', borderRadius: 8, padding: '0 8px', fontSize: 14, fontWeight: 600, background: 'var(--pw-surface)', width: '100%' }),
+        brandActions: [['Rename', this.renameBrand], ['Duplicate', this.duplicateBrand], ['Delete', this.deleteBrand, 'danger']].map(([label, onClick, kind]) => ({ label, onClick, style: { ...small, color: kind === 'danger' ? '#B23A22' : 'var(--pw-ink)' } })),
+        brandKitActions: [['Download brand kit', this.exportBrandKit, 'Everything in this brand as one .pinwheel file'], ['Import brand kit…', this.openFile, 'Open a .pinwheel brand kit from another device']].map(([label, onClick, title]) => ({ label, onClick, title, style: small })),
+        brandBuilder: () => this.startWizard(b.id, b.logo ? 2 : 1), brandBuilderLabel: b.logo ? 'Generate colours from logo…' : 'Brand builder…',
         brandColors: [['bg', 'Background'], ['ink', 'Text'], ['accent', 'Primary'], ['accent2', 'Secondary']].map(([k, l]) => ({ label: l, value: b[k], onChange: e => setB(k, e.target.value.toUpperCase()) })),
+        brandPals: b.palettes.map(p => ({ name: p.name, sw: [p.bg, p.ink, p.accent, p.accent2].map(c => ({ flex: 1, background: c })), onApply: () => this.applyPalette(p), onUse: () => { this.setBrand({ bg: p.bg, ink: p.ink, accent: p.accent, accent2: p.accent2 }); this.toast('Brand colours updated'); }, onRemove: () => this.setBrand({ palettes: b.palettes.filter(x => x.id !== p.id) }), style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 8, border: '1px solid ' + (t.id === p.id ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 9 } })),
+        noPals: !b.palettes.length, savePalette: this.savePaletteToBrand,
         brandFonts: [['heading', 'Headings'], ['body', 'Body']].map(([k, l]) => ({ label: l, value: b[k], selectNode: this.fontPickerEl('font:' + k, b[k], val => setB(k, val), true) })),
-        fontOptions: P.FONTS.map(f => f.name), hasLogo: !!(b.logo && st.assets[b.logo]), logoStyle: { width: '100%', height: '100%', backgroundImage: b.logo && st.assets[b.logo] ? `url("${st.assets[b.logo].src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }, addLogo: this.addLogo,
-        uploadLogo: () => this.logoInput && this.logoInput.click(), logoBtnLabel: b.logo ? 'Replace logo' : 'Upload logo', applyBrand: this.applyBrand
+        brandStyles: b.textStyles.map(sty => { const pr = this.styleProps(sty, 22); const css = R.textStyle({ ...pr, size: 22, lh: 1, align: 'center' }); return { label: sty.name, onClick: () => this.applyTextStyle(sty), onRemove: e => { e.stopPropagation(); this.setBrand({ textStyles: b.textStyles.filter(x => x.id !== sty.id) }); }, style: { ...css, display: 'block', padding: pr.bg ? '2px 8px' : 0, borderRadius: pr.bg ? 6 : 0, whiteSpace: 'nowrap' } }; }),
+        noStyles: !b.textStyles.length, saveStyle: this.saveTextStyleToBrand, canSaveStyle, saveStyleStyle: { ...small, flex: 'none', opacity: canSaveStyle ? 1 : .5 },
+        hasLogo: !!(b.logo && st.assets[b.logo]), logoStyle: { width: '100%', height: '100%', backgroundImage: b.logo && st.assets[b.logo] ? `url("${st.assets[b.logo].src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }, addLogo: this.addLogo,
+        uploadLogo: this.uploadLogo, logoBtnLabel: b.logo ? 'Replace logo' : 'Upload logo',
+        brandAssets: Object.entries(b.assets).filter(([id]) => st.assets[id]).map(([id, a]) => ({ title: a.name || 'Brand image', isLogo: b.logo === id, imgStyle: { width: '100%', height: '100%', backgroundImage: `url("${st.assets[id].src}")`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', pointerEvents: 'none' }, onClick: () => this.addImageAsset(id), onDragStart: e => { e.dataTransfer.setData('text/pw-asset', id); e.dataTransfer.effectAllowed = 'copy'; },
+          onLogo: e => { e.stopPropagation(); setB('logo', b.logo === id ? null : id); }, onRemove: e => { e.stopPropagation(); if (confirm('Remove this image from the brand?')) this.removeBrandAsset(id); }, logoBtnStyle: { ...tiny, background: b.logo === id ? C : 'rgba(0,0,0,.55)' }, removeBtnStyle: tiny })),
+        noAssets: !Object.keys(b.assets).length, uploadBrandAsset: () => this.pickBrandAsset('asset'),
+        applyBrand: this.applyBrand
       });
     }
     if (st.panel === 'layers') {
@@ -832,7 +1158,7 @@ export default class Studio extends React.Component {
     const opts = { interactive: true, assets: st.assets, editingId: st.editingId, onElDown: this.onElDown, onElDbl: this.onElDbl, onTextCommit: this.onTextCommit, onHover: this.onHover };
     v.pages = d.pages.map((p, i) => ({ ...this.overlay(i), label: `Page ${i + 1}`, onFocus: () => this.setState({ page: i, sel: [] }),
       labelStyle: { border: 'none', background: 'transparent', padding: '0 4px', fontWeight: 700, fontSize: 13, cursor: 'pointer', color: i === st.page ? 'var(--pw-ink)' : 'var(--pw-muted-2)' },
-      wrapStyle: { position: 'relative', width: d.w * z, height: d.h * z, boxShadow: i === st.page ? `0 0 0 2px ${C}, 0 8px 30px rgba(36,33,29,.12)` : '0 2px 10px rgba(36,33,29,.1)', flex: 'none' },
+      wrapStyle: { position: 'relative', width: d.w * z, height: d.h * z, boxShadow: i === st.page ? `0 0 0 2px ${C}, 0 8px 30px rgba(36,33,29,.12)` : '0 2px 10px rgba(36,33,29,.1)', flex: 'none', touchAction: 'none' },
       stageStyle: { position: 'absolute', left: 0, top: 0, width: d.w, height: d.h, transform: `scale(${z})`, transformOrigin: '0 0', overflow: 'hidden', cursor: st.cropMode ? 'move' : 'default' },
       node: R.renderPage(h, p, d, { ...opts, onPageDown: e => this.onPageDown(e, i) }),
       onUp: () => this.movePage(i, -1), onDown: () => this.movePage(i, 1), onDup: () => this.dupPage(i), onDel: () => this.delPage(i), onAdd: () => this.addPage(i) }));

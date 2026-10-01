@@ -74,9 +74,9 @@ a:hover{color:#1F7D62;text-decoration:underline}
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Layout tools</b><span>Snapping to page and element edges and centers, align, layer order, layers panel (hide, lock, drag to reorder), grouping, box select.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Pages</b><span>Multiple pages: add, duplicate, reorder, delete, per-page background. Decks, carousels, booklets, reports and menus open with a story arc already laid out across their pages.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Data</b><span>Bar, line, pie and donut charts with inline data editing. QR codes.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
-          <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Brand kit</b><span>Four color roles, heading and body fonts, logo. One click restyles any design. Palette and type-pairing swaps.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
+          <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Brands</b><span>Several brand kits, one active. Each has four color roles, heading and body fonts, a logo, a library of images, saved color schemes and saved text styles, kept in IndexedDB. A three-step builder reads color kits out of a logo. A brand downloads as one <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">.pinwheel</code> kit file. One click restyles any design.</span><span style="color:#2F7A4F; font-weight:600">Built</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Export</b><span>Multi-page PDF, PNG and JPG (1×–3×, zipped when there are several pages), SVG, native .pinwheel.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
-          <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Safety net</b><span>Undo/redo (150 steps, slider moves merged), autosave to local storage, keyboard shortcuts.</span><span style="color:#2F7A4F; font-weight:600">In prototype</span></div>
+          <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Safety net</b><span>Undo/redo (150 steps, slider moves merged), keyboard shortcuts, and a recents list: the last 100 designs touched are kept in IndexedDB whether or not they were saved, with live thumbnails on the home page.</span><span style="color:#2F7A4F; font-weight:600">Built</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Animation</b><span>Per-element enter/exit and emphasis animations; MP4/WebM/GIF and animated-PDF export.</span><span style="color:#B7791F; font-weight:600">v1.1</span></div>
           <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr) 110px; padding:10px 16px; border-top:1px solid #EEEAE3; font-size:15px"><b>Vector PDF</b><span>True text and vector shapes in PDF with embedded font subsets, CMYK and bleed marks for print.</span><span style="color:#B7791F; font-weight:600">v1.1</span></div>
         </div>
@@ -133,16 +133,21 @@ QR       Base &amp; { value, fg, qbg }</pre>
 
       <section id="format" style="display:flex; flex-direction:column; gap:14px">
         <h2 style="margin:0; font-size:28px; letter-spacing:-0.01em">5. The .pinwheel file format</h2>
-        <p style="margin:0">A standard ZIP (DEFLATE). Rename it to <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">.zip</code> and any OS can open it. Assets are stored as the original bytes, not base64.</p>
-        <pre style="margin:0; background:#24211D; color:#F2EDE4; border-radius:12px; padding:18px 20px; overflow:auto; font-family:'IBM Plex Mono', monospace; font-size:13px; line-height:1.55">my-design.pinwheel
-├── manifest.json      format, version, app, created, modified, size, page count, asset index
+        <p style="margin:0">A standard ZIP (DEFLATE). Rename it to <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">.zip</code> and any OS can open it. Assets are stored as the original bytes, not base64. The format is type-aware: <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">manifest.kind</code> says whether the file is a design or a brand kit, and the studio opens either from the same button, double-click or drop.</p>
+        <pre style="margin:0; background:#24211D; color:#F2EDE4; border-radius:12px; padding:18px 20px; overflow:auto; font-family:'IBM Plex Mono', monospace; font-size:13px; line-height:1.55">my-design.pinwheel                       kind "design"
+├── manifest.json      format, kind, version, app, created, modified, size, page count, asset index
 ├── document.json      the Document (section 4)
 ├── thumbnail.png      ≤480 px preview of page 1 (for file browsers, galleries)
 └── assets/
     ├── a3k9x2.jpg      referenced by Image.asset / origAsset / Page.bgAsset / brand.logo
-    └── a7p1qe.png</pre>
+    └── a7p1qe.png
+
+northwind-brand-kit.pinwheel             kind "brand"
+├── manifest.json      format, kind, version, app, created, modified, asset index
+├── brand.json         colors, fonts, logo id, color schemes, text styles, asset metadata
+└── assets/            the logo and every image saved to the brand</pre>
         <pre style="margin:0; background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:18px 20px; overflow:auto; font-family:'IBM Plex Mono', monospace; font-size:13px; line-height:1.55; color:#24211D">{
-  "format": "pinwheel", "version": 1, "app": "Pinwheel Studio",
+  "format": "pinwheel", "kind": "design", "version": 2, "app": "Pinwheel Studio",
   "created": "2026-09-30T10:12:00Z", "modified": "2026-09-30T11:40:21Z",
   "name": "Plant 10,000 Trees", "size": { "w": 1080, "h": 1080, "unit": "px" },
   "pages": 1,
@@ -150,7 +155,9 @@ QR       Base &amp; { value, fg, qbg }</pre>
                           "name": "park.jpg", "bytes": 412883, "w": 2400, "h": 1600 } }
 }</pre>
         <ul style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:4px">
-          <li><b>Versioning.</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">version</code> goes up only for breaking changes. New fields are optional, and readers ignore unknown fields. <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">migrate(doc, v)</code> runs a chain of pure upgrade steps.</li>
+          <li><b>Versioning.</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">version</code> goes up only for breaking changes. New fields are optional, and readers ignore unknown fields. <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">migrate(doc, v)</code> runs a chain of pure upgrade steps. Version 2 added <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">kind</code>; a manifest without it is a version-1 design.</li>
+          <li><b>Brand kits</b> carry a <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">brand.json</code> whose <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">assets</code> map holds names and sizes only; the bytes are in <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">assets/</code>, indexed by the manifest like a design's. Opening a kit adds the brand, or replaces one with the same id.</li>
+          <li><b>How files leave the app.</b> Desktop Chromium gets the File System Access API: a save dialog, and a handle so Save writes back to the file that was opened. Phones and tablets get the Web Share API, which hands the finished file to the share sheet. Everywhere else the file is a download. Saving never needs a server.</li>
           <li><b>Newer files</b> open read-only with a warning rather than being silently corrupted.</li>
           <li><b>Garbage collection.</b> Only assets that are referenced get written, so deleted uploads never bloat a file.</li>
           <li><b>Fonts are referenced by family name</b>, not embedded, because they're all OFL Google Fonts. v1.1 adds optional <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">fonts/</code> for user-uploaded fonts.</li>
@@ -223,6 +230,7 @@ QR       Base &amp; { value, fg, qbg }</pre>
       <section id="ux" style="display:flex; flex-direction:column; gap:14px">
         <h2 style="margin:0; font-size:28px; letter-spacing:-0.01em">9. Editor UX</h2>
         <p style="margin:0">Layout: a <b>left icon rail</b> (Templates, Styles, Elements, Text, Uploads, Charts, Brand, Layers) opens a 320 px flyout. The <b>canvas</b> sits in the center with pages stacked vertically. A <b>contextual properties panel</b> on the right shows page settings when nothing is selected and element controls otherwise.</p>
+        <p style="margin:0"><b>Phones and tablets</b> get the same editor, re-arranged. Under 720 px the rail becomes a bottom tab bar, the flyout and the properties panel become bottom sheets (a pill above the tab bar opens the properties), and the top bar keeps the name, undo, Export and one overflow menu. Under 1080 px the flyout floats over the canvas instead of taking a column. On touch screens one finger drags elements or pans the page, two fingers pinch to zoom, a double tap edits text, and resize handles grow. The home page lists recent designs and brands in rows that scroll sideways.</p>
         <div style="background:#FFFFFF; border:1px solid #E6E1D9; border-radius:12px; padding:6px 16px">
           <div style="display:grid; grid-template-columns:170px minmax(0, 1fr); gap:6px 16px; padding:10px 0; font-size:15px">
             <code style="font-family:'IBM Plex Mono', monospace; font-size:13px">Click · Shift-click</code><span>Select (groups select together) · add to or remove from the selection</span>
@@ -269,7 +277,7 @@ QR       Base &amp; { value, fg, qbg }</pre>
           <li>First paint under 1.5 s on a mid-range laptop. Export, zip and ML libraries don't load until they're used.</li>
           <li>Gallery thumbnails are live renders of the model (no images), memoized per template and size and paged 48 at a time. Production adds virtualization and an IntersectionObserver.</li>
           <li>60 fps drag on pages with fewer than 300 elements. History snapshots are JSON strings, and continuous controls merge into one undo step every 900 ms.</li>
-          <li>Imported images are downscaled to a 2,400 px long edge. Autosave skips assets once the payload passes about 4.5 MB (IndexedDB in production).</li>
+          <li>Imported images are downscaled to a 2,400 px long edge. Every design touched is written to IndexedDB 1.2 s after the last change, as a full record plus a light list record (page 1 with ≤200 px copies of its images) that the home page draws live thumbnails from. The newest 100 are kept.</li>
           <li>Every control is a native button, input or select with a visible focus ring and title tooltips. Canvas elements will get an accessible layer tree (v1.1). UI text meets 4.5:1.</li>
         </ul>
       </section>
