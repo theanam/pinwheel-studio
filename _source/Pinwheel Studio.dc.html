@@ -365,15 +365,17 @@ input[type=range]{accent-color:#E8674A;width:100%}
                 <sc-if value="{{ noLayers }}" hint-placeholder-val="{{ false }}">
                   <div style="color:#8A837A; font-size:13px">This page is empty.</div>
                 </sc-if>
+                <sc-if value="{{ layerHint }}" hint-placeholder-val="{{ true }}">
+                  <div style="color:#8A837A; font-size:12px">{{ layerHint }}</div>
+                </sc-if>
                 <div style="display:flex; flex-direction:column; gap:3px">
                   <sc-for list="{{ layerItems }}" as="l" hint-placeholder-count="6">
-                    <div style="{{ l.style }}">
+                    <div draggable="true" onDragStart="{{ l.onDragStart }}" onDragOver="{{ l.onDragOver }}" onDrop="{{ l.onDrop }}" onDragEnd="{{ l.onDragEnd }}" style="{{ l.style }}">
+                      <span title="Drag to reorder" style="width:14px; flex:none; color:#9A9389; font-size:13px; line-height:1; text-align:center; cursor:grab; user-select:none">⠿</span>
                       <button onClick="{{ l.onClick }}" style="flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; border:none; background:transparent; cursor:pointer; padding:6px 4px; text-align:left; color:#24211D">
                         <span style="font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%">{{ l.label }}</span>
                         <span style="font-size:11px; color:#8A837A">{{ l.meta }}</span>
                       </button>
-                      <button onClick="{{ l.onUp }}" title="Bring forward" style="width:24px; height:24px; border:none; background:transparent; border-radius:5px; cursor:pointer; color:#6E675E" style-hover="background:#EFEBE5">↑</button>
-                      <button onClick="{{ l.onDown }}" title="Send backward" style="width:24px; height:24px; border:none; background:transparent; border-radius:5px; cursor:pointer; color:#6E675E" style-hover="background:#EFEBE5">↓</button>
                       <button onClick="{{ l.onEye }}" title="Show / hide" style="{{ l.eyeStyle }}">{{ l.eye }}</button>
                       <button onClick="{{ l.onLock }}" title="Lock / unlock" style="{{ l.lockStyle }}">{{ l.lock }}</button>
                     </div>

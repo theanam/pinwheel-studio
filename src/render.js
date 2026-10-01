@@ -9,21 +9,64 @@ function starPts(n, inner, w, h) {
   return polyPts(out, w, h);
 }
 function ngonPts(n, w, h) { const out = []; for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / n; out.push([.5 + .5 * Math.cos(a), .5 + .5 * Math.sin(a)]); } return polyPts(out, w, h); }
-const SHAPE_PTS = { triangle: [[.5, 0], [1, 1], [0, 1]], diamond: [[.5, 0], [1, .5], [.5, 1], [0, .5]], arrow: [[0, .3], [.6, .3], [.6, 0], [1, .5], [.6, 1], [.6, .7], [0, .7]], chevron: [[0, 0], [.6, 0], [1, .5], [.6, 1], [0, 1], [.4, .5]], parallelogram: [[.22, 0], [1, 0], [.78, 1], [0, 1]] };
-export const SHAPES = ['rect', 'rounded', 'ellipse', 'triangle', 'diamond', 'star', 'burst', 'polygon', 'arrow', 'chevron', 'parallelogram', 'arch', 'half', 'quarter'];
+function gearPts(n, w, h) {
+  const out = [], step = Math.PI / n; // each tooth: outer edge then inner gap, as 4 points
+  for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + i * 2 * step; [[a - step * .55, .78], [a - step * .32, 1], [a + step * .32, 1], [a + step * .55, .78]].forEach(([t, r]) => out.push([.5 + .5 * r * Math.cos(t), .5 + .5 * r * Math.sin(t)])); }
+  return polyPts(out, w, h);
+}
+const K = .5523; // cubic approximation of a quarter circle
+/** A circle as cubics, in unit space, centred at (cx, cy) with radius r. Clockwise unless `ccw`. */
+const circ = (cx, cy, r, ccw) => { const k = r * K, d = ccw ? -1 : 1; return `M${cx} ${cy - r} C${cx + k * d} ${cy - r} ${cx + r * d} ${cy - k} ${cx + r * d} ${cy} C${cx + r * d} ${cy + k} ${cx + k * d} ${cy + r} ${cx} ${cy + r} C${cx - k * d} ${cy + r} ${cx - r * d} ${cy + k} ${cx - r * d} ${cy} C${cx - r * d} ${cy - k} ${cx - k * d} ${cy - r} ${cx} ${cy - r} Z`; };
+/** Scale a unit-space path (numbers alternate x, y; no arcs) to w × h. */
+function unitPath(d, w, h) { let i = 0; return d.replace(/[A-Za-z]|-?\.?\d+(?:\.\d+)?/g, t => { if (/[A-Za-z]/.test(t)) { i = 0; return t; } return String(Math.round(+t * (i++ % 2 ? h : w) * 100) / 100); }); }
+const SHAPE_PTS = {
+  triangle: [[.5, 0], [1, 1], [0, 1]], rtriangle: [[0, 0], [1, 1], [0, 1]], diamond: [[.5, 0], [1, .5], [.5, 1], [0, .5]],
+  arrow: [[0, .3], [.6, .3], [.6, 0], [1, .5], [.6, 1], [.6, .7], [0, .7]], chevron: [[0, 0], [.6, 0], [1, .5], [.6, 1], [0, 1], [.4, .5]], pointer: [[0, 0], [.75, 0], [1, .5], [.75, 1], [0, 1]],
+  parallelogram: [[.22, 0], [1, 0], [.78, 1], [0, 1]], trapezoid: [[.2, 0], [.8, 0], [1, 1], [0, 1]],
+  cross: [[.33, 0], [.67, 0], [.67, .33], [1, .33], [1, .67], [.67, .67], [.67, 1], [.33, 1], [.33, .67], [0, .67], [0, .33], [.33, .33]],
+  bolt: [[.62, 0], [.12, .58], [.45, .58], [.38, 1], [.88, .4], [.55, .4]],
+  tag: [[0, .5], [.26, 0], [1, 0], [1, 1], [.26, 1]], bookmark: [[0, 0], [1, 0], [1, 1], [.5, .76], [0, 1]], banner: [[0, 0], [1, 0], [.88, .5], [1, 1], [0, 1], [.12, .5]]
+};
+const NGON = { pentagon: 5, hexagon: 6, octagon: 8 };
+// Curved shapes, authored in unit space with cubics so they scale to any aspect.
+const UNIT = {
+  heart: 'M.5 1 C.3 .86 0 .66 0 .32 C0 .13 .13 0 .28 0 C.38 0 .46 .05 .5 .14 C.54 .05 .62 0 .72 0 C.87 0 1 .13 1 .32 C1 .66 .7 .86 .5 1 Z',
+  drop: 'M.5 0 C.5 0 1 .46 1 .66 C1 .85 .78 1 .5 1 C.22 1 0 .85 0 .66 C0 .46 .5 0 .5 0 Z',
+  cloud: 'M.26 .92 C.1 .92 0 .8 0 .68 C0 .57 .08 .48 .19 .46 C.19 .3 .32 .18 .46 .22 C.54 .08 .72 .06 .8 .2 C.93 .2 1 .32 .98 .44 C1 .5 1 .58 .94 .64 C.99 .74 .93 .92 .78 .92 Z',
+  speech: 'M.12 0 L.88 0 C.95 0 1 .05 1 .12 L1 .62 C1 .69 .95 .74 .88 .74 L.4 .74 L.18 1 L.23 .74 L.12 .74 C.05 .74 0 .69 0 .62 L0 .12 C0 .05 .05 0 .12 0 Z',
+  crescent: 'M.5 0 C.22 0 0 .22 0 .5 C0 .78 .22 1 .5 1 C.64 1 .76 .95 .85 .86 C.58 .9 .3 .74 .3 .5 C.3 .26 .58 .1 .85 .14 C.76 .05 .64 0 .5 0 Z',
+  shield: 'M.5 0 L1 .14 L1 .5 C1 .76 .78 .93 .5 1 C.22 .93 0 .76 0 .5 L0 .14 Z',
+  blob: 'M.45 .02 C.7 -.02 .98 .15 .98 .42 C.98 .66 .86 .98 .58 .98 C.3 .98 .02 .84 .02 .56 C.02 .3 .2 .06 .45 .02 Z',
+  wave: 'M0 .3 C.17 .05 .33 .05 .5 .3 C.67 .55 .83 .55 1 .3 L1 1 L0 1 Z',
+  ticket: 'M0 0 L1 0 L1 .38 C.92 .38 .92 .62 1 .62 L1 1 L0 1 L0 .62 C.08 .62 .08 .38 0 .38 Z'
+};
+/** Every shape the library offers: display name and natural aspect ratio (w / h). */
+export const SHAPE_INFO = {
+  rect: ['Rectangle', 1], rounded: ['Rounded', 1], pill: ['Pill', 2.4], ellipse: ['Ellipse', 1], triangle: ['Triangle', 1], rtriangle: ['Right triangle', 1], diamond: ['Diamond', 1],
+  pentagon: ['Pentagon', 1], hexagon: ['Hexagon', 1], octagon: ['Octagon', 1], polygon: ['Polygon', 1], star: ['Star', 1], burst: ['Burst', 1], gear: ['Gear', 1],
+  arrow: ['Arrow', 1.6], chevron: ['Chevron', 1.6], pointer: ['Pointer', 1.6], parallelogram: ['Parallelogram', 1.6], trapezoid: ['Trapezoid', 1.6], cross: ['Cross', 1],
+  arch: ['Arch', .8], half: ['Half circle', 2], quarter: ['Quarter circle', 1], ring: ['Ring', 1], heart: ['Heart', 1.1], drop: ['Drop', .75], cloud: ['Cloud', 1.5],
+  speech: ['Speech bubble', 1.3], crescent: ['Crescent', 1], bolt: ['Bolt', .7], shield: ['Shield', .85], blob: ['Blob', 1], wave: ['Wave', 2.2], ticket: ['Ticket', 1.8],
+  tag: ['Tag', 1.8], bookmark: ['Bookmark', .6], banner: ['Banner', 2.6]
+};
+export const SHAPES = Object.keys(SHAPE_INFO);
 
 function shapeNode(h, el) {
   const w = el.w, H = el.h, sw = el.sw || 0;
   const p = { fill: el.fill || 'none', stroke: el.stroke || 'none', strokeWidth: sw, strokeDasharray: el.dash && sw ? `${sw * 3} ${sw * 2}` : undefined, strokeLinejoin: 'round' };
   const s = el.shape;
-  if (s === 'rect' || s === 'rounded') return h('rect', { x: sw / 2, y: sw / 2, width: Math.max(0, w - sw), height: Math.max(0, H - sw), rx: Math.min(s === 'rounded' ? Math.max(el.radius || 0, Math.min(w, H) * .18) : el.radius || 0, w / 2, H / 2), ...p });
+  if (s === 'rect' || s === 'rounded' || s === 'pill') return h('rect', { x: sw / 2, y: sw / 2, width: Math.max(0, w - sw), height: Math.max(0, H - sw), rx: Math.min(s === 'pill' ? Math.min(w, H) / 2 : s === 'rounded' ? Math.max(el.radius || 0, Math.min(w, H) * .18) : el.radius || 0, w / 2, H / 2), ...p });
   if (s === 'ellipse') return h('ellipse', { cx: w / 2, cy: H / 2, rx: Math.max(0, w / 2 - sw / 2), ry: Math.max(0, H / 2 - sw / 2), ...p });
   if (s === 'star' || s === 'burst') return h('polygon', { points: starPts(s === 'burst' ? (el.points > 8 ? el.points : 16) : el.points || 5, s === 'burst' ? Math.max(el.inner || .8, .7) : el.inner || .5, w, H), ...p });
   if (s === 'polygon') return h('polygon', { points: ngonPts(el.sides || 6, w, H), ...p });
+  if (NGON[s]) return h('polygon', { points: ngonPts(NGON[s], w, H), ...p });
+  if (s === 'gear') return h('polygon', { points: gearPts(Math.max(5, el.points || 8), w, H), ...p });
   if (s === 'poly' && el.pts) return h('polygon', { points: polyPts(el.pts, w, H), ...p });
   // Motif paths are authored in a 100×100 box and scaled to the frame (fill only).
   if (s === 'path' && el.d) return h('path', { d: el.d, transform: `scale(${w / 100} ${H / 100})`, fillRule: 'evenodd', fill: p.fill });
   if (SHAPE_PTS[s]) return h('polygon', { points: polyPts(SHAPE_PTS[s], w, H), ...p });
+  if (UNIT[s]) return h('path', { d: unitPath(UNIT[s], w, H), ...p });
+  if (s === 'ring') { const t = Math.max(.08, Math.min(.9, 1 - (el.inner ?? .62))); return h('path', { d: unitPath(circ(.5, .5, .5) + circ(.5, .5, .5 - t / 2, true), w, H), fillRule: 'evenodd', ...p }); }
   if (s === 'arch') { const r = w / 2; return h('path', { d: `M0 ${H} L0 ${Math.min(r, H)} A ${r} ${Math.min(r, H)} 0 0 1 ${w} ${Math.min(r, H)} L${w} ${H} Z`, ...p }); }
   if (s === 'half') return h('path', { d: `M0 ${H} A ${w / 2} ${H} 0 0 1 ${w} ${H} Z`, ...p });
   if (s === 'quarter') return h('path', { d: `M0 ${H} L0 0 A ${w} ${H} 0 0 1 ${w} ${H} Z`, ...p });
@@ -208,9 +251,31 @@ export function textStyle(el) {
   // hollow unless the element keeps its fill. Shadow: an object, or `true` for the
   // original soft drop.
   if (el.outline) { if (!el.outlineFill) st.color = 'transparent'; st.WebkitTextStroke = `${el.outlineW ?? Math.max(1, el.size / 34)}px ${el.outline}`; st.paintOrder = 'stroke fill'; }
-  if (el.shadow && typeof el.shadow === 'object') st.textShadow = `${el.shadow.x || 0}px ${el.shadow.y || 0}px ${el.shadow.blur || 0}px ${el.shadow.color || 'rgba(0,0,0,.35)'}`;
-  else if (el.shadow) st.textShadow = `0 ${el.size * .06}px ${el.size * .18}px rgba(0,0,0,.35)`;
+  const sh = shadowCSS(el.shadow, el.size); if (sh) st.textShadow = sh;
   return st;
+}
+
+/** text-shadow for a shadow setting: `true` is the soft default, an object a custom
+ *  drop; with `long` the glyphs are extruded along (x, y) in 1px steps, which is the
+ *  sharp poster shadow. */
+export function shadowCSS(sh, size) {
+  if (!sh) return null;
+  if (typeof sh !== 'object') return `0 ${size * .06}px ${size * .18}px rgba(0,0,0,.35)`;
+  const x = sh.x || 0, y = sh.y || 0, blur = sh.blur || 0, color = sh.color || 'rgba(0,0,0,.35)';
+  if (!sh.long) return `${x}px ${y}px ${blur}px ${color}`;
+  const len = Math.hypot(x, y); if (len < 1) return `0 0 ${blur}px ${color}`;
+  const n = Math.min(160, Math.ceil(len)), out = [], r = v => Math.round(v * 10) / 10;
+  for (let i = 1; i <= n; i++) out.push(`${r(x * i / n)}px ${r(y * i / n)}px ${blur}px ${color}`);
+  return out.join(',');
+}
+
+/** The rendered edge of an image: a cutout or transparent PNG without a mask gets
+ *  its border and shadow around the subject, not the frame. */
+export function imageEdge(el, asset) { return asset && asset.alpha && (!el.mask || el.mask === 'none') && el.edge !== 'frame' ? 'subject' : 'frame'; }
+function imageShadow(sh, m) {
+  if (!sh) return null;
+  if (typeof sh !== 'object') return { x: 0, y: m * .03, blur: m * .08, color: 'rgba(0,0,0,.22)' };
+  return { x: sh.x || 0, y: sh.y || 0, blur: sh.blur || 0, color: sh.color || 'rgba(0,0,0,.35)' };
 }
 
 export function renderEl(h, el, o = {}) {
@@ -237,11 +302,30 @@ export function renderEl(h, el, o = {}) {
       el.arrow ? h('polygon', { points: `${el.w},${cy} ${el.w - aw},${cy - aw * .6} ${el.w - aw},${cy + aw * .6}`, fill: el.stroke }) : null));
   }
   if (el.type === 'image') {
-    const src = el.asset && o.assets && o.assets[el.asset] && o.assets[el.asset].src;
+    const asset = el.asset && o.assets && o.assets[el.asset], src = asset && asset.src;
     const br = el.mask === 'circle' ? '50%' : el.mask === 'arch' ? `${el.w / 2}px ${el.w / 2}px 0 0` : (el.mask === 'rounded' ? Math.max(el.radius || 0, Math.min(el.w, el.h) * .08) : el.radius || 0);
-    const st = { ...base, overflow: 'hidden', borderRadius: br, border: el.border && el.borderW ? `${el.borderW}px solid ${el.border}` : undefined, boxShadow: el.shadow ? `0 ${Math.min(el.w, el.h) * .03}px ${Math.min(el.w, el.h) * .08}px rgba(0,0,0,.22)` : undefined, background: src ? 'transparent' : undefined };
+    const m = Math.min(el.w, el.h), sh = imageShadow(el.shadow, m), bw = el.border && el.borderW ? el.borderW : 0;
+    const st = { ...base, overflow: 'hidden', borderRadius: br, background: src ? 'transparent' : undefined };
+    let defs = null;
+    if (src && imageEdge(el, asset) === 'subject') {
+      // Border and shadow follow the alpha channel: the border is the dilated
+      // silhouette flooded with the colour, the shadow a drop-shadow of the result.
+      const parts = []; const fid = `pwf-${el.id}`;
+      if (bw) {
+        const pad = Math.ceil((bw + (sh ? Math.abs(sh.x) + Math.abs(sh.y) + sh.blur * 3 : 0)) * 1.2) + 2, px = pad / el.w * 100, py = pad / el.h * 100;
+        defs = h('svg', { width: 0, height: 0, 'aria-hidden': true, style: { position: 'absolute' } }, h('filter', { id: fid, x: `-${px}%`, y: `-${py}%`, width: `${100 + 2 * px}%`, height: `${100 + 2 * py}%`, colorInterpolationFilters: 'sRGB' },
+          h('feMorphology', { in: 'SourceAlpha', operator: 'dilate', radius: bw, result: 'd' }), h('feFlood', { floodColor: el.border }), h('feComposite', { in2: 'd', operator: 'in', result: 'o' }),
+          h('feMerge', null, h('feMergeNode', { in: 'o' }), h('feMergeNode', { in: 'SourceGraphic' }))));
+        parts.push(`url(#${fid})`);
+      }
+      if (sh) parts.push(`drop-shadow(${sh.x}px ${sh.y}px ${sh.blur}px ${sh.color})`);
+      if (parts.length) st.filter = parts.join(' ');
+    } else {
+      if (bw) st.border = `${bw}px solid ${el.border}`;
+      if (sh) st.boxShadow = `${sh.x}px ${sh.y}px ${sh.blur}px ${sh.color}`;
+    }
     const img = src ? h('img', { src, draggable: false, alt: '', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: el.fit || 'cover', objectPosition: `${el.cx ?? 50}% ${el.cy ?? 50}%`, transform: `scale(${el.zoom || 1})${el.flip ? ' scaleX(-1)' : ''}`, transformOrigin: `${el.cx ?? 50}% ${el.cy ?? 50}%`, filter: filterCSS(el.filters), display: 'block', pointerEvents: 'none', userSelect: 'none' } }) : el.sample ? sampleNode(h, el) : placeholder(h, el);
-    return h('div', { ...common, style: st }, img);
+    return h('div', { ...common, style: st }, defs, img);
   }
   if (el.type === 'qr') {
     const q = qrPath(el.value);

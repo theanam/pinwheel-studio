@@ -79,13 +79,18 @@ export interface TextElement extends BaseElement {
   outlineW?: number;
   /** Keep the fill colour under the outline (default: hollow). */
   outlineFill?: boolean;
-  /** `true` is the original soft drop shadow; an object is a custom one. */
-  shadow?: boolean | { x: number; y: number; blur: number; color: Color };
+  /** `true` is the original soft drop shadow; an object is a custom one. With `long`
+   *  the glyphs are extruded along (x, y) in 1px steps — the sharp poster shadow. */
+  shadow?: boolean | { x: number; y: number; blur: number; color: Color; long?: boolean };
 }
 
 export type ShapeKind =
-  | 'rect' | 'rounded' | 'ellipse' | 'triangle' | 'diamond' | 'star' | 'burst'
-  | 'polygon' | 'arrow' | 'chevron' | 'parallelogram' | 'arch' | 'half' | 'quarter' | 'poly' | 'path';
+  | 'rect' | 'rounded' | 'pill' | 'ellipse' | 'triangle' | 'rtriangle' | 'diamond'
+  | 'pentagon' | 'hexagon' | 'octagon' | 'polygon' | 'star' | 'burst' | 'gear'
+  | 'arrow' | 'chevron' | 'pointer' | 'parallelogram' | 'trapezoid' | 'cross'
+  | 'arch' | 'half' | 'quarter' | 'ring' | 'heart' | 'drop' | 'cloud' | 'speech' | 'crescent'
+  | 'bolt' | 'shield' | 'blob' | 'wave' | 'ticket' | 'tag' | 'bookmark' | 'banner'
+  | 'poly' | 'path';
 
 export interface ShapeElement extends BaseElement {
   type: 'shape';
@@ -95,9 +100,9 @@ export interface ShapeElement extends BaseElement {
   /** Stroke width. */
   sw: number;
   radius: number;
-  /** Star points. */
+  /** Star points; gear teeth. */
   points: number;
-  /** Star inner radius, 0–1. */
+  /** Star inner radius, 0–1; for a ring, the hole radius. */
   inner: number;
   /** Regular-polygon sides. */
   sides: number;
@@ -143,7 +148,11 @@ export interface ImageElement extends BaseElement {
   filters: ImageFilters;
   border?: Color;
   borderW?: number;
-  shadow?: boolean;
+  /** `true` is the soft default; an object is a custom drop shadow. */
+  shadow?: boolean | { x: number; y: number; blur: number; color: Color };
+  /** Where the border and shadow are drawn. Defaults to the subject's silhouette
+   *  when the asset has transparency and there is no mask, else the frame. */
+  edge?: 'subject' | 'frame';
   /** Placeholder caption and tint, shown until a photo is dropped in. */
   label?: string;
   tint?: Color;
@@ -200,6 +209,8 @@ export interface Asset {
   name?: string;
   w?: number;
   h?: number;
+  /** Has see-through pixels (a cutout or transparent PNG). Detected on import. */
+  alpha?: boolean;
 }
 
 /** manifest.json inside a .pinwheel zip (spec §5). */

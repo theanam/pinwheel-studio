@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pinwheel — shapes & effects sheet</title>
+<!--
+  Visual QA for the renderer's element library: every shape in SHAPE_INFO, the text
+  shadow modes (soft, drop, long) and image border/shadow around a cutout versus a
+  frame. Served by the dev server at /tests/effects-sheet.html. It renders the live
+  model through the same renderer as the canvas, so what shows here is what a user
+  gets — and, through html-to-image, what they export.
+
+    export=1    also run the page through html-to-image and show the PNG below
+-->
+<style>
+  body { margin: 0; padding: 20px; background: #EAE7E1; font: 12px/1.4 'Source Sans 3', system-ui, sans-serif; color: #24211D; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #8A837A; margin: 22px 0 8px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .cell { width: 96px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .box { width: 96px; height: 96px; position: relative; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(36,33,29,.18); overflow: hidden; }
+  .label { font-size: 11px; color: #57514A; }
+  .page { position: relative; box-shadow: 0 1px 4px rgba(36,33,29,.18); }
+</style>
+</head>
+<body>
+<h2>Shapes</h2>
+<div id="shapes" class="grid"></div>
+<h2>Text shadows and image edges</h2>
+<div id="page"></div>
+<div id="out"></div>
+<script type="module">
+  import React from 'react';
+  import { createRoot } from 'react-dom/client';
+  import * as P from '../src/presets.js';
+  import { renderEl, renderPage, SHAPES, SHAPE_INFO } from '../src/render.js';
+
+  const h = React.createElement;
+  for (const f of P.FONTS.filter(f => ['Anton', 'Bebas Neue', 'DM Sans'].includes(f.name))) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = P.fontURL(f); document.head.appendChild(l); }
+
+  // Every shape, fitted to its natural aspect in a 96px box, with a stroke so the
+  // path-based ones show their stroke handling too.
+  const cells = SHAPES.map(s => {
+    const [name, ar] = SHAPE_INFO[s], w = ar >= 1 ? 76 : 76 * ar, hh = ar >= 1 ? 76 / ar : 76;
+    const el = { id: 'sh-' + s, type: 'shape', shape: s, x: (96 - w) / 2, y: (96 - hh) / 2, w, h: hh, rot: 0, opacity: 1, fill: '#1F7D62', stroke: '#1F1B16', sw: 3, radius: 0, points: s === 'burst' ? 16 : s === 'gear' ? 8 : 5, inner: s === 'burst' ? .82 : s === 'ring' ? .62 : .5, sides: 6 };
+    return h('div', { key: s, className: 'cell' }, h('div', { className: 'box' }, renderEl(h, el, {})), h('span', { className: 'label' }, name));
+  });
+  createRoot(document.getElementById('shapes')).render(h(React.Fragment, null, cells));
+
+  // A cutout stand-in: a transparent PNG drawn on a canvas.
+  const cv = document.createElement('canvas'); cv.width = cv.height = 240; const x = cv.getContext('2d');
+  x.fillStyle = '#E8674A'; x.beginPath(); x.arc(120, 136, 72, 0, 7); x.fill(); x.fillRect(108, 28, 24, 70); x.fillStyle = '#FBF7F0'; x.beginPath(); x.arc(96, 120, 12, 0, 7); x.arc(144, 120, 12, 0, 7); x.fill();
+  const assets = { cut: { src: cv.toDataURL(), w: 240, h: 240, alpha: true }, photo: { src: cv.toDataURL(), w: 240, h: 240, alpha: false } };
+
+  const text = (id, x, y, extra) => ({ id, type: 'text', x, y, w: 300, h: 80, rot: 0, opacity: 1, text: 'POSTER', font: 'Anton', size: 64, weight: 400, italic: false, color: '#FBF7F0', align: 'left', lh: 1, ls: .01, upper: true, ...extra });
+  const img = (id, x, y, asset, extra) => ({ id, type: 'image', x, y, w: 150, h: 150, rot: 0, opacity: 1, asset, mask: 'none', radius: 0, cx: 50, cy: 50, zoom: 1, filters: P.NOFILTER, ...extra });
+  const doc = { w: 1000, h: 560, pages: [] };
+  const page = { id: 'p', bg: '#2F6F73', els: [
+    text('t1', 30, 30, { shadow: true }),
+    text('t2', 350, 30, { shadow: { x: 8, y: 8, blur: 0, color: '#1F1B16' } }),
+    text('t3', 670, 30, { shadow: { x: 40, y: 40, blur: 0, color: '#1F1B16', long: true } }),
+    text('t4', 30, 150, { color: '#F2B134', outline: '#1F1B16', outlineW: 2, outlineFill: true, shadow: { x: -30, y: 50, blur: 0, color: '#1F1B16', long: true } }),
+    text('t5', 350, 150, { size: 48, font: 'Bebas Neue', text: 'LONG + BLUR', shadow: { x: 60, y: 20, blur: 1, color: 'rgba(0,0,0,.5)', long: true } }),
+    text('t6', 670, 150, { size: 48, font: 'Bebas Neue', text: 'TWO TONE', color: '#FBF7F0', shadow: { x: 24, y: 24, blur: 0, color: '#E8674A', long: true } }),
+    img('i1', 30, 300, 'cut', { border: '#FBF7F0', borderW: 10, shadow: { x: 12, y: 12, blur: 0, color: 'rgba(0,0,0,.45)' } }),
+    img('i2', 220, 300, 'cut', { border: '#F2B134', borderW: 6, shadow: true }),
+    img('i3', 410, 300, 'cut', { border: '#FBF7F0', borderW: 10, shadow: { x: 12, y: 12, blur: 0, color: 'rgba(0,0,0,.45)' }, edge: 'frame' }),
+    img('i4', 600, 300, 'cut', { mask: 'circle', border: '#FBF7F0', borderW: 8, shadow: true }),
+    img('i5', 790, 300, 'photo', { border: '#FBF7F0', borderW: 10, shadow: { x: 12, y: 12, blur: 0, color: 'rgba(0,0,0,.45)' } }),
+  ] };
+  createRoot(document.getElementById('page')).render(h('div', { className: 'page', style: { width: doc.w, height: doc.h } }, renderPage(h, page, doc, { assets })));
+
+  if (new URLSearchParams(location.search).get('export')) {
+    const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js';
+    s.onload = async () => {
+      await new Promise(r => setTimeout(r, 1200));
+      const node = document.querySelector('[data-page-node]');
+      const c = await htmlToImage.toCanvas(node, { width: doc.w, height: doc.h, pixelRatio: 1, cacheBust: false });
+      const im = new Image(); im.src = c.toDataURL(); im.style.marginTop = '12px'; document.getElementById('out').append(im); document.title = 'exported';
+    };
+    document.head.append(s);
+  }
+</script>
+</body>
+</html>

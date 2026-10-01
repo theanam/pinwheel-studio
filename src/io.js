@@ -130,18 +130,30 @@ export async function openProject(file) {
   if (man.version > FORMAT_VERSION) throw new Error('This file was made with a newer version of Pinwheel Studio');
   const doc = JSON.parse(await z.file('document.json').async('string'));
   const assets = {};
-  for (const [id, a] of Object.entries(man.assets || {})) { const f = z.file(a.path); if (!f) continue; const b = await f.async('blob'); assets[id] = { name: a.name, w: a.w, h: a.h, src: await blobToDataURL(new Blob([b], { type: a.mime })) }; }
+  for (const [id, a] of Object.entries(man.assets || {})) { const f = z.file(a.path); if (!f) continue; const b = await f.async('blob'); const src = await blobToDataURL(new Blob([b], { type: a.mime })); assets[id] = { name: a.name, w: a.w, h: a.h, src, alpha: await hasAlpha(src, a.mime) }; }
   return { doc: migrate(doc, man.version), assets };
 }
 function migrate(doc, v) { return doc; }
 
 /* ---------- images ---------- */
 export function loadImage(src) { return new Promise((res, rej) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+/** Whether an image has any see-through pixels — a cutout or a transparent PNG. The
+ *  renderer draws borders and shadows around the subject of such an image rather
+ *  than around its frame. Sampled at 64×64; JPEGs are opaque by definition. */
+export async function hasAlpha(src, mime) {
+  if (mime === 'image/jpeg' || /^data:image\/jpeg/.test(src)) return false;
+  try {
+    const img = await loadImage(src); const S = 64, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const x = cv.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, S, S);
+    const d = x.getImageData(0, 0, S, S).data; for (let i = 3; i < d.length; i += 4) if (d[i] < 250) return true;
+  } catch (e) { }
+  return false;
+}
 export async function readImageFile(file) {
   let src = await blobToDataURL(file); const img = await loadImage(src);
   const max = 2400; let w = img.naturalWidth, h = img.naturalHeight;
-  if (Math.max(w, h) > max) { const s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h); src = cv.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', .9); }
-  return { src, w, h, name: file.name };
+  if (Math.max(w, h) > max) { const s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h); src = cv.toDataURL(file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png', .9); }
+  return { src, w, h, name: file.name, alpha: await hasAlpha(src, file.type) };
 }
 
 /* ---------- background removal (U²-Netp, on device) ---------- */
@@ -178,5 +190,5 @@ export async function removeBackground(src, onProgress) {
   mx2.putImageData(md, 0, 0);
   const W = img.naturalWidth, H = img.naturalHeight; const fc = document.createElement('canvas'); fc.width = W; fc.height = H; const fx = fc.getContext('2d');
   fx.drawImage(img, 0, 0); fx.globalCompositeOperation = 'destination-in'; fx.imageSmoothingQuality = 'high'; fx.drawImage(mc, 0, 0, W, H);
-  return { src: fc.toDataURL('image/png'), w: W, h: H };
+  return { src: fc.toDataURL('image/png'), w: W, h: H, alpha: true };
 }

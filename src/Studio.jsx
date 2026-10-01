@@ -16,7 +16,7 @@ export default class Studio extends React.Component {
     cropMode: false, exportScale: 2, relayout: true,
     brand: { bg: '#FBF7F0', ink: '#1F1B16', accent: '#1F7D62', accent2: '#2F6F73', heading: 'DM Serif Display', body: 'DM Sans', logo: null },
     hasAutosave: false, autosaveName: '', customW: 1080, customH: 1080, fmtsAll: false,
-    helpOpen: false,
+    helpOpen: false, layerDrag: null, layerOver: null, fontQ: '', fontCat: 'all', fontAnchor: null,
     theme: (() => { try { return localStorage.getItem('pinwheel.theme') || 'system'; } catch (e) { return 'system'; } })()
   };
   hist = []; fut = []; thumbCache = new Map(); builtCache = new Map(); clip = null;
@@ -36,7 +36,8 @@ export default class Studio extends React.Component {
     { id: 'pill', name: 'Pill', font: 'DM Sans', weight: 700, upper: true, ls: .12, color: 'onAccent', bg: 'accent', sizeMul: .45 },
     { id: 'stamp', name: 'Stamp', font: 'Bebas Neue', weight: 400, upper: true, ls: .2, color: 'accent', outline: 'accent', outlineW: 1, outlineFill: true },
     { id: 'ghost', name: 'Ghost', font: 'Space Grotesk', weight: 700, upper: true, ls: .04, color: 'ink', outline: 'ink', outlineW: 1 },
-    { id: 'long', name: 'Long shadow', font: 'Bebas Neue', weight: 400, upper: true, ls: .02, color: 'bg', shadow: { x: .1, y: .1, blur: 0, color: 'ink' } },
+    { id: 'long', name: 'Long shadow', font: 'Bebas Neue', weight: 400, upper: true, ls: .02, color: 'bg', shadow: { x: .14, y: .14, blur: 0, color: 'ink', long: true } },
+    { id: 'poster', name: 'Poster 3D', font: 'Anton', weight: 400, upper: true, ls: .01, color: 'accent', outline: 'ink', outlineW: 1.2, outlineFill: true, shadow: { x: .12, y: .12, blur: 0, color: 'ink', long: true } },
     { id: 'marker', name: 'Marker', font: 'Permanent Marker', weight: 400, upper: false, ls: 0, color: 'accent', shadow: { x: .04, y: .04, blur: .12, color: 'rgba(0,0,0,.25)' } },
     { id: 'elegant', name: 'Elegant', font: 'Cormorant Garamond', weight: 700, upper: true, ls: .25, color: 'ink' },
     { id: 'script', name: 'Script', font: 'Dancing Script', weight: 700, upper: false, ls: 0, color: 'accent', shadow: { x: 0, y: .05, blur: .15, color: 'rgba(0,0,0,.2)' } },
@@ -45,7 +46,7 @@ export default class Studio extends React.Component {
   /** Resolve a text style's roles against the document theme at a given size. */
   styleProps(sty, size) {
     const t = this.state.doc.theme, role = c => ({ ink: t.ink, bg: t.bg, accent: t.accent, accent2: t.accent2, onAccent: t.onAccent, muted: t.muted }[c] || c);
-    const sh = sty.shadow ? { x: Math.round(sty.shadow.x * size), y: Math.round(sty.shadow.y * size), blur: Math.round(sty.shadow.blur * size), color: role(sty.shadow.color) } : null;
+    const sh = sty.shadow ? { x: Math.round(sty.shadow.x * size), y: Math.round(sty.shadow.y * size), blur: Math.round(sty.shadow.blur * size), color: role(sty.shadow.color), ...(sty.shadow.long ? { long: true } : {}) } : null;
     return { font: sty.font, weight: sty.weight, italic: false, upper: !!sty.upper, ls: sty.ls || 0, color: role(sty.color), bg: sty.bg ? role(sty.bg) : null, outline: sty.outline ? role(sty.outline) : null, outlineW: sty.outlineW ? Math.max(1, Math.round(sty.outlineW * size / 40 * 10) / 10) : undefined, outlineFill: !!sty.outlineFill, shadow: sh };
   }
   applyTextStyle(sty) {
@@ -154,8 +155,10 @@ export default class Studio extends React.Component {
   }
   openDoc(doc, assets) {
     this.hist = []; this.fut = [];
-    this.setState(s => ({ screen: 'editor', doc, assets: { ...s.assets, ...assets }, uploads: [...new Set([...s.uploads, ...Object.keys(assets)])], sel: [], page: 0, editingId: null, cropMode: false, menu: null, tplSame: true, tplLimit: 24 }), () => setTimeout(() => this.fitZoom(), 40));
+    this.setState(s => ({ screen: 'editor', doc, assets: { ...s.assets, ...assets }, uploads: [...new Set([...s.uploads, ...Object.keys(assets)])], sel: [], page: 0, editingId: null, cropMode: false, menu: null, tplSame: true, tplLimit: 24 }), () => { setTimeout(() => this.fitZoom(), 40); this.ensureAlpha(assets); });
   }
+  // Assets restored from an autosave written before alpha detection existed.
+  ensureAlpha(assets) { Object.entries(assets).forEach(([id, a]) => { if (!a || a.alpha !== undefined || !a.src) return; this.IO.hasAlpha(a.src).then(v => this.setState(s => s.assets[id] ? { assets: { ...s.assets, [id]: { ...s.assets[id], alpha: v } } } : null)); }); }
   fromTemplate(desc) {
     this.note('topic', desc.topic, 1.5); this.note('format', desc.fmt, 1); const b = this.P.build(desc); b.created = new Date().toISOString(); this.openDoc(b, {}); }
   applyTemplate(desc) {
@@ -236,10 +239,9 @@ export default class Studio extends React.Component {
     const b = this.mk('text', w * .8, u * 5, { name: 'Body', text: 'A short line of supporting text goes right here.', font: pair.body, size: Math.round(u * 3.2), weight: 400, italic: false, color: t.muted || t.ink, align: 'center', lh: 1.4, ls: 0, upper: false, bg: null, outline: null, groupId: g });
     a.y -= u * 4; b.y = a.y + a.h + u * 3; this.addEls([a, b]);
   }
-  addShape(shape) {
-    const d = this.state.doc, t = d.theme, s = Math.min(d.w, d.h) * .3;
-    const h = ['arch'].includes(shape) ? s * 1.25 : shape === 'half' ? s / 2 : shape === 'arrow' || shape === 'chevron' ? s * .6 : shape === 'parallelogram' ? s * .6 : s;
-    this.addEls([this.mk('shape', s, h, { shape, fill: t.accent, stroke: null, sw: 0, radius: 0, points: shape === 'burst' ? 16 : 5, inner: shape === 'burst' ? .82 : .5, sides: 6, dash: false })]);
+  addShape(shape, extra = {}) {
+    const d = this.state.doc, t = d.theme, s = Math.min(d.w, d.h) * .3, [name, ar] = this.R.SHAPE_INFO[shape] || [shape, 1];
+    this.addEls([this.mk('shape', ar >= 1 ? s : s * ar, ar >= 1 ? s / ar : s, { name, shape, fill: t.accent, stroke: null, sw: 0, radius: 0, points: shape === 'burst' ? 16 : shape === 'gear' ? 8 : 5, inner: shape === 'burst' ? .82 : shape === 'ring' ? .62 : .5, sides: 6, dash: false, ...extra })]);
   }
   addLine(o) { const d = this.state.doc, u = this.u(), sw = Math.max(2, Math.round(u * .45)); this.addEls([this.mk('line', d.w * .4, Math.max(sw * 3, 8), { name: o.arrow ? 'Arrow' : 'Line', stroke: d.theme.ink, sw, dash: !!o.dash, arrow: !!o.arrow })]); }
   addFrame(mask) { const d = this.state.doc, s = Math.min(d.w, d.h) * .42; this.addEls([this.mk('image', s, mask === 'arch' ? s * 1.3 : s, { name: 'Frame', asset: null, label: 'Drop image', tint: d.theme.tint || '#DDD', mask, radius: 0, cx: 50, cy: 50, zoom: 1, flip: false, filters: { ...this.P.NOFILTER }, border: null, borderW: 0 })]); }
@@ -265,6 +267,17 @@ export default class Studio extends React.Component {
       if (kind === 'front') p.els = [...rest, ...sel]; else if (kind === 'back') p.els = [...sel, ...rest];
       else { const arr = p.els; const idxs = arr.map((e, i) => ids.includes(e.id) ? i : -1).filter(i => i >= 0); const dir = kind === 'forward' ? 1 : -1; (dir > 0 ? idxs.reverse() : idxs).forEach(i => { const j = i + dir; if (j >= 0 && j < arr.length && !ids.includes(arr[j].id)) [arr[i], arr[j]] = [arr[j], arr[i]]; }); }
     });
+  }
+  /* ---------- layers panel: drag to reorder ---------- */
+  // The panel lists the front-most element first, so dropping "above" a row in the
+  // list means placing the moved elements after it in z-order.
+  layerDragStart = (e, id) => { e.dataTransfer.setData('text/pw-layer', id); e.dataTransfer.effectAllowed = 'move'; this._layerDrag = id; const sel = this.state.sel.includes(id) ? this.state.sel : [id]; this.setState({ layerDrag: id, sel, editingId: null }); };
+  layerDragOver = (e, id) => { if (!this._layerDrag) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; const r = e.currentTarget.getBoundingClientRect(); const above = e.clientY < r.top + r.height / 2; const o = this.state.layerOver; if (!o || o.id !== id || o.above !== above) this.setState({ layerOver: { id, above } }); };
+  layerDrop = (e, id) => { e.preventDefault(); const src = this._layerDrag; if (!src) return; const ids = this.state.sel.includes(src) ? this.state.sel : [src]; const o = this.state.layerOver; this.moveLayers(ids, id, o && o.id === id ? o.above : true); this.layerDragEnd(); };
+  layerDragEnd = () => { this._layerDrag = null; if (this.state.layerDrag || this.state.layerOver) this.setState({ layerDrag: null, layerOver: null }); };
+  moveLayers(ids, targetId, above) {
+    if (ids.includes(targetId)) return;
+    this.setDoc((d, p) => { const moving = p.els.filter(e => ids.includes(e.id)), rest = p.els.filter(e => !ids.includes(e.id)); const ti = rest.findIndex(e => e.id === targetId); if (!moving.length || ti < 0) return; rest.splice(above ? ti + 1 : ti, 0, ...moving); p.els = rest; });
   }
   bbox(els) { const x = Math.min(...els.map(e => e.x)), y = Math.min(...els.map(e => e.y)); return { x, y, w: Math.max(...els.map(e => e.x + e.w)) - x, h: Math.max(...els.map(e => e.y + e.h)) - y }; }
   align(kind) {
@@ -412,7 +425,8 @@ export default class Studio extends React.Component {
     if (mod && k === '0') { e.preventDefault(); this.fitZoom(); return; }
     if (mod && k === 'a') { e.preventDefault(); this.setState({ sel: this.pg.els.filter(x => !x.locked && !x.hidden).map(x => x.id) }); return; }
     if (mod && k === 'v') { setTimeout(() => { if (!this._pastedImage || Date.now() - this._pastedImage > 300) this.paste(); }, 60); return; }
-    if (!sel.length) { if (k === 'escape') this.setState({ menu: null }); if (!mod && k === 't') this.addText('heading'); return; }
+    if (k === 'escape' && this.state.menu) { this.setState({ menu: null }); return; }
+    if (!sel.length) { if (!mod && k === 't') this.addText('heading'); return; }
     if (mod && k === 'd') { e.preventDefault(); this.dup(); return; }
     if (mod && k === 'g') { e.preventDefault(); e.shiftKey ? this.ungroup() : this.group(); return; }
     if (mod && k === 'c') { this.copy(); return; }
@@ -482,11 +496,37 @@ export default class Studio extends React.Component {
     return out;
   }
   ctl(c) {
-    const k = c.k; return { label: '', display: '', ...c, hasLabel: !!c.label && k !== 'btns', isSlider: k === 'slider', isNums: k === 'nums', isColor: k === 'color', isSelect: k === 'select', isSeg: k === 'seg', isText: k === 'text', isArea: k === 'area', isBtns: k === 'btns', isNote: k === 'note', gridStyle: { display: 'grid', gridTemplateColumns: `repeat(${c.cols || 2}, minmax(0, 1fr))`, gap: 6 }, selectNode: k === 'select' ? this.selectEl(c.value, c.options, c.onChange, { height: 34, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 8px', fontSize: 13, background: 'var(--pw-surface)', width: '100%', ...(c.selFont ? { fontFamily: `'${c.value}'`, fontSize: 15 } : {}) }) : null };
+    const k = c.k; return { label: '', display: '', ...c, hasLabel: !!c.label && k !== 'btns', isSlider: k === 'slider', isNums: k === 'nums', isColor: k === 'color', isSelect: k === 'select', isSeg: k === 'seg', isText: k === 'text', isArea: k === 'area', isBtns: k === 'btns', isNote: k === 'note', gridStyle: { display: 'grid', gridTemplateColumns: `repeat(${c.cols || 2}, minmax(0, 1fr))`, gap: 6 }, selectNode: k === 'select' ? (c.selFont ? this.fontPickerEl('font:el', c.value, c.onPick) : this.selectEl(c.value, c.options, c.onChange, { height: 34, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 8px', fontSize: 13, background: 'var(--pw-surface)', width: '100%' })) : null };
   }
   selectEl(value, options, onChange, style) {
     const h = React.createElement;
     return h('select', { value, onChange, style }, options.map(o => h('option', { key: o.value, value: o.value, style: { fontFamily: 'inherit' } }, o.label)));
+  }
+  /* ---------- font picker ---------- */
+  // A popover that lists every family set in its own face, with search and category
+  // chips. All the families are loaded as stylesheets at start-up, so the previews
+  // are live text rather than images. Positioned fixed so the panel's scroll
+  // container cannot clip it; the shared menu backdrop closes it.
+  fontPickerEl(key, value, onPick, big) {
+    const h = React.createElement, P = this.P, st = this.state, open = st.menu === key, C = this.CORAL;
+    const toggle = e => { const r = e.currentTarget.getBoundingClientRect(); this.setState(s => ({ menu: s.menu === key ? null : key, fontQ: '', fontCat: 'all', fontAnchor: { left: r.left, top: r.bottom, bottom: r.top, width: r.width } })); };
+    const kids = [h('button', { key: 'b', onClick: toggle, title: 'Change font', style: { height: big ? 36 : 34, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 10px', border: '1px solid ' + (open ? C : 'var(--pw-line-2)'), borderRadius: 7, background: 'var(--pw-surface)', color: 'var(--pw-ink)', cursor: 'pointer', textAlign: 'left' } },
+      h('span', { style: { fontFamily: `'${value}'`, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, value), h('span', { style: { fontSize: 11, color: 'var(--pw-muted)', flex: 'none' } }, '▾'))];
+    if (open) {
+      const a = st.fontAnchor || { left: 0, top: 0, bottom: 0, width: 260 }, vh = window.innerHeight, up = vh - a.top < 360 && a.bottom > vh - a.top;
+      const q = st.fontQ.trim().toLowerCase(), cat = st.fontCat, pick = name => { onPick(name); this.setState({ menu: null }); };
+      const list = P.FONTS.filter(f => (cat === 'all' || f.cat === cat) && (!q || f.name.toLowerCase().includes(q)));
+      const pos = up ? { bottom: vh - a.bottom + 4, maxHeight: Math.min(460, a.bottom - 16) } : { top: a.top + 4, maxHeight: Math.min(460, vh - a.top - 16) };
+      const width = Math.max(a.width, 300), left = Math.max(8, Math.min(a.left, window.innerWidth - width - 8));
+      kids.push(h('div', { key: 'p', onClick: e => e.stopPropagation(), style: { position: 'fixed', left, width, ...pos, zIndex: 32, display: 'flex', flexDirection: 'column', gap: 6, padding: 8, background: 'var(--pw-surface)', border: '1px solid var(--pw-line)', borderRadius: 10, boxShadow: '0 12px 32px rgba(36,33,29,.18)' } },
+        h('input', { key: 'q', autoFocus: true, value: st.fontQ, placeholder: 'Search fonts', onChange: e => this.setState({ fontQ: e.target.value }), onKeyDown: e => { if (e.key === 'Escape') this.setState({ menu: null }); if (e.key === 'Enter' && list.length) pick(list[0].name); }, style: { height: 32, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 10px', fontSize: 13, outline: 'none', background: 'var(--pw-surface)', flex: 'none' } }),
+        h('div', { key: 'c', style: { display: 'flex', flexWrap: 'wrap', gap: 3, background: 'var(--pw-track)', padding: 3, borderRadius: 8, flex: 'none' } }, P.FONT_CATS.map(([id, label]) => h('button', { key: id, onClick: () => this.setState({ fontCat: id }), style: { ...this.segStyle(cat === id), height: 24, fontSize: 12, padding: '0 7px' } }, label))),
+        h('div', { key: 'l', style: { overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1, minHeight: 0 } },
+          list.length ? list.map(f => { const on = f.name === value; return h('button', { key: f.name, onClick: () => pick(f.name), title: f.name, className: on ? undefined : 'pw-h1', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, height: 38, padding: '0 10px', border: 'none', borderRadius: 7, background: on ? 'var(--pw-accent-tint)' : 'transparent', color: 'var(--pw-ink)', cursor: 'pointer', textAlign: 'left', flex: 'none' } },
+            h('span', { style: { fontFamily: `'${f.name}'`, fontSize: 17, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, f.name), h('span', { style: { fontSize: 11, color: on ? 'var(--pw-accent-deep)' : 'var(--pw-muted-2)', flex: 'none' } }, on ? '✓' : f.cat)); })
+            : h('div', { style: { padding: '14px 10px', fontSize: 13, color: 'var(--pw-muted)' } }, 'No fonts match.'))));
+    }
+    return h('div', { style: { position: 'relative' } }, kids);
   }
 
   buildProps() {
@@ -508,7 +548,7 @@ export default class Studio extends React.Component {
     const el = els[0], one = els.length === 1;
     if (one && el.type === 'text') {
       S.push({ title: 'Text', controls: [
-        { k: 'select', label: 'Font', value: el.font, selFont: true, options: P.FONTS.map(f => ({ value: f.name, label: f.name })), onChange: e => { const v = e.target.value; pp(x => { x.font = v; if (this.ONEW.includes(v)) x.weight = 400; }); } },
+        { k: 'select', label: 'Font', value: el.font, selFont: true, onPick: v => pp(x => { x.font = v; if (this.ONEW.includes(v)) x.weight = 400; }) },
         slider('Size', Math.round(el.size), 4, 800, 1, v => pp({ size: Math.max(4, v) }, 'size')),
         seg('Style', [['Bold', el.weight >= 600, () => pp(x => { x.weight = x.weight >= 600 ? 400 : (this.ONEW.includes(x.font) ? 400 : 700); })], ['Italic', el.italic, () => pp(x => { x.italic = !x.italic; })], ['Caps', el.upper, () => pp(x => { x.upper = !x.upper; })]]),
         seg('Align', [['Left', el.align === 'left', () => pp({ align: 'left' })], ['Center', el.align === 'center', () => pp({ align: 'center' })], ['Right', el.align === 'right', () => pp({ align: 'right' })]]),
@@ -518,26 +558,41 @@ export default class Studio extends React.Component {
         color('Highlight', el.bg, c => pp({ bg: c }, 'thl'), true),
         btns([['Edit text', () => this.setState({ editingId: el.id })]])
       ] });
-      const sh = typeof el.shadow === 'object' && el.shadow ? el.shadow : null;
-      const setShadow = (patch, key) => pp(x => { const cur = typeof x.shadow === 'object' && x.shadow ? x.shadow : { x: 0, y: Math.round(x.size * .06), blur: Math.round(x.size * .18), color: 'rgba(0,0,0,.35)' }; x.shadow = { ...cur, ...patch }; }, key);
+      const sh = typeof el.shadow === 'object' && el.shadow ? el.shadow : null, long = !!(sh && sh.long);
+      const cur = x => (typeof x.shadow === 'object' && x.shadow ? x.shadow : null);
+      const setShadow = (patch, key) => pp(x => { x.shadow = { ...(cur(x) || { x: 0, y: Math.round(x.size * .06), blur: Math.round(x.size * .18), color: 'rgba(0,0,0,.35)' }), ...patch }; }, key);
+      // A long shadow is stored as (x, y) like any other; its sliders speak angle and
+      // length, and the renderer extrudes the glyphs along that vector.
+      const len = sh ? Math.round(Math.hypot(sh.x || 0, sh.y || 0)) : 0, ang = sh && len ? ((Math.round(Math.atan2(sh.y || 0, sh.x || 0) * 180 / Math.PI) % 360) + 360) % 360 : 45;
+      const setLong = (a, l, key) => setShadow({ x: Math.round(Math.cos(a * Math.PI / 180) * l), y: Math.round(Math.sin(a * Math.PI / 180) * l), blur: 0, long: true }, key);
+      const maxOff = Math.max(60, Math.round(el.size * 1.5));
       S.push({ title: 'Effects', controls: [
         color('Outline', el.outline, c => pp(x => { x.outline = c; if (c && x.outlineW == null) x.outlineW = Math.max(1, Math.round(x.size / 34)); }, 'tol'), true),
         ...(el.outline ? [
           slider('Outline width', el.outlineW ?? Math.max(1, el.size / 34), .5, 24, .5, v => pp({ outlineW: v }, 'tow')),
           seg('Outline fill', [['Hollow', !el.outlineFill, () => pp({ outlineFill: false })], ['Keep colour', !!el.outlineFill, () => pp({ outlineFill: true })]]),
         ] : []),
-        seg('Shadow', [['None', !el.shadow, () => pp({ shadow: null })], ['Soft', el.shadow === true, () => pp({ shadow: true })], ['Custom', !!sh, () => setShadow({}, 'sh')]]),
-        ...(sh ? [
+        seg('Shadow', [
+          ['None', !el.shadow, () => pp({ shadow: null })], ['Soft', el.shadow === true, () => pp({ shadow: true })],
+          ['Drop', !!sh && !long, () => pp(x => { const c = cur(x); x.shadow = c ? { ...c, long: false } : { x: Math.round(x.size * .05), y: Math.round(x.size * .05), blur: 0, color: 'rgba(0,0,0,.35)' }; }, 'sh'), 'A single offset copy, sharp or blurred'],
+          ['Long', long, () => pp(x => { const c = cur(x), l = Math.max(4, Math.round(x.size * .18)); x.shadow = { x: Math.round(l * Math.SQRT1_2), y: Math.round(l * Math.SQRT1_2), blur: 0, color: c ? c.color : 'rgba(0,0,0,.35)', long: true }; }, 'sh'), 'Sharp extruded shadow, like a classic poster']
+        ]),
+        ...(sh && !long ? [
           color('Shadow colour', /^#/.test(sh.color) ? sh.color : null, c => setShadow({ color: c || 'rgba(0,0,0,.35)' }, 'shc'), true),
-          slider('Offset X', sh.x, -60, 60, 1, v => setShadow({ x: v }, 'shx')),
-          slider('Offset Y', sh.y, -60, 60, 1, v => setShadow({ y: v }, 'shy')),
+          slider('Offset X', sh.x, -maxOff, maxOff, 1, v => setShadow({ x: v }, 'shx')),
+          slider('Offset Y', sh.y, -maxOff, maxOff, 1, v => setShadow({ y: v }, 'shy')),
           slider('Blur', sh.blur, 0, 80, 1, v => setShadow({ blur: v }, 'shb')),
+        ] : []),
+        ...(long ? [
+          color('Shadow colour', /^#/.test(sh.color) ? sh.color : null, c => setShadow({ color: c || 'rgba(0,0,0,.35)' }, 'shc'), true),
+          slider('Length', len, 0, Math.max(40, Math.round(el.size * 2)), 1, v => setLong(ang, v, 'shl'), len + 'px'),
+          slider('Angle', ang, 0, 359, 1, v => setLong(v, len, 'sha'), ang + '°'),
         ] : []),
       ] });
     }
     if (one && el.type === 'shape') {
       const c = [
-        { k: 'select', label: 'Shape', value: el.shape, options: [...this.R.SHAPES, ...(el.shape === 'poly' ? ['poly'] : [])].map(s => ({ value: s, label: s[0].toUpperCase() + s.slice(1) })), onChange: e => pp({ shape: e.target.value }) },
+        { k: 'select', label: 'Shape', value: el.shape, options: [...this.R.SHAPES.map(s => ({ value: s, label: this.R.SHAPE_INFO[s][0] })), ...(el.shape === 'poly' || el.shape === 'path' ? [{ value: el.shape, label: el.shape === 'path' ? 'Motif' : 'Custom' }] : [])], onChange: e => pp({ shape: e.target.value }) },
         color('Fill', el.fill, v => pp({ fill: v }, 'fill'), true),
         color('Stroke', el.stroke, v => pp(x => { x.stroke = v; if (v && !x.sw) x.sw = Math.max(2, Math.round(this.u() * .5)); }, 'stroke'), true),
         slider('Stroke width', el.sw || 0, 0, Math.max(10, Math.round(Math.min(el.w, el.h) / 4)), 1, v => pp({ sw: v }, 'sw'), String(Math.round(el.sw || 0)))
@@ -545,6 +600,8 @@ export default class Studio extends React.Component {
       if (el.shape === 'rect') c.push(slider('Corner radius', el.radius || 0, 0, Math.round(Math.min(el.w, el.h) / 2), 1, v => pp({ radius: v }, 'rad'), String(Math.round(el.radius || 0))));
       if (el.shape === 'star' || el.shape === 'burst') { c.push(slider('Points', el.points || 5, 3, 32, 1, v => pp({ points: v }, 'pts'), String(el.points))); c.push(slider('Inner radius', el.inner || .5, .1, .95, .01, v => pp({ inner: v }, 'inn'))); }
       if (el.shape === 'polygon') c.push(slider('Sides', el.sides || 6, 3, 12, 1, v => pp({ sides: v }, 'sides'), String(el.sides)));
+      if (el.shape === 'gear') c.push(slider('Teeth', Math.max(5, el.points || 8), 5, 24, 1, v => pp({ points: v }, 'pts'), String(Math.max(5, el.points || 8))));
+      if (el.shape === 'ring') c.push(slider('Thickness', Math.round((1 - (el.inner ?? .62)) * 100), 8, 90, 1, v => pp({ inner: 1 - v / 100 }, 'inn'), Math.round((1 - (el.inner ?? .62)) * 100) + '%'));
       c.push(seg('Effects', [['Dashed', !!el.dash, () => pp(x => { x.dash = !x.dash; })], ['Shadow', !!el.shadow, () => pp(x => { x.shadow = !x.shadow; })]]));
       S.push({ title: 'Shape', controls: c });
     }
@@ -553,6 +610,9 @@ export default class Studio extends React.Component {
     }
     if (one && el.type === 'image') {
       const f = el.filters || P.NOFILTER; const setF = (k, v) => pp(x => { x.filters = { ...(x.filters || P.NOFILTER), [k]: v }; }, 'f' + k);
+      const asset = this.state.assets[el.asset], alpha = !!(asset && asset.alpha), edge = this.R.imageEdge(el, asset);
+      const ish = typeof el.shadow === 'object' && el.shadow ? el.shadow : null, maxO = Math.max(60, Math.round(Math.min(el.w, el.h) / 2));
+      const setIsh = (patch, key) => pp(x => { x.shadow = { ...(typeof x.shadow === 'object' && x.shadow ? x.shadow : {}), ...patch }; }, key);
       const presets = { Original: P.NOFILTER, Mono: { ...P.NOFILTER, g: 1, c: 1.1 }, Warm: { ...P.NOFILTER, se: .28, s: 1.15, b: 1.03 }, Cool: { ...P.NOFILTER, hu: -14, s: .9, b: 1.03 }, Fade: { ...P.NOFILTER, c: .8, b: 1.1, s: .75 }, Vivid: { ...P.NOFILTER, s: 1.55, c: 1.12 }, Noir: { ...P.NOFILTER, g: 1, c: 1.5, b: .88 } };
       const c = [];
       if (!el.asset) c.push(note('Empty frame. Drop a photo onto it, drag one from Uploads, or choose a file.'));
@@ -568,7 +628,14 @@ export default class Studio extends React.Component {
         slider('Warmth', f.se || 0, 0, 1, .01, v => setF('se', v)), slider('Hue', f.hu || 0, -180, 180, 1, v => setF('hu', v), (f.hu || 0) + '°'), slider('Blur', f.bl || 0, 0, 20, .5, v => setF('bl', v), (f.bl || 0) + 'px'),
         color('Border', el.border, v => pp(x => { x.border = v; if (v && !x.borderW) x.borderW = Math.round(this.u() * 1); }, 'ib'), true),
         slider('Border width', el.borderW || 0, 0, Math.round(Math.min(el.w, el.h) / 8), 1, v => pp({ borderW: v }, 'ibw'), String(Math.round(el.borderW || 0))),
-        seg('Effects', [['Shadow', !!el.shadow, () => pp(x => { x.shadow = !x.shadow; })]])
+        seg('Shadow', [['None', !el.shadow, () => pp({ shadow: null })], ['Soft', el.shadow === true, () => pp({ shadow: true })], ['Custom', !!ish, () => pp(x => { if (typeof x.shadow !== 'object' || !x.shadow) x.shadow = { x: Math.round(this.u() * .8), y: Math.round(this.u() * .8), blur: 0, color: 'rgba(0,0,0,.35)' }; }, 'ish')]]),
+        ...(ish ? [
+          color('Shadow colour', /^#/.test(ish.color) ? ish.color : null, c => setIsh({ color: c || 'rgba(0,0,0,.35)' }, 'ishc'), true),
+          slider('Offset X', ish.x || 0, -maxO, maxO, 1, v => setIsh({ x: v }, 'ishx')), slider('Offset Y', ish.y || 0, -maxO, maxO, 1, v => setIsh({ y: v }, 'ishy')), slider('Blur', ish.blur || 0, 0, 120, 1, v => setIsh({ blur: v }, 'ishb'))
+        ] : []),
+        // A cutout or transparent PNG: the border and shadow can hug the subject.
+        ...(alpha && (!el.mask || el.mask === 'none') ? [seg('Border & shadow', [['Around subject', edge === 'subject', () => pp({ edge: 'subject' }), 'Follow the silhouette of the picture'], ['Around frame', edge === 'frame', () => pp({ edge: 'frame' }), 'Draw around the rectangular frame']])] : []),
+        ...(alpha && el.mask && el.mask !== 'none' ? [note('With a mask the border and shadow follow the frame. Set the mask to Rect to draw them around the subject.')] : [])
       ] });
     }
     if (one && el.type === 'chart') {
@@ -701,7 +768,7 @@ export default class Studio extends React.Component {
     if (st.panel === 'elements') {
       const ink = this.cssVar('--pw-ink'), C = this.cssVar('--pw-accent');
       Object.assign(v, {
-        shapeItems: R.SHAPES.map(s => ({ label: s, onClick: () => this.addShape(s), thumb: this.miniEl({ type: 'shape', shape: s, w: 38, h: s === 'half' ? 19 : s === 'arrow' || s === 'chevron' || s === 'parallelogram' ? 24 : s === 'arch' ? 44 : 38, fill: s === 'rect' || s === 'ellipse' ? C : ink, points: s === 'burst' ? 14 : 5, inner: s === 'burst' ? .78 : .5, sides: 6 }) })),
+        shapeItems: [...R.SHAPES.map(s => [s, {}]), ['star', { name: 'Sparkle', points: 4, inner: .32 }]].map(([s, x]) => { const [name, ar] = R.SHAPE_INFO[s], w = ar >= 1 ? 40 : 40 * ar, hh = ar >= 1 ? 40 / ar : 40; return { label: x.name || name, onClick: () => this.addShape(s, x), thumb: this.miniEl({ type: 'shape', shape: s, w, h: hh, fill: ['rect', 'ellipse', 'heart', 'star', 'cloud', 'bolt'].includes(s) ? C : ink, points: s === 'burst' ? 14 : s === 'gear' ? 8 : 5, inner: s === 'burst' ? .78 : s === 'ring' ? .62 : .5, sides: 6, ...x }) }; }),
         lineItems: [['Line', {}], ['Dashed', { dash: true }], ['Arrow', { arrow: true }]].map(([l, o]) => ({ label: l, onClick: () => this.addLine(o), thumb: this.miniEl({ type: 'line', w: 60, h: 10, stroke: ink, sw: 3, ...o }, 64) })),
         frameItems: [['Square frame', 'none'], ['Rounded frame', 'rounded'], ['Circle frame', 'circle'], ['Arch frame', 'arch']].map(([l, m]) => ({ label: l, onClick: () => this.addFrame(m), thumb: this.miniEl({ type: 'image', w: 38, h: m === 'arch' ? 46 : 38, mask: m, tint: '#E3DED6', label: ' ', filters: P.NOFILTER }) }))
       });
@@ -723,19 +790,21 @@ export default class Studio extends React.Component {
       const b = st.brand; const setB = (k, val) => this.setState(s => ({ brand: { ...s.brand, [k]: val } }));
       Object.assign(v, {
         brandColors: [['bg', 'Background'], ['ink', 'Text'], ['accent', 'Primary'], ['accent2', 'Secondary']].map(([k, l]) => ({ label: l, value: b[k], onChange: e => setB(k, e.target.value.toUpperCase()) })),
-        brandFonts: [['heading', 'Headings'], ['body', 'Body']].map(([k, l]) => ({ label: l, value: b[k], selectNode: this.selectEl(b[k], P.FONTS.map(f => ({ value: f.name, label: f.name })), e => setB(k, e.target.value), { height: 36, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 8px', fontSize: 15, background: 'var(--pw-surface)', fontFamily: `'${b[k]}'`, width: '100%' }) })),
+        brandFonts: [['heading', 'Headings'], ['body', 'Body']].map(([k, l]) => ({ label: l, value: b[k], selectNode: this.fontPickerEl('font:' + k, b[k], val => setB(k, val), true) })),
         fontOptions: P.FONTS.map(f => f.name), hasLogo: !!(b.logo && st.assets[b.logo]), logoStyle: { width: '100%', height: '100%', backgroundImage: b.logo && st.assets[b.logo] ? `url("${st.assets[b.logo].src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }, addLogo: this.addLogo,
         uploadLogo: () => this.logoInput && this.logoInput.click(), logoBtnLabel: b.logo ? 'Replace logo' : 'Upload logo', applyBrand: this.applyBrand
       });
     }
     if (st.panel === 'layers') {
-      const pg = this.pg;
-      Object.assign(v, { noLayers: !pg.els.length, layerItems: [...pg.els].reverse().map(el => { const on = st.sel.includes(el.id); const nm = el.type === 'text' ? el.text.slice(0, 32) : el.name || el.type; const ic = { width: 24, height: 24, border: 'none', background: 'transparent', borderRadius: 5, cursor: 'pointer', fontSize: 12 };
+      const pg = this.pg, over = st.layerOver, dragging = st.layerDrag, movingSel = dragging && st.sel.includes(dragging);
+      Object.assign(v, { noLayers: !pg.els.length, layerHint: pg.els.length > 1 ? 'Drag to reorder — the top of the list is in front.' : '', layerItems: [...pg.els].reverse().map(el => { const on = st.sel.includes(el.id); const nm = el.type === 'text' ? el.text.slice(0, 32) : el.name || el.type; const ic = { width: 24, height: 24, border: 'none', background: 'transparent', borderRadius: 5, cursor: 'pointer', fontSize: 12 };
+        const isMoving = dragging === el.id || (movingSel && on), isOver = !!over && over.id === el.id && !isMoving;
         return { label: nm, meta: [el.type, el.groupId ? 'grouped' : '', el.locked ? 'locked' : '', el.hidden ? 'hidden' : ''].filter(Boolean).join(' · '), onClick: () => this.setState({ sel: [el.id] }),
-          onUp: () => { this.setState({ sel: [el.id] }, () => this.arrange('forward')); }, onDown: () => { this.setState({ sel: [el.id] }, () => this.arrange('backward')); },
+          onDragStart: e => this.layerDragStart(e, el.id), onDragOver: e => this.layerDragOver(e, el.id), onDrop: e => this.layerDrop(e, el.id), onDragEnd: this.layerDragEnd,
           eye: el.hidden ? '◌' : '●', lock: el.locked ? '▣' : '□', eyeStyle: { ...ic, color: el.hidden ? 'var(--pw-line-strong)' : 'var(--pw-text-2)' }, lockStyle: { ...ic, color: el.locked ? C : 'var(--pw-placeholder)' },
           onEye: () => this.setDoc((dd, p) => { const x = p.els.find(q => q.id === el.id); x.hidden = !x.hidden; }), onLock: () => this.setDoc((dd, p) => { const x = p.els.find(q => q.id === el.id); x.locked = !x.locked; }),
-          style: { display: 'flex', alignItems: 'center', gap: 2, padding: '0 6px', borderRadius: 8, background: on ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', border: '1px solid ' + (on ? 'var(--pw-accent-tint-line)' : 'var(--pw-line-soft)') } }; }) });
+          // The drop indicator is a 2px accent line on the edge the drop would land on.
+          style: { display: 'flex', alignItems: 'center', gap: 2, padding: '0 6px 0 4px', borderRadius: 8, background: on ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', border: '1px solid ' + (on ? 'var(--pw-accent-tint-line)' : 'var(--pw-line-soft)'), opacity: isMoving ? .45 : 1, boxShadow: isOver ? `inset 0 ${over.above ? '' : '-'}2px 0 ${C}` : 'none', cursor: 'grab' } }; }) });
     }
     const opts = { interactive: true, assets: st.assets, editingId: st.editingId, onElDown: this.onElDown, onElDbl: this.onElDbl, onTextCommit: this.onTextCommit, onHover: this.onHover };
     v.pages = d.pages.map((p, i) => ({ ...this.overlay(i), label: `Page ${i + 1}`, onFocus: () => this.setState({ page: i, sel: [] }),

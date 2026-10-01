@@ -649,10 +649,20 @@ export default function StudioView(v) {
                               </div>
                             </>
                           ) : null}
+                          {v.layerHint ? (
+                            <>
+                              <div style={{ color: "var(--pw-muted-2)", fontSize: "12px" }}>
+                                {v.layerHint}
+                              </div>
+                            </>
+                          ) : null}
                           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                             {toArray(v.layerItems).map((l, $index) => (
                               <Fragment key={$index}>
-                                <div style={sty(l.style)}>
+                                <div draggable="true" onDragStart={l.onDragStart} onDragOver={l.onDragOver} onDrop={l.onDrop} onDragEnd={l.onDragEnd} style={sty(l.style)}>
+                                  <span title="Drag to reorder" style={{ width: "14px", flex: "none", color: "var(--pw-placeholder)", fontSize: "13px", lineHeight: "1", textAlign: "center", cursor: "grab", userSelect: "none" }}>
+                                    ⠿
+                                  </span>
                                   <button onClick={l.onClick} style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", alignItems: "flex-start", border: "none", background: "transparent", cursor: "pointer", padding: "6px 4px", textAlign: "left", color: "var(--pw-ink)" }}>
                                     <span style={{ fontSize: "13px", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
                                       {l.label}
@@ -660,12 +670,6 @@ export default function StudioView(v) {
                                     <span style={{ fontSize: "11px", color: "var(--pw-muted-2)" }}>
                                       {l.meta}
                                     </span>
-                                  </button>
-                                  <button onClick={l.onUp} title="Bring forward" style={{ width: "24px", height: "24px", border: "none", background: "transparent", borderRadius: "5px", cursor: "pointer", color: "var(--pw-muted)" }} className="pw-h4">
-                                    ↑
-                                  </button>
-                                  <button onClick={l.onDown} title="Send backward" style={{ width: "24px", height: "24px", border: "none", background: "transparent", borderRadius: "5px", cursor: "pointer", color: "var(--pw-muted)" }} className="pw-h4">
-                                    ↓
                                   </button>
                                   <button onClick={l.onEye} title="Show / hide" style={sty(l.eyeStyle)}>
                                     {l.eye}

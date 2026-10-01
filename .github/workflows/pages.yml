@@ -35,6 +35,11 @@ jobs:
       # `base` is './' in vite.config.js, so the build works unchanged under
       # user.github.io/pinwheel/, a custom domain or a plain file server.
       - run: npm run build
+      # Analytics go into the deployed copy only. The source tree, clones and
+      # self-hosted builds carry no tag; see scripts/pages-analytics.mjs.
+      - run: node scripts/pages-analytics.mjs dist/index.html "$GA_ID"
+        env:
+          GA_ID: G-5NHTH6LVYV
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

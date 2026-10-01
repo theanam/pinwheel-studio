@@ -15,26 +15,28 @@ const onColor = (bg, prefs) => prefs.find(c => contrast(bg, c) >= 4.5) || [...pr
 
 /* ---------- fonts ---------- */
 export const FONTS = [
-  ['Anton', 'Anton'], ['Bebas Neue', 'Bebas+Neue'], ['Archivo Black', 'Archivo+Black'], ['Abril Fatface', 'Abril+Fatface'],
-  ['DM Serif Display', 'DM+Serif+Display:ital@0;1'], ['Pacifico', 'Pacifico'], ['Instrument Serif', 'Instrument+Serif:ital@0;1'],
-  ['Permanent Marker', 'Permanent+Marker'], ['Work Sans', 'Work+Sans:ital,wght@0,400;0,600;0,800;1,400'],
-  ['Karla', 'Karla:ital,wght@0,400;0,700;1,400'], ['Playfair Display', 'Playfair+Display:ital,wght@0,400;0,700;0,900;1,400'],
-  ['Source Sans 3', 'Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400'], ['DM Sans', 'DM+Sans:ital,wght@0,400;0,700;1,400'],
-  ['Archivo', 'Archivo:ital,wght@0,400;0,700;0,900;1,400'], ['Space Grotesk', 'Space+Grotesk:wght@400;700'],
-  ['Syne', 'Syne:wght@400;700;800'], ['Manrope', 'Manrope:wght@400;700;800'],
-  ['Cormorant Garamond', 'Cormorant+Garamond:ital,wght@0,400;0,700;1,400'], ['Montserrat', 'Montserrat:ital,wght@0,400;0,700;0,900;1,400'],
-  ['Lato', 'Lato:ital,wght@0,400;0,700;0,900;1,400'], ['Oswald', 'Oswald:wght@400;700'], ['Nunito Sans', 'Nunito+Sans:ital,wght@0,400;0,700;1,400'],
-  ['Unbounded', 'Unbounded:wght@400;700;900'], ['Outfit', 'Outfit:wght@400;700'],
-  ['Libre Caslon Text', 'Libre+Caslon+Text:ital,wght@0,400;0,700;1,400'], ['Libre Franklin', 'Libre+Franklin:ital,wght@0,400;0,700;1,400'],
-  ['Quicksand', 'Quicksand:wght@400;700'], ['Instrument Sans', 'Instrument+Sans:ital,wght@0,400;0,700;1,400'],
-  ['Caveat', 'Caveat:wght@400;700'], ['Space Mono', 'Space+Mono:ital,wght@0,400;0,700;1,400'],
-  ['Poppins', 'Poppins:ital,wght@0,400;0,700;0,900;1,400'], ['Lora', 'Lora:ital,wght@0,400;0,700;1,400'],
-  ['Big Shoulders Display', 'Big+Shoulders+Display:wght@400;700;900'], ['Rubik', 'Rubik:ital,wght@0,400;0,700;0,900;1,400'],
-  ['Fraunces', 'Fraunces:ital,wght@0,400;0,700;0,900;1,400'], ['Inter', 'Inter:wght@400;600;700'], ['Alfa Slab One', 'Alfa+Slab+One'], ['Nunito', 'Nunito:wght@400;700'],
-  ['Cinzel', 'Cinzel:wght@400;700'], ['Raleway', 'Raleway:ital,wght@0,400;0,700;1,400'], ['Righteous', 'Righteous'],
-  ['Josefin Sans', 'Josefin+Sans:wght@400;700'], ['Lobster', 'Lobster'], ['Merriweather', 'Merriweather:ital,wght@0,400;0,700;1,400'], ['Barlow Condensed', 'Barlow+Condensed:wght@400;700;800'],
-  ['Zilla Slab', 'Zilla+Slab:wght@400;700'], ['Comfortaa', 'Comfortaa:wght@400;700'], ['Dancing Script', 'Dancing+Script:wght@400;700'], ['Bricolage Grotesque', 'Bricolage+Grotesque:wght@400;700;800']
-].map(([name, q]) => ({ name, q }));
+  ['Anton', 'Anton', 'display'], ['Bebas Neue', 'Bebas+Neue', 'display'], ['Archivo Black', 'Archivo+Black', 'display'], ['Abril Fatface', 'Abril+Fatface', 'display'],
+  ['DM Serif Display', 'DM+Serif+Display:ital@0;1', 'serif'], ['Pacifico', 'Pacifico', 'script'], ['Instrument Serif', 'Instrument+Serif:ital@0;1', 'serif'],
+  ['Permanent Marker', 'Permanent+Marker', 'script'], ['Work Sans', 'Work+Sans:ital,wght@0,400;0,600;0,800;1,400', 'sans'],
+  ['Karla', 'Karla:ital,wght@0,400;0,700;1,400', 'sans'], ['Playfair Display', 'Playfair+Display:ital,wght@0,400;0,700;0,900;1,400', 'serif'],
+  ['Source Sans 3', 'Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400', 'sans'], ['DM Sans', 'DM+Sans:ital,wght@0,400;0,700;1,400', 'sans'],
+  ['Archivo', 'Archivo:ital,wght@0,400;0,700;0,900;1,400', 'sans'], ['Space Grotesk', 'Space+Grotesk:wght@400;700', 'sans'],
+  ['Syne', 'Syne:wght@400;700;800', 'display'], ['Manrope', 'Manrope:wght@400;700;800', 'sans'],
+  ['Cormorant Garamond', 'Cormorant+Garamond:ital,wght@0,400;0,700;1,400', 'serif'], ['Montserrat', 'Montserrat:ital,wght@0,400;0,700;0,900;1,400', 'sans'],
+  ['Lato', 'Lato:ital,wght@0,400;0,700;0,900;1,400', 'sans'], ['Oswald', 'Oswald:wght@400;700', 'display'], ['Nunito Sans', 'Nunito+Sans:ital,wght@0,400;0,700;1,400', 'sans'],
+  ['Unbounded', 'Unbounded:wght@400;700;900', 'display'], ['Outfit', 'Outfit:wght@400;700', 'sans'],
+  ['Libre Caslon Text', 'Libre+Caslon+Text:ital,wght@0,400;0,700;1,400', 'serif'], ['Libre Franklin', 'Libre+Franklin:ital,wght@0,400;0,700;1,400', 'sans'],
+  ['Quicksand', 'Quicksand:wght@400;700', 'sans'], ['Instrument Sans', 'Instrument+Sans:ital,wght@0,400;0,700;1,400', 'sans'],
+  ['Caveat', 'Caveat:wght@400;700', 'script'], ['Space Mono', 'Space+Mono:ital,wght@0,400;0,700;1,400', 'mono'],
+  ['Poppins', 'Poppins:ital,wght@0,400;0,700;0,900;1,400', 'sans'], ['Lora', 'Lora:ital,wght@0,400;0,700;1,400', 'serif'],
+  ['Big Shoulders Display', 'Big+Shoulders+Display:wght@400;700;900', 'display'], ['Rubik', 'Rubik:ital,wght@0,400;0,700;0,900;1,400', 'sans'],
+  ['Fraunces', 'Fraunces:ital,wght@0,400;0,700;0,900;1,400', 'serif'], ['Inter', 'Inter:wght@400;600;700', 'sans'], ['Alfa Slab One', 'Alfa+Slab+One', 'display'], ['Nunito', 'Nunito:wght@400;700', 'sans'],
+  ['Cinzel', 'Cinzel:wght@400;700', 'serif'], ['Raleway', 'Raleway:ital,wght@0,400;0,700;1,400', 'sans'], ['Righteous', 'Righteous', 'display'],
+  ['Josefin Sans', 'Josefin+Sans:wght@400;700', 'sans'], ['Lobster', 'Lobster', 'script'], ['Merriweather', 'Merriweather:ital,wght@0,400;0,700;1,400', 'serif'], ['Barlow Condensed', 'Barlow+Condensed:wght@400;700;800', 'display'],
+  ['Zilla Slab', 'Zilla+Slab:wght@400;700', 'serif'], ['Comfortaa', 'Comfortaa:wght@400;700', 'sans'], ['Dancing Script', 'Dancing+Script:wght@400;700', 'script'], ['Bricolage Grotesque', 'Bricolage+Grotesque:wght@400;700;800', 'sans']
+].map(([name, q, cat]) => ({ name, q, cat }));
+// Picker categories, in display order.
+export const FONT_CATS = [['all', 'All'], ['display', 'Display'], ['serif', 'Serif'], ['sans', 'Sans'], ['script', 'Script'], ['mono', 'Mono']];
 export const fontURL = f => `https://fonts.googleapis.com/css2?family=${f.q}&display=swap`;
 
 /* ---------- palettes ---------- */

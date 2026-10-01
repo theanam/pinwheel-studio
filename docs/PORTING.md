@@ -68,6 +68,12 @@ four things differ from `_source/Pinwheel Studio.dc.html`:
    `fill` attributes cannot take `var()`.
 6. The home screen shows twelve formats and an "All formats" toggle, and the gallery
    gained an Occasions row that filters by copy pack.
+7. The font picker (`fontPickerEl`) is built with `createElement` in `Studio.jsx`, like
+   `selectEl` before it, because the Text properties and the Brand panel share it and
+   the template only has a `selectNode` slot. It is a fixed-position popover that
+   lists every family in its own face; the shared menu backdrop closes it.
+8. The Layers panel reorders by drag and drop (`layerDragStart` and friends); the
+   template rows carry the drag handlers and a grip, and the arrow buttons are gone.
 
 `src/presets.js` has grown well past the prototype — 72 formats with safe zones and
 story arcs, 74 layouts including photo-first and occasion layouts, 31 copy packs, and
