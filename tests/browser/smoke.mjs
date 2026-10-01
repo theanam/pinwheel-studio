@@ -78,9 +78,69 @@ try {
   const drt = await p.eval(`(async () => { const s = __studio; const blob = await s.IO.packProject({ ...s.state.doc, brand: s.B.brandForFile(s.state.brand) }, s.state.assets, null); const r = await s.IO.openProject(blob); return { kind: r.kind, name: r.doc.name, id: r.doc.id === s.state.doc.id, brand: r.doc.brand && r.doc.brand.name, hasAssetBytes: JSON.stringify(r.doc).includes('data:image') }; })()`);
   check(drt.kind === 'design' && drt.id && drt.brand === 'Northwind' && !drt.hasAssetBytes, 'design .pinwheel round trip ' + JSON.stringify(drt));
   // importing a kit with the same id replaces (confirm stubbed)
-  await p.eval(`window.confirm = () => true`);
-  const imp = await p.eval(`(async () => { const s = __studio; const b = s.B.brandForKit({ ...s.state.brand, name: 'Northwind v2' }); s.importBrandKit(b, s.state.brand.assets); await new Promise(r => setTimeout(r, 100)); return { n: s.state.brands.length, name: s.state.brand.name }; })()`);
-  check(imp.n === 2 && imp.name === 'Northwind v2', 'importing a kit with a known id replaces it ' + JSON.stringify(imp));
+  await p.eval(`(() => { const s = __studio; const b = s.B.brandForKit({ ...s.state.brand, name: 'Northwind v2' }); s.importBrandKit(b, s.state.brand.assets); })()`);
+  await p.until(`document.querySelector('[role=dialog]') && document.querySelector('[role=dialog]').innerText.includes('Replace')`);
+  await p.shot('07b-dialog-replace-brand');
+  await p.clickText('Replace', '[role=dialog] button');
+  await p.wait(200);
+  const imp = await p.eval(`(() => ({ n: __studio.state.brands.length, name: __studio.state.brand.name, closed: !document.querySelector('[role=dialog]') }))()`);
+  check(imp.n === 2 && imp.name === 'Northwind v2' && imp.closed, 'importing a kit with a known id asks, then replaces ' + JSON.stringify(imp));
+  // rename through the prompt-style dialog, Escape cancels
+  await p.clickText('Brand'); await p.wait(200);
+  await p.clickText('Rename');
+  await p.until(`!!document.querySelector('[role=dialog] input')`);
+  await p.type('[role=dialog] input', 'Northwind Coffee');
+  await p.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await p.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+  await p.wait(200);
+  check(await p.eval(`__studio.state.brand.name === 'Northwind Coffee' && !document.querySelector('[role=dialog]')`), 'rename dialog takes Enter');
+  await p.clickText('Delete');
+  await p.until(`!!document.querySelector('[role=dialog]')`);
+  await p.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }); await p.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await p.wait(200);
+  check(await p.eval(`__studio.state.brands.length === 2 && !document.querySelector('[role=dialog]')`), 'Escape cancels the delete dialog');
+  // Tainted design: a template swap warns once, then not again until the next edit.
+  await p.clickText('Templates');
+  await p.wait(200);
+  check(await p.eval(`__studio.dirty === false`), 'a freshly opened design is not tainted');
+  // A real mouse drag of a text element counts as an edit.
+  const el0 = await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'text'); const n = document.querySelector('[data-el-id="' + el.id + '"]').getBoundingClientRect(); return { id: el.id, x: el.x, cx: n.left + n.width / 2, cy: n.top + n.height / 2 }; })()`);
+  await p.mouse(el0.cx, el0.cy, el0.cx + 40, el0.cy + 10);
+  check(await p.eval(`__studio.dirty === true && __studio.pg.els.find(e => e.id === ${JSON.stringify(el0.id)}).x > ${el0.x}`), 'a mouse drag moves the element and marks the design edited');
+  // Edit the title the way a person does: double-click, type, click the canvas to
+  // finish. Highlighted text (a background) once reverted on that last click.
+  const title = await p.eval(`(() => { const el = __studio.pg.els.find(e => e.key === 'title'); const r = document.querySelector('[data-el-id="' + el.id + '"]').getBoundingClientRect(); return { id: el.id, x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+  for (const cc of [1, 2]) { await p.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: title.x, y: title.y, button: 'left', clickCount: cc }); await p.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: title.x, y: title.y, button: 'left', clickCount: cc }); }
+  await p.wait(150);
+  check(await p.eval(`__studio.state.editingId === ${JSON.stringify(title.id)}`), 'double-click starts editing the title');
+  await p.send('Input.insertText', { text: 'My Shop Sale' });
+  await p.wait(60);
+  const away = await p.eval(`(() => { const r = __studio.canvasEl.getBoundingClientRect(); return { x: r.left + 12, y: r.bottom - 12 }; })()`);
+  await p.mouse(away.x, away.y);
+  await p.wait(200);
+  check(await p.eval(`__studio.pg.els.find(e => e.id === ${JSON.stringify(title.id)}).text === 'My Shop Sale' && __studio.state.editingId === null`), 'clicking the canvas commits the typed text');
+
+  await p.click('aside button[title*="·"]', 1);
+  await p.until(`!!document.querySelector('[role=dialog]')`);
+  await p.shot('07c-dialog-tainted');
+  const tpl0 = await p.eval(`__studio.state.doc.tpl`);
+  await p.clickText('Keep my edits', '[role=dialog] button');
+  await p.wait(200);
+  check(await p.eval(`__studio.state.doc.tpl === ${JSON.stringify(tpl0)} && __studio.dirty`), 'cancel keeps the design and the taint');
+  await p.click('aside button[title*="·"]', 1);
+  await p.until(`!!document.querySelector('[role=dialog]')`);
+  check(await p.eval(`document.querySelector('[role=dialog]').innerText.includes('keeping the text you wrote')`), 'dialog says the edited text is kept');
+  await p.clickText('Switch', '[role=dialog] button');
+  await p.wait(300);
+  check(await p.eval(`__studio.state.doc.tpl !== ${JSON.stringify(tpl0)} && __studio.dirty === false`), 'confirm applies the template and clears the taint');
+  check(await p.eval(`__studio.pg.els.some(e => e.key === 'title' && e.text === 'My Shop Sale')`), 'the edited title followed the design into the new template');
+  await p.click('aside button[title*="·"]', 2);
+  await p.wait(300);
+  check(await p.eval(`!document.querySelector('[role=dialog]') && __studio.dirty === false`), 'a second template swap without edits does not ask');
+  check(await p.eval(`__studio.pg.els.some(e => e.key === 'title' && e.text === 'My Shop Sale')`), 'the edited title is still there after the second swap');
+  await p.eval(`__studio.addText('heading')`);
+  await p.wait(100);
+  check(await p.eval(`__studio.dirty === true`), 'an edit taints it again');
+  check(await p.eval(`document.querySelectorAll('a[title="Source on GitHub"]').length === 1`), 'GitHub link in the top bar');
   // recents
   await p.eval(`__studio.flushAutosave()`);
   await p.wait(600);
@@ -97,6 +157,24 @@ try {
   // 100 cap
   const cap = await p.eval(`(async () => { const DB = await import('/src/store.js'); for (let i = 0; i < 105; i++) await DB.putRecent({ id: 'x' + i, name: 'x' + i, updated: 1000 + i, w: 100, h: 100, pages: 1, preview: { page: { id: 'p', bg: '#fff', els: [] }, assets: {} } }, { id: 'x' + i, doc: {}, assets: {} }); const l = await DB.listRecents(); const cleared = await DB.clearRecents(); return l.length; })()`);
   check(cap === 100, 'recents capped at 100 (' + cap + ')');
+
+  // Highlighted text (a background span) once reverted when editing ended by a
+  // click on another element: the reaction layout's split title.
+  await p.eval(`__studio.fromTemplate(__studio.P.catalog().find(t => t.layout === 'reaction'))`);
+  await p.wait(300);
+  // The click-away target is another element that really is under the pointer there.
+  const hl = await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'text' && e.bg); const r = document.querySelector('[data-el-id="' + el.id + '"]').getBoundingClientRect();
+    const c = __studio.canvasEl.getBoundingClientRect(); let ox = null, oy = null;
+    for (const o of __studio.pg.els) { if (o.id === el.id || o.hidden) continue; const n = document.querySelector('[data-el-id="' + o.id + '"]'); if (!n) continue; const b = n.getBoundingClientRect(); const x = b.left + b.width / 2, y = b.top + b.height / 2; if (x < c.left || x > c.right || y < c.top || y > c.bottom) continue; const hit = document.elementFromPoint(x, y); const hid = hit && hit.closest('[data-el-id]') && hit.closest('[data-el-id]').getAttribute('data-el-id'); if (hid === o.id) { ox = x; oy = y; break; } }
+    return { id: el.id, x: r.left + r.width / 2, y: r.top + r.height / 2, ox, oy }; })()`);
+  check(hl.ox != null, 'found another element to click');
+  for (const cc of [1, 2]) { await p.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: hl.x, y: hl.y, button: 'left', clickCount: cc }); await p.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: hl.x, y: hl.y, button: 'left', clickCount: cc }); }
+  await p.wait(150);
+  await p.send('Input.insertText', { text: 'Spring' });
+  await p.wait(60);
+  await p.mouse(hl.ox, hl.oy);
+  await p.wait(200);
+  check(await p.eval(`__studio.pg.els.find(e => e.id === ${JSON.stringify(hl.id)}).text === 'Spring'`), 'highlighted text keeps the typed text after clicking another element');
 
   // ---- tablet ----
   await p.size(1000, 760);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { newBrand, migrateBrand, brandForFile, brandForKit, brandFromKit, paletteFrom, textStyleFrom, ago, DEFAULT_BRAND } from '../src/brand.js';
 import { dominantColors, kitsFromColors, kitsFromPixels, ensureContrast, hsl } from '../src/palette.js';
 import { beyond, RECENTS_MAX } from '../src/store.js';
-import { contrast, makeTheme } from '../src/presets.js';
+import { contrast, makeTheme, catalog, build, textByKey, editedText, carryText, descFor } from '../src/presets.js';
 
 /* ---------- brands ---------- */
 const b = newBrand({ name: 'Northwind' });
@@ -85,5 +85,29 @@ assert.ok(mk.length >= 4); for (const k of mk) assert.ok(contrast(k.bg, k.ink) >
 // Nothing opaque, nothing offered.
 assert.deepEqual(kitsFromPixels(new Uint8ClampedArray([0, 0, 0, 0])), []);
 assert.ok(contrast(ensureContrast('#777777', '#808080'), '#808080') >= 4.5);
+
+/* ---------- text carries over between templates ---------- */
+const cat = catalog();
+const sale = cat.filter(t => t.topic === 'sale' && t.fmt === 'ig-post');
+assert.ok(sale.length >= 2, 'several sale layouts for one format');
+const a = build(sale[0]), keysA = textByKey(a);
+assert.ok(keysA.title, 'the title is keyed'); assert.ok(Object.keys(keysA).length >= 2, 'more than one slot is keyed');
+for (const p of a.pages) for (const e of p.els) if (e.type === 'text') assert.ok(e.key === undefined || typeof e.key === 'string');
+// Nothing edited → nothing carried; the next template keeps its own copy.
+assert.deepEqual(editedText(build(descFor(a)), a), {});
+// Edit the title and a second slot, then move to another layout: both land in their slots.
+const cur = structuredClone(a); const slot2 = Object.keys(keysA).find(k => k !== 'title');
+for (const p of cur.pages) for (const e of p.els) { if (e.key === 'title') e.text = 'My Shop Sale'; if (e.key === slot2) e.text = 'Changed'; }
+const edits = editedText(build(descFor(cur)), cur);
+assert.deepEqual(edits, { title: 'My Shop Sale', [slot2]: 'Changed' });
+const next = build(sale.find(t => t.layout !== sale[0].layout) || sale[1]);
+const kept = carryText(next, edits);
+assert.ok(kept.includes('title'), 'title carried into the next layout');
+assert.ok(next.pages.some(p => p.els.some(e => e.key === 'title' && e.text === 'My Shop Sale')));
+// Across topics too: the edited title replaces the podcast title.
+const pod = build(cat.find(t => t.topic === 'podcast'));
+carryText(pod, edits);
+assert.ok(pod.pages[0].els.some(e => e.key === 'title' && e.text === 'My Shop Sale'));
+assert.equal(descFor({ tpl: 'nope~x~y~0', theme: {} }), null);
 
 console.log('brand: ok');

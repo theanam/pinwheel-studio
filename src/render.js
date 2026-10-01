@@ -278,6 +278,10 @@ function imageShadow(sh, m) {
   return { x: sh.x || 0, y: sh.y || 0, blur: sh.blur || 0, color: sh.color || 'rgba(0,0,0,.35)' };
 }
 
+/** The text as typed. innerText honours text-transform, so an upper-cased element
+ *  would otherwise come back in capitals; switch the transform off while reading. */
+export function readText(n) { const t = n.style.textTransform; n.style.textTransform = 'none'; const s = n.innerText; n.style.textTransform = t; return s.replace(/\n$/, ''); }
+
 export function renderEl(h, el, o = {}) {
   if (el.hidden && !o.showHidden) return null;
   const base = { position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.type === 'text' ? 'auto' : el.h, transform: [el.rot ? `rotate(${el.rot}deg)` : '', el.flipH && el.type !== 'image' ? 'scaleX(-1)' : ''].join(' ').trim() || undefined, opacity: el.opacity ?? 1, boxSizing: 'border-box' };
@@ -287,9 +291,14 @@ export function renderEl(h, el, o = {}) {
   if (el.type === 'text') {
     const st = { ...base, ...textStyle(el) };
     if (o.editingId === el.id) {
+      // Every keystroke reports the text (onInput); the editor commits on blur, and
+      // Studio also commits the last reported text whenever editing ends another
+      // way (a click on the canvas or another element re-renders this node before
+      // any blur can fire, and a focused node that is removed gets no blur at all).
       return h('div', { ...common, onPointerDown: e => e.stopPropagation(), contentEditable: true, suppressContentEditableWarning: true, spellCheck: false, style: { ...st, outline: 'none', cursor: 'text', userSelect: 'text', WebkitUserSelect: 'text', minWidth: 10, caretColor: el.outline || el.color },
         ref: n => { if (n && !n.__pwFocused) { n.__pwFocused = 1; n.focus(); const r = document.createRange(); r.selectNodeContents(n); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } },
-        onBlur: e => o.onTextCommit(el.id, e.currentTarget.innerText.replace(/\n$/, '')), onKeyDown: e => { e.stopPropagation(); if (e.key === 'Escape') e.currentTarget.blur(); } }, el.text);
+        onInput: e => o.onTextInput && o.onTextInput(el.id, readText(e.currentTarget)),
+        onBlur: e => o.onTextCommit(el.id, readText(e.currentTarget)), onKeyDown: e => { e.stopPropagation(); if (e.key === 'Escape') e.currentTarget.blur(); } }, el.text);
     }
     const inner = el.bg ? h('span', { style: { background: el.bg, padding: '.04em .22em', WebkitBoxDecorationBreak: 'clone', boxDecorationBreak: 'clone', borderRadius: el.size * .06 } }, el.text) : el.text;
     return h('div', { ...common, style: { ...st, padding: el.bg ? '0 .22em' : 0 } }, inner);

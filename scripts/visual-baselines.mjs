@@ -24,7 +24,8 @@ function normalize(value) {
   if (value && typeof value === 'object') {
     const out = {};
     for (const k of Object.keys(value).sort()) {
-      if (k === 'id' || k === 'groupId' || k === 'created') continue;
+      // `key` names the copy field a text came from; it never changes what is drawn.
+      if (k === 'id' || k === 'groupId' || k === 'created' || k === 'key') continue;
       out[k] = normalize(value[k]);
     }
     return out;
@@ -48,9 +49,13 @@ const h = (type, props, ...kids) => ({ type, props, kids: kids.flat().filter(Boo
 
 const current = {};
 const renderFailures = [];
+const overflows = [];
 for (const [key, tpl] of [...pairs].sort(([a], [b]) => a.localeCompare(b))) {
   const doc = build(tpl);
   current[key] = hash(doc);
+  // Quality rule: text a layout places stays on the page. Off the bottom it is cut
+  // off and cannot be clicked. Rotated text is skipped; its box is not its glyphs.
+  for (const page of doc.pages) for (const el of page.els) if (el.type === 'text' && !el.rot && (el.y + el.h > doc.h + 2 || el.y < -2)) overflows.push(`${key} · ${el.name || 'text'} ends ${Math.round(el.y + el.h - doc.h)}px past the page`);
   for (const page of doc.pages) {
     for (const el of page.els) {
       try { renderEl(h, el, {}); }
@@ -77,11 +82,12 @@ const added = Object.keys(current).filter(k => !baseline[k]);
 const removed = Object.keys(baseline).filter(k => !current[k]);
 
 for (const f of renderFailures) console.error(`render error: ${f}`);
+for (const f of overflows) console.error(`off the page: ${f}`);
 for (const k of changed) console.error(`changed:     ${k}`);
 for (const k of added) console.log(`new:         ${k}`);
 for (const k of removed) console.error(`removed:     ${k}`);
 
-const bad = renderFailures.length + changed.length + removed.length;
+const bad = renderFailures.length + overflows.length + changed.length + removed.length;
 console.log(`\n${Object.keys(current).length} format × layout pairs · ${changed.length} changed · ${added.length} new · ${removed.length} removed`);
 if (bad) {
   console.error('\nIf these changes are intended, re-run with --update and commit the baselines.');

@@ -23,9 +23,15 @@ input[type=range] { accent-color: var(--pw-accent); width: 100%; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--pw-line-strong); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
 
-/* Bottom sheets on phones and tablets rise in. */
-.pw-sheet { animation: pw-up .18s ease-out; }
-@keyframes pw-up { from { transform: translateY(14px); opacity: 0; } }
+/* Dialogs (Radix) pop in place: a short fade with a touch of scale, no travel. */
+.pw-dialog-overlay { animation: pw-fade .08s ease-out; }
+.pw-dialog { animation: pw-pop .1s ease-out; }
+@keyframes pw-fade { from { opacity: 0; } }
+@keyframes pw-pop { from { opacity: 0; transform: scale(.97); } }
+
+/* Bottom sheets on phones and tablets rise in, briefly. */
+.pw-sheet { animation: pw-up .12s ease-out; }
+@keyframes pw-up { from { transform: translateY(10px); opacity: 0; } }
 
 /* A recent design's remove button shows on hover, and always on touch screens. */
 .pw-recent .pw-recent-x { opacity: 0; transition: opacity .12s; }

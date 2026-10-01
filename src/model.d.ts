@@ -107,6 +107,9 @@ export interface BaseElement {
 export interface TextElement extends BaseElement {
   type: 'text';
   text: string;
+  /** The copy-pack field this text was built from (`title`, `sub`, `cta`, `stat.0` …).
+   *  Lets edited text follow the design into another template. User-added text has none. */
+  key?: string;
   font: string;
   size: number;
   weight: number;

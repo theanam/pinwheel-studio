@@ -31,7 +31,7 @@ templates. No account, no server, no uploads: your files never leave your machin
 | | |
 |---|---|
 | **Formats** | 72 sizes for Instagram, TikTok, YouTube, X, LinkedIn, Pinterest, Facebook, presentations, flyers, posters, A4 documents, menus, cards and more, plus custom sizes. Resize a design and it re-lays out for the new shape. |
-| **Templates** | Searchable gallery with format and occasion filters. 19 occasions, from birthdays and weddings to Eid, Diwali, Christmas and memorials, each with its own palette and motifs. Apply a template to the current design or start from one. |
+| **Templates** | Searchable gallery with format and occasion filters. 19 occasions, from birthdays and weddings to Eid, Diwali, Christmas and memorials, each with its own palette and motifs. Apply a template to the current design or start from one. If you have edited the design, applying a template asks first, and the text you wrote (the title, subtitle, call to action and so on) carries into the matching slots of the new template. |
 | **Text** | 49 Google Fonts in a picker that previews every family, 29 curated pairings, size, line height, tracking, bold, italic and caps, highlight, outline, soft, drop and long extruded shadows, and 15 one-click text styles. |
 | **Shapes and lines** | 37 shapes, from rectangles and stars to hearts, speech bubbles, gears, ribbons and bolts, with fill, stroke, dashes and corner radius. Lines with arrowheads. |
 | **Images** | Upload, paste or drag photos onto frames. Crop by zoom and focus point, masks, filter presets and adjustments, borders and shadows. On a cutout or transparent PNG the border and shadow follow the subject. |
@@ -129,6 +129,9 @@ src/
                  and is now maintained by hand.
   model.d.ts     The document model and .pinwheel manifest as types.
 ```
+
+Dialogs (confirmations, the rename prompt) go through one promise-based `ask()`
+rendered with Radix Dialog, the only dependency besides React.
 
 Dependencies run one way: `presets → render → io → editor`. The first two, and
 `brand.js` and `palette.js`, never touch the DOM, which is what lets the template

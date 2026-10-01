@@ -100,6 +100,33 @@ procedural sample art on every frame — and `src/render.js` draws that sample a
 `src/io.js` is the prototype file unchanged apart from the CDN-vs-vendor indirection
 at the top.
 
+12. Native `confirm()` and `prompt()` are gone. `Studio#ask(opts)` resolves a promise
+    from one modal that `StudioView` renders with `@radix-ui/react-dialog` (focus
+    trap, Escape, overlay click), styled with the UI tokens. The editor also tracks a
+    `dirty` flag, set by `pushHist` and cleared when a design is opened or
+    re-templated: applying a template or re-laying out on resize asks before
+    replacing edited pages, and does not ask again until the next edit. Every text a
+    layout places remembers which copy field it came from (`key`: title, sub, cta,
+    stat.0 …), so a template swap or re-layout carries the text the user changed
+    into the slots that play the same role in the new layout (`editedText`,
+    `carryText` in presets.js). The baseline check ignores `key`.
+
+13. Text editing commits by two routes. The contentEditable reports every keystroke
+    (`onTextInput`) and commits on blur; `componentDidUpdate` also commits the last
+    reported text whenever `editingId` is cleared by anything else. A click on the
+    canvas or another element re-renders the node before the browser's blur can fire,
+    and a focused node that is removed never gets one (the focus fixup rule), so the
+    blur-only version lost edits, most visibly on highlighted text, where React
+    swaps the text node for a span. `readText` turns `text-transform` off while
+    reading so an upper-cased element keeps the case that was typed.
+
+14. The baseline check also enforces a quality rule from spec §6: no unrotated text
+    a layout places may end past the page. Four layouts (hero-photo, photo-stat,
+    recipe, motif-hero) and two more that hid text under another element
+    (photo-quote, memorial) now budget their stacks from the space they have
+    instead of fixed fractions, so a long title or a short format cannot push the
+    button or the last line off the page or under a motif.
+
 ## Browser smoke test
 
 `npm run test:browser` (`tests/browser/smoke.mjs`) drives a local headless Chrome

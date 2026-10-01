@@ -3,7 +3,9 @@
 // docs/PORTING.md); now maintained by hand, since the responsive shell, the
 // recents and brands sections and the brand builder post-date the prototype.
 import { Fragment } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
 import Mark from './lib/Mark.jsx';
+import GitHubMark from './lib/GitHubMark.jsx';
 import { sty, toArray } from './lib/style.js';
 
 export default function StudioView(v) {
@@ -38,6 +40,9 @@ export default function StudioView(v) {
                   </a>
                 </>
               ) : null}
+<a href={v.repoURL} target="_blank" rel="noopener" title="Source on GitHub" style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", color: "var(--pw-ink)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }} className="pw-h1">
+                <GitHubMark size={17} />
+              </a>
               <button onClick={v.toggleHelp} title="Help & support" style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", cursor: "pointer", color: "var(--pw-ink)", fontSize: "15px", fontWeight: "700", lineHeight: "1", flex: "none" }} className="pw-h1">
                 ?
               </button>
@@ -444,6 +449,11 @@ export default function StudioView(v) {
                 <div style={{ flex: "1", display: "flex", justifyContent: "center", minWidth: "0" }}>
                   <input value={v.docName ?? ''} onChange={v.onDocName} style={{ width: "min(320px, 100%)", height: "32px", border: "1px solid transparent", background: "transparent", borderRadius: "7px", textAlign: "center", fontSize: "14px", fontWeight: "600", outline: "none" }} className="pw-h5" />
                 </div>
+                {v.tablet ? null : (
+                  <a href={v.repoURL} target="_blank" rel="noopener" title="Source on GitHub" style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", color: "var(--pw-ink)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }} className="pw-h1">
+                    <GitHubMark size={17} />
+                  </a>
+                )}
                 {v.tablet ? null : (
                   <button onClick={v.toggleHelp} title="Help & support" style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", cursor: "pointer", color: "var(--pw-ink)", fontSize: "15px", fontWeight: "700", lineHeight: "1", flex: "none" }} className="pw-h1">
                     ?
@@ -1549,6 +1559,32 @@ export default function StudioView(v) {
           </div>
         </>
       ) : null}
+      <Dialog.Root open={!!v.dialog.open} onOpenChange={v.dialog.onOpenChange}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="pw-dialog-overlay" style={{ position: "fixed", inset: "0", background: "rgba(36,33,29,.32)", zIndex: "95" }} />
+          <Dialog.Content className="pw-dialog" style={{ position: "fixed", inset: "0", margin: "auto", height: "max-content", maxHeight: "calc(100vh - 32px)", overflow: "auto", width: "min(420px, calc(100vw - 32px))", background: "var(--pw-surface)", color: "var(--pw-ink)", borderRadius: "14px", padding: "22px 24px", boxShadow: "0 20px 50px rgba(0,0,0,.22)", display: "flex", flexDirection: "column", gap: "12px", fontSize: "14px", fontFamily: "'Source Sans 3', system-ui, sans-serif", zIndex: "96", outline: "none" }}>
+            <Dialog.Title style={{ margin: "0", fontSize: "17px", fontWeight: "700", lineHeight: "1.3" }}>
+              {v.dialog.title}
+            </Dialog.Title>
+            {v.dialog.hasBody ? (
+              <Dialog.Description style={{ margin: "0", color: "var(--pw-text-2)", lineHeight: "1.5", textWrap: "pretty" }}>
+                {v.dialog.body}
+              </Dialog.Description>
+            ) : null}
+            {v.dialog.hasInput ? (
+              <input value={v.dialog.value ?? ''} onChange={v.dialog.onValue} onKeyDown={v.dialog.onKey} placeholder={v.dialog.placeholder} autoFocus style={{ height: "40px", border: "1px solid var(--pw-line-2)", borderRadius: "9px", padding: "0 12px", fontSize: "16px", outline: "none", background: "var(--pw-surface)" }} />
+            ) : null}
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "6px" }}>
+              <button onClick={v.dialog.cancel} style={{ height: "38px", padding: "0 16px", borderRadius: "9px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", fontWeight: "600", fontSize: "14px", cursor: "pointer", color: "var(--pw-ink)" }} className="pw-h1">
+                {v.dialog.cancelLabel}
+              </button>
+              <button onClick={v.dialog.confirm} autoFocus={!v.dialog.hasInput} style={sty(v.dialog.confirmStyle)}>
+                {v.dialog.confirmLabel}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
       {v.hasHelp ? (
         <>
           <div onClick={v.toggleHelp} style={{ position: "fixed", inset: "0", background: "rgba(36,33,29,.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "90" }}>

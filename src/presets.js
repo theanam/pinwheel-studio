@@ -318,6 +318,35 @@ function sampleFor(label, w, h, mask, P, rng, idx = 0, scene = null, subject = {
   return out;
 }
 
+/* ---------- copy keys ---------- */
+// Every text a layout places comes from a field of the copy pack (title, sub, cta,
+// stat.0 …). The element remembers that field as `key`, so when a design moves to
+// another template the editor can carry the user's edited text into the slot that
+// plays the same role there. Reverse lookup, cached per pack.
+const keyMaps = new WeakMap();
+function keyFor(C, text) {
+  let m = keyMaps.get(C);
+  if (!m) {
+    m = new Map();
+    const add = (k, v) => { if (typeof v === 'string' && v && !m.has(v)) m.set(v, k); else if (Array.isArray(v)) v.forEach((x, i) => add(`${k}.${i}`, x)); };
+    Object.entries(C).forEach(([k, v]) => { if (!['id', 'name', 'kw', 'pairs', 'pals'].includes(k)) add(k, v); });
+    keyMaps.set(C, m);
+  }
+  return m.get(String(text)) || null;
+}
+/** key → text for every keyed text element in a document (first page that has it wins). */
+export function textByKey(doc) { const m = {}; doc.pages.forEach(p => p.els.forEach(e => { if (e.type === 'text' && e.key && !(e.key in m)) m[e.key] = e.text; })); return m; }
+/** The text the user changed since the design was built, as key → text. */
+export function editedText(orig, cur) { const o = textByKey(orig), out = {}; for (const [k, t] of Object.entries(textByKey(cur))) if (k in o && o[k] !== t) out[k] = t; return out; }
+/** Put edited text into the slots of a freshly built template that play the same role. Returns the keys that landed. */
+export function carryText(doc, map) { const hit = new Set(); doc.pages.forEach(p => p.els.forEach(e => { if (e.type === 'text' && e.key && map[e.key] != null) { e.text = map[e.key]; hit.add(e.key); } })); return [...hit]; }
+/** The build descriptor for a document's template id, with the palette and pairing it carries now. */
+export function descFor(doc) {
+  if (!doc.tpl) return null; const [fmt, layout, topic, j] = doc.tpl.split('~');
+  if (!FORMAT[fmt] || !LAYOUT[layout] || !TOPIC[topic]) return null;
+  return { id: doc.tpl, fmt, layout, topic, pal: doc.theme && doc.theme.id in PALETTE ? doc.theme.id : 'paper', pair: doc.theme && doc.theme.pairId in PAIRING ? doc.theme.pairId : 'editorial' };
+}
+
 /* ---------- layout context ---------- */
 function makeCtx(W, H, P, F, C, rng, kind) {
   const u = Math.min(W, H) / 100, ar = W / H;
@@ -332,6 +361,7 @@ function makeCtx(W, H, P, F, C, rng, kind) {
     const wf = (font === F.display ? F.wf : F.bwf) * (upper ? 1.2 : 1) * 1.05 + ls;
     const e = push({ ...base('text', x, y, w, 0, o, d ? 'Heading' : 'Text'), text: String(text), font, size: r1(size), weight: o.weight ?? (d ? F.dw : 400), italic: !!o.italic, color: o.color || P.ink, align: o.align || 'left', lh, ls, upper, bg: o.bg || null, outline: o.outline || null });
     e.h = r1(estLines(e.text, size, w, wf) * size * lh + (o.bg ? size * .3 : 0));
+    const key = keyFor(C, text); if (key) e.key = key;
     return e;
   };
   c.hd = (text, x, y, w, max, lines, maxH, o = {}) => {
@@ -1049,13 +1079,15 @@ def('before-after', 'Before / After', 'ts', ['wide', 'square'], c => {
 
 def('recipe', 'Info Card', 'sp', ['square', 'tall'], c => {
   const { W, H, u, m, P, C } = c;
-  const ih = H * .42; c.i(0, 0, W, ih, { label: 'Photo' });
+  const tall = c.cls === 'tall', ih = H * (tall ? .42 : .34); c.i(0, 0, W, ih, { label: 'Photo' });
   c.sticker(C.badge, W - m - u * 9, ih, u * 18, { fill: P.accent, rot: -10 });
-  const k = c.kick(m, ih + u * 6, W - 2 * m - u * 20);
-  const hd = c.hd(C.title, m, k.y + k.h + u * 2, W - 2 * m, u * 9, 2, H * .16);
-  const top = hd.y + hd.h + u * 6; const cw = (W - 2 * m - u * 6) / 2;
-  C.items.slice(0, 4).forEach((it, i) => { const y = top + i * u * 8.5; c.o(m, y + u * 1.2, u * 1.8, u * 1.8, { fill: P.accent, name: 'Bullet' }); c.t(it, m + u * 4, y, cw - u * 4, u * 3.1, {}); });
-  const st = c.t(C.stat[0], m + cw + u * 6, top - u * 1, cw, u * 12, { f: 'd', upper: false, color: P.hi });
+  const k = c.kick(m, ih + u * (tall ? 6 : 4), W - 2 * m - u * 20);
+  const hd = c.hd(C.title, m, k.y + k.h + u * 2, W - 2 * m, u * 9, 2, H * (tall ? .16 : .12));
+  // The list and the stat share what is left above the footer line.
+  const top = hd.y + hd.h + u * 5, bot = H - m - u * 5; const cw = (W - 2 * m - u * 6) / 2;
+  const step = Math.min(u * 8.5, (bot - top) / 4), ts = Math.min(u * 3.1, step * .36);
+  C.items.slice(0, 4).forEach((it, i) => { const y = top + i * step; c.o(m, y + ts * .4, ts * .58, ts * .58, { fill: P.accent, name: 'Bullet' }); c.t(it, m + u * 4, y, cw - u * 4, ts, {}); });
+  const st = c.t(C.stat[0], m + cw + u * 6, top - u * 1, cw, Math.min(u * 12, (bot - top - u * 5) * .75), { f: 'd', upper: false, color: P.hi });
   c.t(C.stat[1], m + cw + u * 6, st.y + st.h + u, cw, u * 3, { weight: 600, color: P.muted });
   c.t(C.handle + '  ·  ' + C.url, m, H - m - u * 3, W - 2 * m, u * 2.8, { color: P.muted, weight: 600 });
 }, { photo: true });
@@ -1369,12 +1401,15 @@ def('hero-photo', 'Hero Photo', 'tsdp', A3, c => {
   c.i(0, 0, W, H, { label: 'Full-bleed photo' });
   const sh = cls === 'wide' ? H * .5 : H * .42;
   c.r(0, H - sh, W, sh, { fill: P.ink, op: .62, name: 'Scrim' });
-  const w = cls === 'wide' ? W * .6 : W - 2 * m;
+  const w = cls === 'wide' ? W * .6 : W - 2 * m, top = H - sh + u * 4, bot = H - m;
   const k = c.kick(m, 0, w, { color: onScrim(P) });
-  const hd = c.hd(C.title, m, 0, w, u * (cls === 'wide' ? 14 : 12), 3, sh - u * 22, { color: P.bg });
-  const s = c.t(C.sub, m, 0, Math.min(w, u * 60), u * 3.4, { color: mix(P.bg, P.ink, .15) });
+  // The heading gets whatever the band has left once the fixed parts are placed, so
+  // the button never runs off the page on a wide format.
+  const s = c.t(C.sub, m, 0, Math.min(w, u * 70), u * 3.3, { color: mix(P.bg, P.ink, .15) });
   const b = c.btn(C.cta, m, 0, u * 3, { fill: P.accent, color: P.onAccent });
-  c.vstack([k, hd, s, b], [u * 2.5, u * 3, u * 4], H - sh + u * 5, H - m);
+  const hd = c.hd(C.title, m, 0, w, u * (cls === 'wide' ? 14 : 12), 3, Math.max(u * 7, bot - top - k.h - s.h - b.h - u * 8.5), { color: P.bg });
+  c.els.splice(c.els.indexOf(hd), 1); c.els.splice(c.els.indexOf(s), 0, hd);
+  c.vstack([k, hd, s, b], [u * 2.2, u * 2.8, u * 3.5], top, bot);
 }, { photo: true });
 
 def('photo-duo', 'Two Photos', 'sdp', A3, c => {
@@ -1429,24 +1464,29 @@ def('photo-quote', 'Photo Quote', 'sdp', A3, c => {
   const pw = wide ? W * .45 : W, ph = wide ? H : H * .5;
   c.i(0, 0, pw, ph, { label: 'Photo' });
   const x = wide ? pw + m : m, w = wide ? W - pw - 2 * m : W - 2 * m, top = wide ? m : ph + m, bot = H - m;
-  c.t('“', x - u, top - u * 4, u * 20, u * 26, { f: 'd', font: F.display === 'Anton' || F.upper ? 'Playfair Display' : F.display, color: P.hi, lh: 1, upper: false, name: 'Quote mark' });
-  const q = c.hd(C.quote, x, 0, w, u * (wide ? 7.5 : 7), 6, (bot - top) * .55, { upper: false, lh: 1.15 });
   const a = c.t(C.author, x, 0, w, u * 3.4, { weight: 700 }); const r = c.t(C.role || C.brand, x, 0, w, u * 3, { color: P.muted });
   const ln = c.r(x, 0, u * 10, u * .8, { fill: P.accent });
+  const q = c.hd(C.quote, x, 0, w, u * (wide ? 7.5 : 7), 6, Math.max(u * 6, Math.min((bot - top) * .55, bot - top - u * 14 - a.h - r.h - ln.h - u * 7.6)), { upper: false, lh: 1.15 });
+  c.els.splice(c.els.indexOf(q), 1); c.els.splice(c.els.indexOf(a), 0, q);
   c.vstack([q, ln, a, r], [u * 4, u * 3, u * .6], top + u * 14, bot);
+  // Drawn last: its box overlaps the heading's corner, and on top it stays clickable.
+  c.t('“', x - u, top - u * 4, u * 20, u * 26, { f: 'd', font: F.display === 'Anton' || F.upper ? 'Playfair Display' : F.display, color: P.hi, lh: 1, upper: false, name: 'Quote mark' });
 }, { photo: true });
 
 def('photo-stat', 'Photo & Stat', 'sdp', A3, c => {
   const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
-  const pw = wide ? W * .5 : W, ph = wide ? H : H * .46;
+  const pw = wide ? W * .5 : W, ph = wide ? H : H * (cls === 'tall' ? .46 : .4);
   c.i(wide ? W - pw : 0, 0, pw, ph, { label: 'Photo' });
-  const w = wide ? W - pw - 2 * m : W - 2 * m, top = wide ? m : ph + m * .8;
+  const w = wide ? W - pw - 2 * m : W - 2 * m, top = wide ? m : ph + m * .8, bot = H - m;
   const k = c.kick(m, 0, w);
-  const st = c.hd(C.stat[0], m, 0, w, u * (wide ? 26 : 22), 1, u * 26, { color: P.hi, upper: false });
   const sl = c.t(C.stat[1], m, 0, w, u * 3.8, { weight: 700 });
-  const hd = c.hd(C.title, m, 0, w, u * 7, 2, u * 16);
-  const s = c.t(C.sub, m, 0, w, u * 3.2, { color: P.muted });
-  c.vstack([k, st, sl, hd, s], [u * 2, u * 1, u * 4, u * 2.5], top, H - m);
+  const s = c.hd(C.sub, m, 0, w, u * 3.2, 3, u * 14, { f: 'b', color: P.muted, upper: false, ls: 0, lh: 1.35 });
+  // The stat number and the heading share what the fixed lines leave.
+  const rest = bot - top - k.h - sl.h - s.h - u * 9.5;
+  const st = c.hd(C.stat[0], m, 0, w, u * (wide ? 26 : 22), 1, Math.max(u * 6, rest * .6), { color: P.hi, upper: false });
+  const hd = c.hd(C.title, m, 0, w, u * 7, 2, Math.max(u * 5, rest - st.h));
+  [st, hd].forEach(e => c.els.splice(c.els.indexOf(e), 1)); c.els.splice(c.els.indexOf(sl), 0, st); c.els.splice(c.els.indexOf(s), 0, hd);
+  c.vstack([k, st, sl, hd, s], [u * 2, u * 1, u * 4, u * 2.5], top, bot);
 }, { photo: true });
 
 def('photo-strip', 'Photo Strip', 'sp', A3, c => {
@@ -1573,13 +1613,17 @@ def('memorial', 'In Memoriam', 'sp', A3, c => {
   c.o(cx - d / 2 - u * 1.5, cy - d / 2 - u * 1.5, d + u * 3, d + u * 3, { fill: null, stroke: P.accent, sw: u * .3, name: 'Ring' });
   c.i(cx - d / 2, cy - d / 2, d, d, { mask: 'circle', label: 'Portrait' });
   const x = wide ? W * .5 : m, w = wide ? W * .5 - m : W - 2 * m, al = wide ? 'left' : 'center';
+  const top = wide ? m : cy + d / 2 + u * 6, bot = H - m - u * 9;
   const k = c.t(C.kicker, x, 0, w, u * 2.8, { align: al, upper: true, ls: .25, weight: 600, color: P.muted });
-  const nm = c.hd(C.title, x, 0, w, u * (wide ? 10 : 9), 2, u * 22, { align: al, upper: false, color: P.onSurface });
   const yrs = c.t(C.ep, x, 0, w, u * 3.6, { align: al, color: P.hi, weight: 600, ls: .08 });
-  const q = c.t('“' + C.quote + '”', x + (wide ? 0 : w * .08), 0, wide ? w : w * .84, u * 3.3, { align: al, italic: true, color: mix(P.onSurface, P.surface, .25), lh: 1.5 });
   const dt = c.t(C.date[2] + '  ·  ' + C.date[3], x, 0, w, u * 3.1, { align: al, weight: 700 });
   const pl = c.t(C.place, x, 0, w, u * 3, { align: al, color: P.muted });
-  c.vstack([k, nm, yrs, q, dt, pl], [u * 2.5, u * 1.5, u * 5, u * 6, u * 1], wide ? m : cy + d / 2 + u * 6, H - m - u * 9);
+  // The name and the quote share what is left, so the stack never reaches the dove.
+  const rest = bot - top - k.h - yrs.h - dt.h - pl.h - u * 16;
+  const nm = c.hd(C.title, x, 0, w, u * (wide ? 10 : 9), 2, Math.max(u * 8, rest * .55), { align: al, upper: false, color: P.onSurface });
+  const q = c.hd('“' + C.quote + '”', x + (wide ? 0 : w * .08), 0, wide ? w : w * .84, u * 3.3, 4, Math.max(u * 4, rest - nm.h), { f: 'b', align: al, italic: true, color: mix(P.onSurface, P.surface, .25), lh: 1.5, upper: false, ls: 0 });
+  [nm, q].forEach(e => c.els.splice(c.els.indexOf(e), 1)); c.els.splice(c.els.indexOf(yrs), 0, nm); c.els.splice(c.els.indexOf(dt), 0, q);
+  c.vstack([k, nm, yrs, q, dt, pl], [u * 2.5, u * 1.5, u * 5, u * 6, u * 1], top, bot);
   c.motif('dove', wide ? W - m - u * 9 : W / 2 - u * 4, wide ? m : H - m - u * 8, u * 8);
 }, { topics: ['memorial'], photo: true, nogarnish: true });
 
@@ -1590,11 +1634,16 @@ def('motif-hero', 'Motif Hero', 'tsp', A3, c => {
   if (cls === 'wide') {
     c.motif(id, W - m - size - u * 4, H / 2 - size / 2, size);
     const tw = W - size - 3 * m - u * 4;
-    const k = c.kick(m, 0, tw); const hd = c.hd(C.title, m, 0, tw, u * 14, 3, H * .45); const s = c.t(C.sub, m, 0, tw, u * 3.4, { color: P.muted }); const d = c.t(when, m, 0, tw, u * 3.2, { weight: 700 }); const b = c.btn(C.cta, m, 0, u * 3.2);
+    const k = c.kick(m, 0, tw); const s = c.t(C.sub, m, 0, tw, u * 3.4, { color: P.muted }); const d = c.t(when, m, 0, tw, u * 3.2, { weight: 700 }); const b = c.btn(C.cta, m, 0, u * 3.2);
+    const hd = c.hd(C.title, m, 0, tw, u * 14, 3, Math.max(u * 6, Math.min(H * .45, H - 2 * m - k.h - s.h - d.h - b.h - u * 14)));
+    c.els.splice(c.els.indexOf(hd), 1); c.els.splice(c.els.indexOf(s), 0, hd);
     c.vstack([k, hd, s, d, b], [u * 3, u * 3, u * 3, u * 5], m, H - m);
   } else {
     const mo = c.motif(id, W / 2 - size / 2, 0, size);
-    const k = c.kick(m, 0, w, { align: 'center' }); const hd = c.hd(C.title, m, 0, w, u * 12, 3, H * .3, { align: 'center' }); const s = c.t(C.sub, m + w * .1, 0, w * .8, u * 3.4, { align: 'center', color: P.muted }); const d = c.t(when, m, 0, w, u * 3.2, { align: 'center', weight: 700 }); const b = c.btn(C.cta, W / 2, 0, u * 3.2, { anchor: 'center' });
+    const k = c.kick(m, 0, w, { align: 'center' }); const s = c.t(C.sub, m + w * .1, 0, w * .8, u * 3.4, { align: 'center', color: P.muted }); const d = c.t(when, m, 0, w, u * 3.2, { align: 'center', weight: 700 }); const b = c.btn(C.cta, W / 2, 0, u * 3.2, { anchor: 'center' });
+    // The heading takes what the motif, the lines and the button leave.
+    const hd = c.hd(C.title, m, 0, w, u * 12, 3, Math.max(u * 6, Math.min(H * .3, H - 2 * m - mo.h - k.h - s.h - d.h - b.h - u * 19)), { align: 'center' });
+    c.els.splice(c.els.indexOf(hd), 1); c.els.splice(c.els.indexOf(s), 0, hd);
     c.vstack([mo, k, hd, s, d, b], [u * 5, u * 3, u * 3, u * 3, u * 5], m, H - m);
   }
   if (C.decor) c.scatter(C.decor, [{ x: 0, y: 0, w: W, h: H * .14 }, { x: 0, y: H * .86, w: W, h: H * .14 }], c.els.filter(e => e.type === 'text').map(e => bboxOf(e, u * 2)));

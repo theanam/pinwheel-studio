@@ -30,7 +30,7 @@ export default defineConfig({
         manualChunks(id) {
           if (id.endsWith('/src/presets.js')) return 'presets';
           if (id.endsWith('/src/render.js')) return 'render';
-          if (id.includes('/node_modules/react')) return 'react';
+          if (id.includes('/node_modules/react') || id.includes('/node_modules/@radix-ui')) return 'react';
         },
       },
     },

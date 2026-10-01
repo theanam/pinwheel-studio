@@ -17,7 +17,7 @@ export default class Studio extends React.Component {
     galCat: 'All', galOcc: null, galQ: '', galLimit: 48, tplQ: '', tplSame: true, tplLimit: 24, menu: null, busy: null, toast: null,
     cropMode: false, exportScale: 2, relayout: true,
     brand: { bg: '#FBF7F0', ink: '#1F1B16', accent: '#1F7D62', accent2: '#2F6F73', heading: 'DM Serif Display', body: 'DM Sans', logo: null, assets: {}, palettes: [], textStyles: [] },
-    brands: [], recents: [], recentsAll: false, wiz: null, propsOpen: false, phoneMenu: null,
+    brands: [], recents: [], recentsAll: false, wiz: null, propsOpen: false, phoneMenu: null, dialog: null, dialogValue: '',
     customW: 1080, customH: 1080, fmtsAll: false,
     helpOpen: false, layerDrag: null, layerOver: null, fontQ: '', fontCat: 'all', fontAnchor: null,
     vw: typeof window !== 'undefined' ? window.innerWidth : 1280,
@@ -106,6 +106,8 @@ export default class Studio extends React.Component {
   }
   componentWillUnmount() { this._mq.removeEventListener('change', this._mqFn); window.removeEventListener('keydown', this._key); window.removeEventListener('paste', this._paste); window.removeEventListener('resize', this._rs); window.removeEventListener('pagehide', this._bu); }
   componentDidUpdate(pp, ps) {
+    // Editing ended by some route other than blur: commit what was typed.
+    if (ps.editingId && ps.editingId !== this.state.editingId) { const e = this._edit; this._edit = null; if (e && e.id === ps.editingId) this.onTextCommit(e.id, e.text); }
     if (this.state.doc && this.state.doc !== ps.doc) { this.scheduleMeasure(); this.scheduleAutosave(); }
     if (this.state.brand !== ps.brand && this.state.ready) this.saveBrandSoon();
   }
@@ -144,16 +146,17 @@ export default class Studio extends React.Component {
   setBrand(patch) { this.setState(s => { const b = { ...s.brand, ...patch, updated: Date.now() }; return { brand: b, brands: s.brands.map(x => x.id === b.id ? b : x) }; }); }
   activateBrand = id => { const b = this.state.brands.find(x => x.id === id); if (!b) return; this.setState(s => ({ brand: b, assets: { ...s.assets, ...b.assets }, menu: null })); this.DB.setKV('brandId', id).catch(() => { }); };
   createBrand(partial) { const b = this.B.newBrand(partial); this.setState(s => ({ brands: [...s.brands, b], brand: b, assets: { ...s.assets, ...b.assets } }), () => this.saveBrandSoon()); return b; }
-  renameBrand = () => { const n = prompt('Brand name', this.state.brand.name); if (n && n.trim()) this.setBrand({ name: n.trim() }); };
+  renameBrand = async () => { const n = await this.ask({ title: 'Rename brand', input: { value: this.state.brand.name, placeholder: 'Brand name' }, confirmLabel: 'Rename' }); if (n) this.setBrand({ name: n }); };
   duplicateBrand = () => { const { id, ...rest } = structuredClone(this.state.brand); this.createBrand({ ...rest, name: rest.name + ' copy', created: Date.now() }); this.toast('Brand duplicated'); };
-  deleteBrand = () => {
-    const b = this.state.brand; if (!confirm(`Delete the brand “${b.name}”? Its saved images, colour schemes and text styles go with it.`)) return;
+  deleteBrand = async () => {
+    const b = this.state.brand; if (!(await this.ask({ title: `Delete “${b.name}”?`, body: 'Its saved images, colour schemes and text styles go with it. Designs made with it are not affected.', confirmLabel: 'Delete brand', danger: true }))) return;
     this.setState(s => { const brands = s.brands.filter(x => x.id !== b.id); const next = brands[0] || this.B.newBrand(); return { brands: brands.length ? brands : [next], brand: next, assets: { ...s.assets, ...next.assets }, menu: null }; }, () => { this.DB.deleteBrand(b.id).catch(() => { }); this.saveBrandSoon(); });
   };
   /** A kit opened from a .pinwheel file: replaces a brand with the same id, else is added. */
-  importBrandKit(json, assets) {
-    const b = this.B.brandFromKit(json, assets);
-    this.setState(s => { const exists = s.brands.some(x => x.id === b.id); if (exists && !confirm(`Replace the brand “${b.name}” with the one in this file?`)) return null; return { brands: exists ? s.brands.map(x => x.id === b.id ? b : x) : [...s.brands, b], brand: b, assets: { ...s.assets, ...b.assets }, menu: null, wiz: null }; }, () => { this.saveBrandSoon(); this.toast('Imported brand kit “' + b.name + '”'); });
+  async importBrandKit(json, assets) {
+    const b = this.B.brandFromKit(json, assets); const exists = this.state.brands.some(x => x.id === b.id);
+    if (exists && !(await this.ask({ title: `Replace “${b.name}”?`, body: 'A brand with this id is already on this device. The one in the file replaces it, including its images, schemes and styles.', confirmLabel: 'Replace' }))) return;
+    this.setState(s => ({ brands: exists ? s.brands.map(x => x.id === b.id ? b : x) : [...s.brands, b], brand: b, assets: { ...s.assets, ...b.assets }, menu: null, wiz: null }), () => { this.saveBrandSoon(); this.toast('Imported brand kit “' + b.name + '”'); });
   }
   exportBrandKit = async () => {
     const b = this.state.brand, name = this.IO.safe(b.name) + '-brand-kit.pinwheel';
@@ -172,7 +175,10 @@ export default class Studio extends React.Component {
     this._assetFor = null; this.setState({ busy: null });
   };
   pickBrandAsset = kind => { this._assetFor = kind; this.brandAssetInput && this.brandAssetInput.click(); };
-  removeBrandAsset(id) { const b = this.state.brand; const assets = { ...b.assets }; delete assets[id]; this.setBrand({ assets, logo: b.logo === id ? null : b.logo }); }
+  async removeBrandAsset(id) {
+    if (!(await this.ask({ title: 'Remove this image from the brand?', body: 'Designs already using it keep their copy.', confirmLabel: 'Remove', danger: true }))) return;
+    const b = this.state.brand; const assets = { ...b.assets }; delete assets[id]; this.setBrand({ assets, logo: b.logo === id ? null : b.logo });
+  }
   savePaletteToBrand = () => { const t = this.state.doc.theme; const n = this.state.brand.palettes.length + 1; this.setBrand({ palettes: [...this.state.brand.palettes, this.B.paletteFrom(t, 'Scheme ' + n)] }); this.toast('Colour scheme saved to brand'); };
   saveTextStyleToBrand = () => {
     const el = this.selEls().find(e => e.type === 'text'); if (!el) return this.toast('Select some text first');
@@ -210,7 +216,7 @@ export default class Studio extends React.Component {
     this.setState({ busy: null });
   };
   deleteRecent = async id => { await this.DB.deleteRecent(id).catch(() => { }); this.setState(s => ({ recents: s.recents.filter(r => r.id !== id) })); };
-  clearRecents = async () => { if (!confirm('Remove all recent designs from this device? Files you saved are not affected.')) return; await this.DB.clearRecents().catch(() => { }); this.setState({ recents: [] }); };
+  clearRecents = async () => { if (!(await this.ask({ title: 'Clear recent designs?', body: 'Every design kept on this device is removed. Files you saved as .pinwheel are not affected.', confirmLabel: 'Clear all', danger: true }))) return; await this.DB.clearRecents().catch(() => { }); this.setState({ recents: [] }); };
 
   /* ---------- infra ---------- */
   // Suggestions: what the gallery shows before anyone asks, and in what order. See
@@ -223,11 +229,24 @@ export default class Studio extends React.Component {
   note(kind, id, weight = 1) { if (!this.S || !id) return; this.S.record(this.profile, kind, id, weight); this.S.saveProfile(this.profile); this._pv++; }
   noteQuery(q) { clearTimeout(this._qt); this._qt = setTimeout(() => this.S.topicsFor(q, this.P.TOPICS).forEach(id => this.note('topic', id, .6)), 600); }
   toast(t) { clearTimeout(this._tt); this.setState({ toast: t }); this._tt = setTimeout(() => this.setState({ toast: null }), 2600); }
+  /* ---------- dialogs ---------- */
+  // One modal (StudioView renders it with Radix Dialog) stands in for confirm() and
+  // prompt(): `ask` resolves true/false, or the entered text / null with `input`.
+  ask(opts) { return new Promise(resolve => this.setState({ dialog: { confirmLabel: 'OK', cancelLabel: 'Cancel', ...opts, resolve }, dialogValue: opts.input ? (opts.input.value || '') : '', menu: null })); }
+  dialogDone = ok => {
+    const d = this.state.dialog; if (!d) return; const val = this.state.dialogValue;
+    this.setState({ dialog: null, dialogValue: '' });
+    d.resolve(d.input ? (ok ? val.trim() || null : null) : !!ok);
+  };
+  // "Tainted": the design has been edited since it was opened or last re-templated.
+  // Applying a template or re-laying out on resize replaces the page, so it asks
+  // first, and the flag clears until the next edit.
+  dirty = false;
   get pg() { const { doc, page } = this.state; return doc ? doc.pages[Math.min(page, doc.pages.length - 1)] : null; }
   selEls() { const p = this.pg; return p ? p.els.filter(e => this.state.sel.includes(e.id)) : []; }
   snap() { const d = this.state.doc; return JSON.stringify({ w: d.w, h: d.h, fmt: d.fmt, pages: d.pages, theme: d.theme }); }
   pushHist(key) {
-    if (!this.state.doc) return; const now = Date.now();
+    if (!this.state.doc) return; const now = Date.now(); this.dirty = true;
     if (typeof key === 'string' && key === this._hk && now - this._ht < 900) { this._ht = now; return; }
     this._hk = typeof key === 'string' ? key : null; this._ht = now;
     this.hist.push(this.snap()); if (this.hist.length > 150) this.hist.shift(); this.fut = [];
@@ -258,7 +277,7 @@ export default class Studio extends React.Component {
     this.openDoc({ name: 'Untitled ' + (f ? f.name : 'design'), w: W, h: H, fmt: f ? f.id : 'custom', theme: this.brandTheme(), created: new Date().toISOString(), pages: [{ id: this.P.nid(), bg: 'var(--pw-surface)', els: [] }] }, {});
   }
   openDoc(doc, assets) {
-    this.hist = []; this.fut = []; if (!doc.id) doc.id = this.B.bid('d');
+    this.hist = []; this.fut = []; this.dirty = false; if (!doc.id) doc.id = this.B.bid('d');
     const brandIds = new Set(Object.keys(this.state.brand.assets || {}));
     this.setState(s => ({ screen: 'editor', doc, assets: { ...s.assets, ...assets }, uploads: [...new Set([...s.uploads, ...Object.keys(assets).filter(id => !brandIds.has(id))])], sel: [], page: 0, editingId: null, cropMode: false, menu: null, phoneMenu: null, propsOpen: false, tplSame: true, tplLimit: 24 }), () => { setTimeout(() => this.fitZoom(), 40); this.ensureAlpha(assets); this.scheduleAutosave(); });
   }
@@ -267,20 +286,28 @@ export default class Studio extends React.Component {
   ensureAlpha(assets) { Object.entries(assets).forEach(([id, a]) => { if (!a || a.alpha !== undefined || !a.src) return; this.IO.hasAlpha(a.src).then(v => this.setState(s => s.assets[id] ? { assets: { ...s.assets, [id]: { ...s.assets[id], alpha: v } } } : null)); }); }
   fromTemplate(desc) {
     this.note('topic', desc.topic, 1.5); this.note('format', desc.fmt, 1); const b = this.P.build(desc); b.created = new Date().toISOString(); this.fileHandle = null; this.openDoc(b, {}); }
-  applyTemplate(desc) {
-    const b = this.P.build(desc); this.pushHist();
-    this.setState(s => ({ doc: { ...s.doc, w: b.w, h: b.h, fmt: b.fmt, tpl: b.tpl, theme: b.theme, pages: b.pages, name: s.doc.name.startsWith('Untitled') ? b.name : s.doc.name }, sel: [], page: 0, editingId: null }), () => setTimeout(() => this.fitZoom(), 30));
+  // Text the user wrote survives the swap: whatever differs from the design's own
+  // template goes into the slot with the same role in the new one (title → title,
+  // sub → sub …), so "My Shop Sale" stays "My Shop Sale" in every layout.
+  editedText() { const P = this.P, d = this.state.doc, desc = P.descFor(d); if (!desc) return {}; try { return P.editedText(P.build(desc), d); } catch (e) { return {}; } }
+  async applyTemplate(desc) {
+    const edits = this.editedText(); const n = Object.keys(edits).length;
+    if (this.dirty && !(await this.ask({ title: 'Switch template?', body: 'You have made changes to this design. The new template replaces its pages' + (n ? `, keeping the text you wrote (${n} field${n > 1 ? 's' : ''}).` : '.') + ' You can undo afterwards.', confirmLabel: 'Switch', cancelLabel: 'Keep my edits', danger: true }))) return;
+    const b = this.P.build(desc); const kept = this.P.carryText(b, edits); this.pushHist();
+    this.setState(s => ({ doc: { ...s.doc, w: b.w, h: b.h, fmt: b.fmt, tpl: b.tpl, theme: b.theme, pages: b.pages, name: s.doc.name.startsWith('Untitled') ? b.name : s.doc.name }, sel: [], page: 0, editingId: null }), () => { this.dirty = false; setTimeout(() => this.fitZoom(), 30); if (n && kept.length < n) this.toast(`Kept ${kept.length} of ${n} edited texts — this layout has fewer slots`); });
   }
   fitZoom = () => { const n = this.canvasEl, d = this.state.doc; if (!n || !d) return; const ph = this.layout === 'phone'; const z = Math.min((n.clientWidth - (ph ? 32 : 100)) / d.w, (n.clientHeight - (ph ? 70 : 110)) / d.h, 3); this.setState({ zoom: Math.max(.04, Math.floor(z * 100) / 100) }); };
   setZoom(z) { this.setState({ zoom: Math.max(.04, Math.min(4, Math.round(z * 100) / 100)) }); }
-  resizeDoc(fid) {
+  async resizeDoc(fid) {
     const f = this.P.FORMAT[fid]; if (!f) return; const d = this.state.doc; this.setState({ menu: null });
     if (this.state.relayout && d.tpl) {
       const [, layout, topic, j] = d.tpl.split('~'); const L = this.P.LAYOUT[layout]; const cls = (ar => ar >= 2.2 ? 'banner' : ar > 1.25 ? 'wide' : ar >= .8 ? 'square' : 'tall')(f.w / f.h);
       if (L && L.kinds.includes(f.kind) && L.cls.includes(f.kind === 'c' ? 'wide' : cls)) {
+        if (this.dirty && !(await this.ask({ title: 'Re-layout and replace your edits?', body: 'Resizing rebuilds the page from its template, so the changes you made here are replaced. Turn off “Re-layout from template” to scale the design instead.', confirmLabel: 'Re-layout', cancelLabel: 'Keep my edits', danger: true }))) return;
+        const edits = this.editedText();
         const b = this.P.build({ id: `${f.id}~${layout}~${topic}~${j}`, fmt: f.id, layout, topic, pal: d.theme.id in this.P.PALETTE ? d.theme.id : 'paper', pair: d.theme.pairId || 'editorial' });
-        this.applyThemeTo(b, d.theme); this.pushHist();
-        this.setState(s => ({ doc: { ...s.doc, w: b.w, h: b.h, fmt: f.id, tpl: b.tpl, pages: b.pages }, sel: [], page: 0 }), () => setTimeout(this.fitZoom, 30)); return;
+        this.P.carryText(b, edits); this.applyThemeTo(b, d.theme); this.pushHist();
+        this.setState(s => ({ doc: { ...s.doc, w: b.w, h: b.h, fmt: f.id, tpl: b.tpl, pages: b.pages }, sel: [], page: 0 }), () => { this.dirty = false; setTimeout(this.fitZoom, 30); }); return;
       }
       this.toast('This layout doesn’t fit that size — scaled instead');
     }
@@ -437,7 +464,15 @@ export default class Studio extends React.Component {
     this.startMove(e, sel, pi);
   };
   onElDbl = (e, el) => { e.stopPropagation(); if (el.locked) return; if (el.type === 'text') this.setState({ editingId: el.id, sel: [el.id] }); else if (el.type === 'image' && el.asset) this.setState(s => ({ cropMode: !s.cropMode, sel: [el.id] })); else if (el.type === 'image') { this.replaceTarget = el.id; this.imgInput && this.imgInput.click(); } };
-  onTextCommit = (id, text) => { this.setState({ editingId: null }); const el = this.pg && this.pg.els.find(x => x.id === id); if (!el || el.text === text) return; this.setDoc(d => d.pages.forEach(p => p.els.forEach(x => { if (x.id === id) x.text = text; }))); };
+  onTextInput = (id, text) => { this._edit = { id, text }; };
+  // Idempotent: blur and the end-of-edit check can both report the same text.
+  onTextCommit = (id, text) => {
+    if (this._edit && this._edit.id === id) this._edit = null;
+    this.setState(s => s.editingId === id ? { editingId: null } : null);
+    const d = this.state.doc; let el = null; d && d.pages.forEach(p => p.els.forEach(x => { if (x.id === id) el = x; }));
+    if (!el || el.text === text) return;
+    this.setDoc(dd => dd.pages.forEach(p => p.els.forEach(x => { if (x.id === id) x.text = text; })));
+  };
   onHover = id => { if (!this._dragging && this.state.hoverId !== id) this.setState({ hoverId: id }); };
   startMove(e, sel, pi) {
     const d = this.state.doc, pg = d.pages[pi], z = this.state.zoom, sx = e.clientX, sy = e.clientY;
@@ -960,7 +995,11 @@ export default class Studio extends React.Component {
     const st = this.state, P = this.P, R = this.R, h = React.createElement;
     const layout = this.layout, phone = layout === 'phone', tablet = layout === 'tablet';
     const base = { loading: !st.ready, loadingText: st.loadError ? 'Could not start: ' + st.loadError : 'Warming up the studio…', isHome: false, isEditor: false, hasBusy: !!st.busy, busyText: st.busy || '', hasToast: !!st.toast, toastText: st.toast || '',
-      hasHelp: st.helpOpen, toggleHelp: this.toggleHelp, stopClick: this.stopClick, helpVersion: 'Pinwheel Studio ' + (import.meta.env.VITE_APP_VERSION || '1.0'),
+      dialog: st.dialog ? { open: true, title: st.dialog.title, body: st.dialog.body || '', hasBody: !!st.dialog.body, hasInput: !!st.dialog.input, value: st.dialogValue, placeholder: st.dialog.input ? st.dialog.input.placeholder || '' : '',
+        onValue: e => this.setState({ dialogValue: e.target.value }), onKey: e => { if (e.key === 'Enter') { e.preventDefault(); this.dialogDone(true); } },
+        confirmLabel: st.dialog.confirmLabel, cancelLabel: st.dialog.cancelLabel, confirm: () => this.dialogDone(true), cancel: () => this.dialogDone(false), onOpenChange: o => { if (!o) this.dialogDone(false); },
+        confirmStyle: { height: 38, padding: '0 16px', borderRadius: 9, border: 'none', background: st.dialog.danger ? '#B23A22' : 'var(--pw-accent)', color: '#FFFFFF', fontWeight: 700, fontSize: 14, cursor: 'pointer' } } : { open: false },
+      repoURL: 'https://github.com/theanam/pinwheel-studio', hasHelp: st.helpOpen, toggleHelp: this.toggleHelp, stopClick: this.stopClick, helpVersion: 'Pinwheel Studio ' + (import.meta.env.VITE_APP_VERSION || '1.0'),
       toggleTheme: this.toggleTheme, themeGlyph: this.isDark() ? '☀' : '☾', themeTitle: this.isDark() ? 'Switch to light mode' : 'Switch to dark mode',
       phone, tablet, desktop: layout === 'desktop',
       setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, setBrandAssetInput: this.setBrandAssetInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, onBrandAssetFile: this.onBrandAssetFile, openFile: this.openFile,
@@ -1050,7 +1089,8 @@ export default class Studio extends React.Component {
         { label: 'Resize…', hint: `${d.w}×${d.h}`, onClick: () => this.setState({ menu: 'resize' }) },
         { label: 'Import image…', hint: '', onClick: () => { this.setState({ menu: null }); this.imgInput && this.imgInput.click(); } },
         { label: this.isDark() ? 'Light mode' : 'Dark mode', hint: '', onClick: () => { this.toggleTheme(); this.setState({ menu: null }); } },
-        { label: 'Help & support', hint: '', onClick: this.toggleHelp }],
+        { label: 'Help & support', hint: '', onClick: this.toggleHelp },
+        { label: 'Source on GitHub', hint: 'theanam/pinwheel-studio', onClick: () => { this.setState({ menu: null }); window.open('https://github.com/theanam/pinwheel-studio', '_blank', 'noopener'); } }],
       canRelayout: !!d.tpl, toggleRelayout: () => this.setState(s => ({ relayout: !s.relayout })), relayoutBox: { width: 16, height: 16, borderRadius: 4, flex: 'none', marginTop: 2, border: '1.5px solid ' + (st.relayout ? C : 'var(--pw-line-strong)'), background: st.relayout ? C : 'var(--pw-surface)' },
       resizeItems: P.FORMATS.map(f => ({ label: f.name, dims: `${f.w}×${f.h}`, onClick: () => this.resizeDoc(f.id), style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, height: 34, padding: '0 10px', border: 'none', background: f.id === d.fmt ? 'var(--pw-accent-tint)' : 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 13.5, color: 'var(--pw-ink)', textAlign: 'left', flex: 'none' } })),
       scaleOpts: [[1, 'Standard'], [2, 'High'], [3, 'Print']].map(([s, l]) => ({ label: `${l} ${s}×`, onClick: () => this.setState({ exportScale: s }), style: this.segStyle(st.exportScale === s) })),
@@ -1139,7 +1179,7 @@ export default class Studio extends React.Component {
         hasLogo: !!(b.logo && st.assets[b.logo]), logoStyle: { width: '100%', height: '100%', backgroundImage: b.logo && st.assets[b.logo] ? `url("${st.assets[b.logo].src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }, addLogo: this.addLogo,
         uploadLogo: this.uploadLogo, logoBtnLabel: b.logo ? 'Replace logo' : 'Upload logo',
         brandAssets: Object.entries(b.assets).filter(([id]) => st.assets[id]).map(([id, a]) => ({ title: a.name || 'Brand image', isLogo: b.logo === id, imgStyle: { width: '100%', height: '100%', backgroundImage: `url("${st.assets[id].src}")`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', pointerEvents: 'none' }, onClick: () => this.addImageAsset(id), onDragStart: e => { e.dataTransfer.setData('text/pw-asset', id); e.dataTransfer.effectAllowed = 'copy'; },
-          onLogo: e => { e.stopPropagation(); setB('logo', b.logo === id ? null : id); }, onRemove: e => { e.stopPropagation(); if (confirm('Remove this image from the brand?')) this.removeBrandAsset(id); }, logoBtnStyle: { ...tiny, background: b.logo === id ? C : 'rgba(0,0,0,.55)' }, removeBtnStyle: tiny })),
+          onLogo: e => { e.stopPropagation(); setB('logo', b.logo === id ? null : id); }, onRemove: e => { e.stopPropagation(); this.removeBrandAsset(id); }, logoBtnStyle: { ...tiny, background: b.logo === id ? C : 'rgba(0,0,0,.55)' }, removeBtnStyle: tiny })),
         noAssets: !Object.keys(b.assets).length, uploadBrandAsset: () => this.pickBrandAsset('asset'),
         applyBrand: this.applyBrand
       });
@@ -1155,7 +1195,7 @@ export default class Studio extends React.Component {
           // The drop indicator is a 2px accent line on the edge the drop would land on.
           style: { display: 'flex', alignItems: 'center', gap: 2, padding: '0 6px 0 4px', borderRadius: 8, background: on ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', border: '1px solid ' + (on ? 'var(--pw-accent-tint-line)' : 'var(--pw-line-soft)'), opacity: isMoving ? .45 : 1, boxShadow: isOver ? `inset 0 ${over.above ? '' : '-'}2px 0 ${C}` : 'none', cursor: 'grab' } }; }) });
     }
-    const opts = { interactive: true, assets: st.assets, editingId: st.editingId, onElDown: this.onElDown, onElDbl: this.onElDbl, onTextCommit: this.onTextCommit, onHover: this.onHover };
+    const opts = { interactive: true, assets: st.assets, editingId: st.editingId, onElDown: this.onElDown, onElDbl: this.onElDbl, onTextCommit: this.onTextCommit, onTextInput: this.onTextInput, onHover: this.onHover };
     v.pages = d.pages.map((p, i) => ({ ...this.overlay(i), label: `Page ${i + 1}`, onFocus: () => this.setState({ page: i, sel: [] }),
       labelStyle: { border: 'none', background: 'transparent', padding: '0 4px', fontWeight: 700, fontSize: 13, cursor: 'pointer', color: i === st.page ? 'var(--pw-ink)' : 'var(--pw-muted-2)' },
       wrapStyle: { position: 'relative', width: d.w * z, height: d.h * z, boxShadow: i === st.page ? `0 0 0 2px ${C}, 0 8px 30px rgba(36,33,29,.12)` : '0 2px 10px rgba(36,33,29,.1)', flex: 'none', touchAction: 'none' },

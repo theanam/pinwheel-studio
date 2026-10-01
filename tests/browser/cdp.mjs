@@ -47,7 +47,7 @@ export async function page() {
   const p = {
     send, errors,
     async goto(url) { const load = new Promise(r => { const l = m => { if (m.method === 'Page.loadEventFired') { listeners.splice(listeners.indexOf(l), 1); r(); } }; listeners.push(l); }); await send('Page.navigate', { url }); await load; },
-    async eval(expr) { const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error('eval: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text)); return r.result.value; },
+    async eval(expr) { let r; try { r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); } catch (e) { throw new Error(e.message + ' in: ' + expr.slice(0, 160)); } if (r.exceptionDetails) throw new Error('eval: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text)); return r.result.value; },
     async shot(name, full) { const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: !!full }); fs.writeFileSync(OUT + name + '.png', Buffer.from(r.data, 'base64')); return OUT + name + '.png'; },
     async size(width, height, mobile = false) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: mobile ? 2 : 1, mobile });
