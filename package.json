@@ -12,7 +12,8 @@
     "test:visual": "node scripts/visual-baselines.mjs",
     "vendor": "node scripts/vendor.mjs",
     "build:offline": "node scripts/vendor.mjs --model && VITE_VENDOR=1 vite build",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "test": "node tests/suggest.test.mjs && node scripts/visual-baselines.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

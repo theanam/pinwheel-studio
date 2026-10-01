@@ -28,9 +28,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      # Template baselines: one design per format × layout, diffed against the
-      # committed hashes so a layout change cannot silently alter hundreds of them.
-      - run: npm run test:visual
+      # Suggestion rules on fixed dates, then template baselines: one design per
+      # format × layout, diffed against committed hashes so a layout change cannot
+      # silently alter hundreds of them.
+      - run: npm test
       # `base` is './' in vite.config.js, so the build works unchanged under
       # user.github.io/pinwheel/, a custom domain or a plain file server.
       - run: npm run build
