@@ -75,7 +75,12 @@ export interface TextElement extends BaseElement {
   /** Highlight behind the text. */
   bg?: Color;
   outline?: Color;
-  shadow?: boolean;
+  /** Outline stroke width in px; defaults to size / 34. */
+  outlineW?: number;
+  /** Keep the fill colour under the outline (default: hollow). */
+  outlineFill?: boolean;
+  /** `true` is the original soft drop shadow; an object is a custom one. */
+  shadow?: boolean | { x: number; y: number; blur: number; color: Color };
 }
 
 export type ShapeKind =
@@ -143,7 +148,7 @@ export interface ImageElement extends BaseElement {
   label?: string;
   tint?: Color;
   /** Procedural sample art drawn while the frame has no asset (templates set this). */
-  sample?: { kind: 'portrait' | 'landscape' | 'product'; v: number; c: Record<string, Color> } | null;
+  sample?: { kind: 'portrait' | 'landscape' | 'object'; v: number; c: Record<string, Color>; scene?: 'winter' | 'night'; prop?: string; obj?: string } | null;
 }
 
 export interface ChartElement extends BaseElement {

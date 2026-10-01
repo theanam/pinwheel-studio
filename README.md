@@ -136,6 +136,13 @@ until a module is converted.
 `src/StudioView.jsx` and `public/spec.html` are generated from the design prototype
 in `_source/`. See [`docs/PORTING.md`](docs/PORTING.md).
 
+## Help and support
+
+- **Bugs and feature requests:** [github.com/theanam/pinwheel-studio/issues](https://github.com/theanam/pinwheel-studio/issues)
+- **Email:** [anam.ahmed.a@gmail.com](mailto:anam.ahmed.a@gmail.com)
+- The home feed is **suggestion-ranked** (`src/suggest.js`): a new visitor sees religion- and region-neutral designs; a festival, regional holiday or memorial pack surfaces only within 10 days of the date or after you search for it, pick its occasion filter or open one of its templates. The interest profile lives in `localStorage` (`pinwheel.profile`) and nowhere else.
+- In the app, the **?** button in the header opens the same links.
+
 ## Licence
 
 Application code is [MIT](LICENSE). The presets — layouts, palettes, copy packs and

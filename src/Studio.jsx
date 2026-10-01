@@ -16,13 +16,44 @@ export default class Studio extends React.Component {
     cropMode: false, exportScale: 2, relayout: true,
     brand: { bg: '#FBF7F0', ink: '#1F1B16', accent: '#1F7D62', accent2: '#2F6F73', heading: 'DM Serif Display', body: 'DM Sans', logo: null },
     hasAutosave: false, autosaveName: '', customW: 1080, customH: 1080, fmtsAll: false,
+    helpOpen: false,
     theme: (() => { try { return localStorage.getItem('pinwheel.theme') || 'system'; } catch (e) { return 'system'; } })()
   };
   hist = []; fut = []; thumbCache = new Map(); builtCache = new Map(); clip = null;
   CORAL = 'var(--pw-accent-line)';
   /** Resolved value of a UI token, for the few places that need a literal (SVG fills). */
   cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-  ONEW = ['Anton', 'Bebas Neue', 'Archivo Black', 'Abril Fatface', 'DM Serif Display', 'Pacifico', 'Instrument Serif', 'Permanent Marker'];
+  ONEW = ['Anton', 'Bebas Neue', 'Archivo Black', 'Abril Fatface', 'DM Serif Display', 'Pacifico', 'Instrument Serif', 'Permanent Marker', 'Alfa Slab One', 'Righteous', 'Lobster'];
+  // Text styles: a face plus outline, shadow or highlight, with colours as theme roles
+  // resolved when applied. Click adds a heading, or restyles the selected text.
+  TEXT_STYLES = [
+    { id: 'outline', name: 'Outlined', font: 'Anton', weight: 400, upper: true, ls: .02, color: 'ink', outline: 'ink', outlineW: 2 },
+    { id: 'hard', name: 'Hard shadow', font: 'Archivo Black', weight: 400, upper: true, ls: -.01, color: 'ink', shadow: { x: .07, y: .07, blur: 0, color: 'accent' } },
+    { id: 'offset', name: 'Retro offset', font: 'Abril Fatface', weight: 400, upper: false, ls: 0, color: 'accent', outline: 'ink', outlineW: 1.5, outlineFill: true, shadow: { x: .06, y: .06, blur: 0, color: 'accent2' } },
+    { id: 'glow', name: 'Soft glow', font: 'Unbounded', weight: 700, upper: false, ls: -.02, color: 'accent', shadow: { x: 0, y: 0, blur: .4, color: 'accent' } },
+    { id: 'neon', name: 'Neon', font: 'Pacifico', weight: 400, upper: false, ls: 0, color: 'bg', outline: 'accent', outlineW: 1.2, outlineFill: true, shadow: { x: 0, y: 0, blur: .3, color: 'accent' } },
+    { id: 'highlight', name: 'Highlighter', font: 'Playfair Display', weight: 700, upper: false, ls: -.01, color: 'ink', bg: 'accent2' },
+    { id: 'pill', name: 'Pill', font: 'DM Sans', weight: 700, upper: true, ls: .12, color: 'onAccent', bg: 'accent', sizeMul: .45 },
+    { id: 'stamp', name: 'Stamp', font: 'Bebas Neue', weight: 400, upper: true, ls: .2, color: 'accent', outline: 'accent', outlineW: 1, outlineFill: true },
+    { id: 'ghost', name: 'Ghost', font: 'Space Grotesk', weight: 700, upper: true, ls: .04, color: 'ink', outline: 'ink', outlineW: 1 },
+    { id: 'long', name: 'Long shadow', font: 'Bebas Neue', weight: 400, upper: true, ls: .02, color: 'bg', shadow: { x: .1, y: .1, blur: 0, color: 'ink' } },
+    { id: 'marker', name: 'Marker', font: 'Permanent Marker', weight: 400, upper: false, ls: 0, color: 'accent', shadow: { x: .04, y: .04, blur: .12, color: 'rgba(0,0,0,.25)' } },
+    { id: 'elegant', name: 'Elegant', font: 'Cormorant Garamond', weight: 700, upper: true, ls: .25, color: 'ink' },
+    { id: 'script', name: 'Script', font: 'Dancing Script', weight: 700, upper: false, ls: 0, color: 'accent', shadow: { x: 0, y: .05, blur: .15, color: 'rgba(0,0,0,.2)' } },
+    { id: 'slab', name: 'Slab', font: 'Alfa Slab One', weight: 400, upper: false, ls: 0, color: 'ink', shadow: { x: .05, y: .05, blur: 0, color: 'accent2' } },
+  ];
+  /** Resolve a text style's roles against the document theme at a given size. */
+  styleProps(sty, size) {
+    const t = this.state.doc.theme, role = c => ({ ink: t.ink, bg: t.bg, accent: t.accent, accent2: t.accent2, onAccent: t.onAccent, muted: t.muted }[c] || c);
+    const sh = sty.shadow ? { x: Math.round(sty.shadow.x * size), y: Math.round(sty.shadow.y * size), blur: Math.round(sty.shadow.blur * size), color: role(sty.shadow.color) } : null;
+    return { font: sty.font, weight: sty.weight, italic: false, upper: !!sty.upper, ls: sty.ls || 0, color: role(sty.color), bg: sty.bg ? role(sty.bg) : null, outline: sty.outline ? role(sty.outline) : null, outlineW: sty.outlineW ? Math.max(1, Math.round(sty.outlineW * size / 40 * 10) / 10) : undefined, outlineFill: !!sty.outlineFill, shadow: sh };
+  }
+  applyTextStyle(sty) {
+    const d = this.state.doc, sel = this.selEls().filter(e => e.type === 'text');
+    if (sel.length) { const ids = new Set(sel.map(e => e.id)); this.setDoc((dd, p) => p.els.forEach(e => { if (ids.has(e.id)) Object.assign(e, this.styleProps(sty, e.size)); })); return; }
+    const u = this.u(), size = Math.round(u * 9 * (sty.sizeMul || 1));
+    this.addEls([this.mk('text', d.w * .7, size * 1.1, { name: sty.name, text: sty.id === 'pill' ? 'New' : 'Make it memorable', size, align: 'center', lh: 1.05, ...this.styleProps(sty, size) })]);
+  }
   setCanvasRef = n => { this.canvasEl = n; };
   setImgInput = n => { this.imgInput = n; };
   setFileInput = n => { this.fileInput = n; };
@@ -31,6 +62,8 @@ export default class Studio extends React.Component {
   // 'system' follows prefers-color-scheme; 'light' / 'dark' pin it via data-theme.
   applyTheme(t) { const r = document.documentElement; if (t === 'system') delete r.dataset.theme; else r.dataset.theme = t; }
   isDark() { const t = this.state.theme; return t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); }
+  toggleHelp = () => this.setState(s => ({ helpOpen: !s.helpOpen, menu: null }));
+  stopClick = e => e.stopPropagation();
   toggleTheme = () => { const t = this.isDark() ? 'light' : 'dark'; try { localStorage.setItem('pinwheel.theme', t); } catch (e) { } this.applyTheme(t); this.setState({ theme: t }); };
   componentDidMount() {
     this.applyTheme(this.state.theme);
@@ -43,15 +76,15 @@ export default class Studio extends React.Component {
     if ('launchQueue' in window && 'LaunchParams' in window && 'files' in window.LaunchParams.prototype) {
       window.launchQueue.setConsumer(async ({ files }) => { if (files && files.length) this.openProjectFile(await files[0].getFile()); });
     }
-    Promise.all([import('./presets.js'), import('./render.js'), import('./io.js')]).then(([P, R, IO]) => {
-      this.P = P; this.R = R; this.IO = IO;
+    Promise.all([import('./presets.js'), import('./render.js'), import('./io.js'), import('./suggest.js')]).then(([P, R, IO, S]) => {
+      this.P = P; this.R = R; this.IO = IO; this.S = S;
+      this.profile = S.loadProfile(); this._pv = 0; this._rankCache = new Map();
       // The renderer reads window.qrcode synchronously; pull it in now and repaint.
       IO.lib('qr').then(() => this.forceUpdate()).catch(() => { });
       P.FONTS.forEach(f => { const href = P.fontURL(f); if (document.querySelector(`link[href="${href}"]`)) return; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; l.crossOrigin = 'anonymous'; document.head.appendChild(l); });
       let has = false, name = '', brand = null;
       try { const a = localStorage.getItem('pinwheel.autosave'); if (a) { has = true; name = JSON.parse(a).doc.name; } brand = JSON.parse(localStorage.getItem('pinwheel.brand') || 'null'); } catch (e) { }
-      const all = P.catalog(); const hs = s => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; };
-      this._mixed = [...all].sort((a, b) => hs(a.id + 'x') - hs(b.id + 'x'));
+      P.catalog();
       this.setState({ ready: true, hasAutosave: has, autosaveName: name, brand: brand || this.state.brand }, () => {
         if (this._pendingFile) { const f = this._pendingFile; this._pendingFile = null; this.openProjectFile(f); }
         else if (this.props.startScreen === 'editor') this.newDoc('ig-post');
@@ -65,6 +98,15 @@ export default class Studio extends React.Component {
   }
 
   /* ---------- infra ---------- */
+  // Suggestions: what the gallery shows before anyone asks, and in what order. See
+  // suggest.js for the rules. Ranking is memoized per (hide, profile version, day).
+  ranked(hide) {
+    const key = `${hide}|${this._pv}|${new Date().toDateString()}`;
+    if (!this._rankCache.has(key)) { this._rankCache.clear(); this._rankCache.set(key, this.S.rank(this.P.catalog(), { profile: this.profile, hide })); }
+    return this._rankCache.get(key);
+  }
+  note(kind, id, weight = 1) { if (!this.S || !id) return; this.S.record(this.profile, kind, id, weight); this.S.saveProfile(this.profile); this._pv++; }
+  noteQuery(q) { clearTimeout(this._qt); this._qt = setTimeout(() => this.S.topicsFor(q, this.P.TOPICS).forEach(id => this.note('topic', id, .6)), 600); }
   toast(t) { clearTimeout(this._tt); this.setState({ toast: t }); this._tt = setTimeout(() => this.setState({ toast: null }), 2600); }
   get pg() { const { doc, page } = this.state; return doc ? doc.pages[Math.min(page, doc.pages.length - 1)] : null; }
   selEls() { const p = this.pg; return p ? p.els.filter(e => this.state.sel.includes(e.id)) : []; }
@@ -106,6 +148,7 @@ export default class Studio extends React.Component {
   /* ---------- documents ---------- */
   brandTheme() { const b = this.state.brand, P = this.P; return { ...P.makeTheme({ id: 'brand', name: 'Brand kit', bg: b.bg, ink: b.ink, accent: b.accent, accent2: b.accent2, surface: P.mix(b.bg, 'var(--pw-surface)', .6) }), display: b.heading, body: b.body, pairId: null }; }
   newDoc(fmtId, w, h) {
+    this.note('format', fmtId, 1);
     const f = this.P.FORMAT[fmtId]; const W = f ? f.w : Math.max(16, Math.min(8000, w | 0)), H = f ? f.h : Math.max(16, Math.min(8000, h | 0));
     this.openDoc({ name: 'Untitled ' + (f ? f.name : 'design'), w: W, h: H, fmt: f ? f.id : 'custom', theme: this.brandTheme(), created: new Date().toISOString(), pages: [{ id: this.P.nid(), bg: 'var(--pw-surface)', els: [] }] }, {});
   }
@@ -113,7 +156,8 @@ export default class Studio extends React.Component {
     this.hist = []; this.fut = [];
     this.setState(s => ({ screen: 'editor', doc, assets: { ...s.assets, ...assets }, uploads: [...new Set([...s.uploads, ...Object.keys(assets)])], sel: [], page: 0, editingId: null, cropMode: false, menu: null, tplSame: true, tplLimit: 24 }), () => setTimeout(() => this.fitZoom(), 40));
   }
-  fromTemplate(desc) { const b = this.P.build(desc); b.created = new Date().toISOString(); this.openDoc(b, {}); }
+  fromTemplate(desc) {
+    this.note('topic', desc.topic, 1.5); this.note('format', desc.fmt, 1); const b = this.P.build(desc); b.created = new Date().toISOString(); this.openDoc(b, {}); }
   applyTemplate(desc) {
     const b = this.P.build(desc); this.pushHist();
     this.setState(s => ({ doc: { ...s.doc, w: b.w, h: b.h, fmt: b.fmt, tpl: b.tpl, theme: b.theme, pages: b.pages, name: s.doc.name.startsWith('Untitled') ? b.name : s.doc.name }, sel: [], page: 0, editingId: null }), () => setTimeout(() => this.fitZoom(), 30));
@@ -465,15 +509,30 @@ export default class Studio extends React.Component {
     if (one && el.type === 'text') {
       S.push({ title: 'Text', controls: [
         { k: 'select', label: 'Font', value: el.font, selFont: true, options: P.FONTS.map(f => ({ value: f.name, label: f.name })), onChange: e => { const v = e.target.value; pp(x => { x.font = v; if (this.ONEW.includes(v)) x.weight = 400; }); } },
-        { k: 'nums', cols: 3, items: [{ label: 'S', value: Math.round(el.size), step: 1, onChange: e => pp({ size: Math.max(4, +e.target.value || 4) }, 'size') }, { label: 'L', value: el.lh, step: .05, onChange: e => pp({ lh: +e.target.value || 1 }, 'lh') }, { label: 'Å', value: el.ls, step: .01, onChange: e => pp({ ls: +e.target.value || 0 }, 'ls') }] },
-        seg('Style', [['Bold', el.weight >= 600, () => pp(x => { x.weight = x.weight >= 600 ? 400 : (this.ONEW.includes(x.font) ? 400 : 700); })], ['Italic', el.italic, () => pp(x => { x.italic = !x.italic; })], ['Caps', el.upper, () => pp(x => { x.upper = !x.upper; })], ['Shadow', !!el.shadow, () => pp(x => { x.shadow = !x.shadow; })]]),
+        slider('Size', Math.round(el.size), 4, 800, 1, v => pp({ size: Math.max(4, v) }, 'size')),
+        seg('Style', [['Bold', el.weight >= 600, () => pp(x => { x.weight = x.weight >= 600 ? 400 : (this.ONEW.includes(x.font) ? 400 : 700); })], ['Italic', el.italic, () => pp(x => { x.italic = !x.italic; })], ['Caps', el.upper, () => pp(x => { x.upper = !x.upper; })]]),
         seg('Align', [['Left', el.align === 'left', () => pp({ align: 'left' })], ['Center', el.align === 'center', () => pp({ align: 'center' })], ['Right', el.align === 'right', () => pp({ align: 'right' })]]),
-        color('Color', el.color, c => pp({ color: c || '#000000' }, 'tcolor')),
-        color('Highlight', el.bg, c => pp({ bg: c }, 'thl'), true),
-        color('Outline', el.outline, c => pp({ outline: c }, 'tol'), true),
         slider('Line height', el.lh, .7, 2.4, .01, v => pp({ lh: v }, 'lh')),
         slider('Letter spacing', el.ls, -.1, .5, .005, v => pp({ ls: v }, 'ls')),
+        color('Color', el.color, c => pp({ color: c || '#000000' }, 'tcolor')),
+        color('Highlight', el.bg, c => pp({ bg: c }, 'thl'), true),
         btns([['Edit text', () => this.setState({ editingId: el.id })]])
+      ] });
+      const sh = typeof el.shadow === 'object' && el.shadow ? el.shadow : null;
+      const setShadow = (patch, key) => pp(x => { const cur = typeof x.shadow === 'object' && x.shadow ? x.shadow : { x: 0, y: Math.round(x.size * .06), blur: Math.round(x.size * .18), color: 'rgba(0,0,0,.35)' }; x.shadow = { ...cur, ...patch }; }, key);
+      S.push({ title: 'Effects', controls: [
+        color('Outline', el.outline, c => pp(x => { x.outline = c; if (c && x.outlineW == null) x.outlineW = Math.max(1, Math.round(x.size / 34)); }, 'tol'), true),
+        ...(el.outline ? [
+          slider('Outline width', el.outlineW ?? Math.max(1, el.size / 34), .5, 24, .5, v => pp({ outlineW: v }, 'tow')),
+          seg('Outline fill', [['Hollow', !el.outlineFill, () => pp({ outlineFill: false })], ['Keep colour', !!el.outlineFill, () => pp({ outlineFill: true })]]),
+        ] : []),
+        seg('Shadow', [['None', !el.shadow, () => pp({ shadow: null })], ['Soft', el.shadow === true, () => pp({ shadow: true })], ['Custom', !!sh, () => setShadow({}, 'sh')]]),
+        ...(sh ? [
+          color('Shadow colour', /^#/.test(sh.color) ? sh.color : null, c => setShadow({ color: c || 'rgba(0,0,0,.35)' }, 'shc'), true),
+          slider('Offset X', sh.x, -60, 60, 1, v => setShadow({ x: v }, 'shx')),
+          slider('Offset Y', sh.y, -60, 60, 1, v => setShadow({ y: v }, 'shy')),
+          slider('Blur', sh.blur, 0, 80, 1, v => setShadow({ blur: v }, 'shb')),
+        ] : []),
       ] });
     }
     if (one && el.type === 'shape') {
@@ -540,7 +599,11 @@ export default class Studio extends React.Component {
     const out = { hasSel: false, handles: [], multi: [], guides: [], hasHover: false, hasMarquee: false, showRot: false, showInfo: false };
     if (pi !== page) return out;
     const els = p.els.filter(e => sel.includes(e.id));
-    if (hoverId && !sel.includes(hoverId) && !this._dragging) { const h = p.els.find(e => e.id === hoverId); if (h) { out.hasHover = true; out.hoverStyle = { position: 'absolute', left: h.x * z, top: h.y * z, width: h.w * z, height: h.h * z, transform: `rotate(${h.rot || 0}deg)`, outline: `1.5px solid ${C}`, opacity: .55, pointerEvents: 'none', zIndex: 2 }; } }
+    if (hoverId && !sel.includes(hoverId) && !this._dragging) { const h = p.els.find(e => e.id === hoverId); if (h) {
+      out.hasHover = true; out.hoverStyle = { position: 'absolute', left: h.x * z, top: h.y * z, width: h.w * z, height: h.h * z, transform: `rotate(${h.rot || 0}deg)`, outline: `1.5px solid ${C}`, opacity: .55, pointerEvents: 'none', zIndex: 2 };
+      // A frame still showing sample art or a placeholder is an invitation: say so on hover.
+      if (h.type === 'image' && !h.asset && !h.locked) { out.hoverHint = 'Replace photo'; out.hoverTintStyle = { ...out.hoverStyle, outline: 'none', opacity: 1, background: 'rgba(36,33,29,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: h.mask === 'circle' ? '50%' : h.mask === 'rounded' ? Math.max(h.radius || 0, Math.min(h.w, h.h) * .08) * z : (h.radius || 0) * z }; }
+    } }
     if (els.length) {
       const one = els.length === 1, e0 = els[0]; const b = one ? { x: e0.x, y: e0.y, w: e0.w, h: e0.h, rot: e0.rot || 0 } : { ...this.bbox(els), rot: 0 };
       out.hasSel = true; const crop = this.state.cropMode && one && e0.type === 'image';
@@ -564,23 +627,27 @@ export default class Studio extends React.Component {
   renderVals() {
     const st = this.state, P = this.P, R = this.R, h = React.createElement;
     const base = { loading: !st.ready, loadingText: st.loadError ? 'Could not start: ' + st.loadError : 'Warming up the studio…', isHome: false, isEditor: false, hasBusy: !!st.busy, busyText: st.busy || '', hasToast: !!st.toast, toastText: st.toast || '',
+      hasHelp: st.helpOpen, toggleHelp: this.toggleHelp, stopClick: this.stopClick, helpVersion: 'Pinwheel Studio ' + (import.meta.env.VITE_APP_VERSION || '1.0'),
       toggleTheme: this.toggleTheme, themeGlyph: this.isDark() ? '☀' : '☾', themeTitle: this.isDark() ? 'Switch to light mode' : 'Switch to dark mode',
       setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, openFile: this.openFile };
     if (!st.ready) return base;
     const cat = P.catalog();
     if (st.screen === 'home') {
       const q = st.galQ.trim().toLowerCase();
-      const list = (st.galCat === 'All' ? this._mixed : cat).filter(t => (st.galCat === 'All' || t.cat === st.galCat) && (!st.galOcc || t.topic === st.galOcc) && (!q || q.split(/\s+/).every(w => t.search.includes(w))));
+      const explicit = !!q || !!st.galOcc;
+      const list = this.ranked(!explicit).filter(t => (st.galCat === 'All' || t.cat === st.galCat) && (!st.galOcc || t.topic === st.galOcc) && (!q || q.split(/\s+/).every(w => t.search.includes(w))));
+      const soon = this.S.upcoming(Object.keys(this.S.SENSITIVE)).map(x => ({ ...x, name: P.TOPIC[x.id].name }));
       const rowH = this.props.galleryRowHeight ?? 190;
       const cats = ['All', ...new Set(P.FORMATS.map(f => f.cat))];
       return { ...base, isHome: true,
         statLine: `${cat.length.toLocaleString()} templates across ${P.FORMATS.length} formats · ${P.LAYOUTS.length} layouts, ${P.PALETTES.length} palettes and ${P.PAIRINGS.length} type pairings — every one fully editable.`,
-        galQ: st.galQ, onGalQ: e => this.setState({ galQ: e.target.value, galLimit: 48 }),
+        galQ: st.galQ, onGalQ: e => { this.noteQuery(e.target.value); this.setState({ galQ: e.target.value, galLimit: 48 }); },
+        galHint: !explicit && soon.length ? 'Coming up: ' + soon.map(x => x.days === 0 ? `${x.name} today` : `${x.name} in ${x.days} day${x.days === 1 ? '' : 's'}`).join(' · ') : '',
         hasAutosave: st.hasAutosave, autosaveName: st.autosaveName, resumeAutosave: this.resumeAutosave,
         fmts: (st.fmtsAll ? P.FORMATS : P.FORMATS.slice(0, 12)).map(f => { const s = 28 / Math.max(f.w, f.h); return { name: f.name, dims: `${f.w} × ${f.h}`, onClick: () => this.newDoc(f.id), iconStyle: { width: Math.max(6, f.w * s), height: Math.max(6, f.h * s), border: '1.5px solid var(--pw-ink)', borderRadius: 2 } }; }),
         fmtsHasMore: P.FORMATS.length > 12, fmtsMoreLabel: st.fmtsAll ? 'Show fewer' : `All ${P.FORMATS.length} formats →`, toggleFmts: () => this.setState(s => ({ fmtsAll: !s.fmtsAll })),
         customW: st.customW, customH: st.customH, onCustomW: e => this.setState({ customW: e.target.value }), onCustomH: e => this.setState({ customH: e.target.value }), createCustom: () => this.newDoc(null, +st.customW, +st.customH),
-        galOccs: [{ id: null, name: 'Any' }, ...P.OCCASIONS.map(id => P.TOPIC[id])].map(o => ({ label: o.name, onClick: () => this.setState({ galOcc: o.id, galLimit: 48 }), style: { height: 30, padding: '0 12px', borderRadius: 15, border: '1px solid ' + (st.galOcc === o.id ? 'var(--pw-accent-line)' : 'var(--pw-line-2)'), background: st.galOcc === o.id ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', color: st.galOcc === o.id ? 'var(--pw-accent-deep)' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer' } })),
+        galOccs: [{ id: null, name: 'Any' }, ...P.OCCASIONS.map(id => P.TOPIC[id]).map(o => { const up = soon.find(x => x.id === o.id); return { ...o, up, order: !this.S.SENSITIVE[o.id] ? 0 : up ? 1 : 2 }; }).sort((a, b) => a.order - b.order || (a.up && b.up ? a.up.days - b.up.days : 0))].map(o => ({ label: o.up ? `${o.name} · ${o.up.days === 0 ? 'today' : o.up.days + 'd'}` : o.name, onClick: () => { this.note('topic', o.id, 1); this.setState({ galOcc: o.id, galLimit: 48 }); }, style: { height: 30, padding: '0 12px', borderRadius: 15, border: '1px solid ' + (st.galOcc === o.id ? 'var(--pw-accent-line)' : 'var(--pw-line-2)'), background: st.galOcc === o.id ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', color: st.galOcc === o.id ? 'var(--pw-accent-deep)' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer' } })),
         galCats: cats.map(c => ({ label: c, onClick: () => this.setState({ galCat: c, galLimit: 48 }), style: { height: 32, padding: '0 14px', borderRadius: 16, border: '1px solid ' + (st.galCat === c ? 'var(--pw-ink)' : 'var(--pw-line-2)'), background: st.galCat === c ? 'var(--pw-ink)' : 'var(--pw-surface)', color: st.galCat === c ? 'var(--pw-surface)' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer' } })),
         galCount: `${list.length.toLocaleString()} ${st.galOcc ? P.TOPIC[st.galOcc].name.toLowerCase() + ' ' : ''}${st.galCat === 'All' ? '' : st.galCat + ' '}templates`,
         galItems: list.slice(0, st.galLimit).map(t => { const ar = t.w / t.h; const w = Math.round(Math.min(rowH * ar, rowH * 2.5)); return { name: t.name, title: `${t.name} — ${t.layoutName}`, meta: `${t.fmtName} · ${t.layoutName}`, onClick: () => this.fromTemplate(t), thumb: this.thumbFor(t, w, rowH),
@@ -599,7 +666,7 @@ export default class Studio extends React.Component {
       menuOpen: !!st.menu, closeMenus: () => this.setState({ menu: null }),
       toggleFile: () => this.setState(s => ({ menu: s.menu === 'file' ? null : 'file' })), toggleResize: () => this.setState(s => ({ menu: s.menu === 'resize' ? null : 'resize' })), toggleExport: () => this.setState(s => ({ menu: s.menu === 'export' ? null : 'export' })),
       fileOpen: st.menu === 'file', resizeOpen: st.menu === 'resize', exportOpen: st.menu === 'export', saveProject: this.saveProject,
-      fileItems: [{ label: 'New design', hint: '', onClick: () => this.setState({ screen: 'home', menu: null, hasAutosave: true, autosaveName: d.name }) }, { label: 'Open .pinwheel…', hint: '', onClick: this.openFile }, { label: 'Save .pinwheel', hint: '⌘S', onClick: this.saveProject }, { label: 'Import image…', hint: '', onClick: () => { this.setState({ menu: null }); this.imgInput && this.imgInput.click(); } }],
+      fileItems: [{ label: 'New design', hint: '', onClick: () => this.setState({ screen: 'home', menu: null, hasAutosave: true, autosaveName: d.name }) }, { label: 'Open .pinwheel…', hint: '', onClick: this.openFile }, { label: 'Save .pinwheel', hint: '⌘S', onClick: this.saveProject }, { label: 'Import image…', hint: '', onClick: () => { this.setState({ menu: null }); this.imgInput && this.imgInput.click(); } }, { label: 'Help & support', hint: '', onClick: this.toggleHelp }],
       canRelayout: !!d.tpl, toggleRelayout: () => this.setState(s => ({ relayout: !s.relayout })), relayoutBox: { width: 16, height: 16, borderRadius: 4, flex: 'none', marginTop: 2, border: '1.5px solid ' + (st.relayout ? C : 'var(--pw-line-strong)'), background: st.relayout ? C : 'var(--pw-surface)' },
       resizeItems: P.FORMATS.map(f => ({ label: f.name, dims: `${f.w}×${f.h}`, onClick: () => this.resizeDoc(f.id), style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, height: 34, padding: '0 10px', border: 'none', background: f.id === d.fmt ? 'var(--pw-accent-tint)' : 'transparent', borderRadius: 7, cursor: 'pointer', fontSize: 13.5, color: 'var(--pw-ink)', textAlign: 'left', flex: 'none' } })),
       scaleOpts: [[1, 'Standard'], [2, 'High'], [3, 'Print']].map(([s, l]) => ({ label: `${l} ${s}×`, onClick: () => this.setState({ exportScale: s }), style: this.segStyle(st.exportScale === s) })),
@@ -620,8 +687,8 @@ export default class Studio extends React.Component {
     };
     if (st.panel === 'templates') {
       const q = st.tplQ.trim().toLowerCase();
-      const list = cat.filter(t => (!st.tplSame || t.fmt === d.fmt) && (!q || q.split(/\s+/).every(w => t.search.includes(w))));
-      Object.assign(v, { tplQ: st.tplQ, onTplQ: e => this.setState({ tplQ: e.target.value, tplLimit: 24 }),
+      const list = this.ranked(!q).filter(t => (!st.tplSame || t.fmt === d.fmt) && (!q || q.split(/\s+/).every(w => t.search.includes(w))));
+      Object.assign(v, { tplQ: st.tplQ, onTplQ: e => { this.noteQuery(e.target.value); this.setState({ tplQ: e.target.value, tplLimit: 24 }); },
         tplScopes: [[true, P.FORMAT[d.fmt] ? 'This size' : 'This size (none)'], [false, 'All sizes']].map(([val, l]) => ({ label: l, onClick: () => this.setState({ tplSame: val, tplLimit: 24 }), style: this.segStyle(st.tplSame === val) })),
         tplItems: list.slice(0, st.tplLimit).map(t => ({ name: t.name, title: `${t.name} · ${t.layoutName} · ${t.fmtName}`, thumb: this.thumbFor(t, 136, 190), onClick: () => this.applyTemplate(t) })),
         tplHasMore: list.length > st.tplLimit, tplMore: () => this.setState(s => ({ tplLimit: s.tplLimit + 24 })) });
@@ -643,6 +710,7 @@ export default class Studio extends React.Component {
       const t = d.theme;
       Object.assign(v, {
         textBtns: [['heading', 'Add a heading', { fontFamily: `'${t.display}'`, fontSize: 24, fontWeight: this.ONEW.includes(t.display) ? 400 : 700 }], ['sub', 'Add a subheading', { fontFamily: `'${t.body}'`, fontSize: 17, fontWeight: 700 }], ['body', 'Add body text', { fontFamily: `'${t.body}'`, fontSize: 14, fontWeight: 400 }]].map(([k, l, fs]) => ({ label: l, onClick: () => this.addText(k), style: { ...fs, textAlign: 'left', padding: '12px 14px', border: '1px solid var(--pw-line-soft)', background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', color: 'var(--pw-ink)' } })),
+        styleItems: this.TEXT_STYLES.map(sty => { const pr = this.styleProps(sty, 26); const css = R.textStyle({ ...pr, size: 26, lh: 1, align: 'center' }); return { label: sty.name, sample: sty.upper ? 'Aa' : 'Aa', onClick: () => this.applyTextStyle(sty), style: { ...css, display: 'block', padding: pr.bg ? '2px 8px' : 0, borderRadius: pr.bg ? 6 : 0, whiteSpace: 'nowrap' } }; }),
         comboItems: P.PAIRINGS.map(p => ({ display: p.upper ? 'HELLO' : 'Hello', body: p.display + ' · ' + p.body, onClick: () => this.addCombo(p), dStyle: { fontFamily: `'${p.display}'`, fontWeight: p.dw, fontSize: 24, lineHeight: 1.1, letterSpacing: p.track + 'em' }, bStyle: { fontFamily: `'${p.body}'`, fontSize: 10.5, color: 'var(--pw-muted)', textAlign: 'center' } }))
       });
     }

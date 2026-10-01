@@ -42,6 +42,7 @@ input[type=range]{accent-color:#E8674A;width:100%}
         </div>
         <div style="flex:1"></div>
         <a href="Pinwheel Spec.dc.html" style="font-size:14px; font-weight:600; color:#6E675E">Spec &amp; file format</a>
+        <button onClick="{{ toggleHelp }}" title="Help &amp; support" style="width:34px; height:34px; border-radius:8px; border:1px solid #E0DBD2; background:#FFFFFF; cursor:pointer; color:#24211D; font-size:15px; font-weight:700; line-height:1; flex:none" style-hover="background:#F6F3EE">?</button>
         <button onClick="{{ toggleTheme }}" title="{{ themeTitle }}" style="width:34px; height:34px; border-radius:8px; border:1px solid #E0DBD2; background:#FFFFFF; cursor:pointer; color:#24211D; font-size:16px; line-height:1; flex:none" style-hover="background:#F6F3EE">{{ themeGlyph }}</button>
         <button onClick="{{ openFile }}" style="height:34px; padding:0 14px; border-radius:8px; border:1px solid #E0DBD2; background:#FFFFFF; font-weight:600; font-size:14px; cursor:pointer; color:#24211D" style-hover="background:#F6F3EE">Open .pinwheel file</button>
       </header>
@@ -94,6 +95,9 @@ input[type=range]{accent-color:#E8674A;width:100%}
           <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap">
             <h2 style="margin:0; font-size:18px; font-weight:700">Templates</h2>
             <span style="color:#8A837A; font-size:14px">{{ galCount }}</span>
+            <sc-if value="{{ galHint }}" hint-placeholder-val="{{ false }}">
+              <span style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:#C9523A; background:#FCEAE4; border-radius:14px; padding:4px 10px"><span style="width:6px; height:6px; border-radius:50%; background:#E8674A"></span>{{ galHint }}</span>
+            </sc-if>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:8px">
             <sc-for list="{{ galCats }}" as="c" hint-placeholder-count="10">
@@ -142,6 +146,7 @@ input[type=range]{accent-color:#E8674A;width:100%}
         <div style="flex:1; display:flex; justify-content:center; min-width:0">
           <input value="{{ docName }}" onChange="{{ onDocName }}" style="width:min(320px, 100%); height:32px; border:1px solid transparent; background:transparent; border-radius:7px; text-align:center; font-size:14px; font-weight:600; outline:none" style-hover="border-color:#E0DBD2" style-focus="border-color:#E8674A; background:#FFFFFF">
         </div>
+        <button onClick="{{ toggleHelp }}" title="Help &amp; support" style="width:34px; height:34px; border-radius:8px; border:1px solid #E0DBD2; background:#FFFFFF; cursor:pointer; color:#24211D; font-size:15px; font-weight:700; line-height:1; flex:none" style-hover="background:#F6F3EE">?</button>
         <button onClick="{{ toggleTheme }}" title="{{ themeTitle }}" style="width:34px; height:34px; border-radius:8px; border:1px solid #E0DBD2; background:#FFFFFF; cursor:pointer; color:#24211D; font-size:16px; line-height:1; flex:none" style-hover="background:#F6F3EE">{{ themeGlyph }}</button>
         <div style="display:flex; align-items:center; gap:2px; background:#F1EEE9; border-radius:8px; padding:2px">
           <button onClick="{{ zoomOut }}" style="width:28px; height:28px; border:none; background:transparent; border-radius:6px; cursor:pointer; font-size:16px; color:#24211D" style-hover="background:#FFFFFF">−</button>
@@ -281,6 +286,16 @@ input[type=range]{accent-color:#E8674A;width:100%}
                 <sc-for list="{{ textBtns }}" as="t" hint-placeholder-count="3">
                   <button onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
                 </sc-for>
+                <div style="font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#8A837A">Text styles</div>
+                <div style="font-size:12px; color:#8A837A; margin-top:-6px">Adds a heading, or restyles the selected text.</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px">
+                  <sc-for list="{{ styleItems }}" as="s" hint-placeholder-count="8">
+                    <button onClick="{{ s.onClick }}" title="{{ s.label }}" style="display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; padding:12px 6px 9px; border:1px solid #EAE6DF; background:#FFFFFF; border-radius:8px; cursor:pointer; min-height:72px; color:#24211D; overflow:hidden" style-hover="border-color:#E8674A">
+                      <span style="{{ s.style }}">{{ s.sample }}</span>
+                      <span style="font-size:11px; color:#6E675E">{{ s.label }}</span>
+                    </button>
+                  </sc-for>
+                </div>
                 <div style="font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#8A837A">Font combinations</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px">
                   <sc-for list="{{ comboItems }}" as="p" hint-placeholder-count="8">
@@ -385,6 +400,11 @@ input[type=range]{accent-color:#E8674A;width:100%}
                 <div style="{{ p.wrapStyle }}">
                   <div style="{{ p.stageStyle }}">{{ p.node }}</div>
                   <sc-if value="{{ p.hasHover }}" hint-placeholder-val="{{ false }}"><div style="{{ p.hoverStyle }}"></div></sc-if>
+                  <sc-if value="{{ p.hoverHint }}" hint-placeholder-val="{{ false }}">
+                    <div style="{{ p.hoverTintStyle }}">
+                      <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:14px; background:rgba(255,255,255,.92); color:#24211D; font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.18); white-space:nowrap"><span style="width:10px; height:8px; border:1.5px solid #24211D; border-radius:2px"></span>{{ p.hoverHint }}</span>
+                    </div>
+                  </sc-if>
                   <sc-for list="{{ p.multi }}" as="mb" hint-placeholder-count="0"><div style="{{ mb }}"></div></sc-for>
                   <sc-if value="{{ p.hasSel }}" hint-placeholder-val="{{ false }}">
                     <div style="{{ p.selStyle }}">
@@ -483,6 +503,32 @@ input[type=range]{accent-color:#E8674A;width:100%}
   <input type="file" ref="{{ setImgInput }}" onChange="{{ onImageFile }}" accept="image/*" multiple="multiple" style="display:none">
   <input type="file" ref="{{ setFileInput }}" onChange="{{ onProjectFile }}" accept=".pinwheel,.zip" style="display:none">
   <input type="file" ref="{{ setLogoInput }}" onChange="{{ onLogoFile }}" accept="image/*" style="display:none">
+
+  <sc-if value="{{ hasHelp }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ toggleHelp }}" style="position:fixed; inset:0; background:rgba(36,33,29,.28); display:flex; align-items:center; justify-content:center; z-index:90">
+      <div onClick="{{ stopClick }}" style="background:#FFFFFF; border-radius:14px; padding:24px 26px; box-shadow:0 20px 50px rgba(0,0,0,.2); width:min(440px, calc(100vw - 32px)); display:flex; flex-direction:column; gap:14px; font-size:14px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <pw-mark size="22"></pw-mark>
+          <div style="font-weight:700; font-size:17px; flex:1">Help &amp; support</div>
+          <button onClick="{{ toggleHelp }}" title="Close" style="width:30px; height:30px; border:none; background:transparent; border-radius:7px; cursor:pointer; font-size:18px; color:#6E675E" style-hover="background:#EFEBE5">×</button>
+        </div>
+        <div style="color:#57514A; line-height:1.5">Pinwheel Studio is free and open source. Everything runs in your browser and nothing you make leaves your machine.</div>
+        <a href="https://github.com/theanam/pinwheel-studio/issues" target="_blank" rel="noopener" style="display:flex; flex-direction:column; gap:2px; padding:12px 14px; border-radius:10px; border:1px solid #E6E1D9; color:#24211D; text-decoration:none" style-hover="border-color:#E8674A">
+          <span style="font-weight:700">Report a bug or request a feature</span>
+          <span style="font-size:13px; color:#6E675E">github.com/theanam/pinwheel-studio/issues</span>
+        </a>
+        <a href="mailto:anam.ahmed.a@gmail.com?subject=Pinwheel%20Studio" style="display:flex; flex-direction:column; gap:2px; padding:12px 14px; border-radius:10px; border:1px solid #E6E1D9; color:#24211D; text-decoration:none" style-hover="border-color:#E8674A">
+          <span style="font-weight:700">Email the maker</span>
+          <span style="font-size:13px; color:#6E675E">anam.ahmed.a@gmail.com</span>
+        </a>
+        <div style="display:flex; gap:14px; font-size:13px; flex-wrap:wrap">
+          <a href="spec.html" target="_blank" rel="noopener" style="font-weight:600">Spec &amp; file format</a>
+          <a href="https://github.com/theanam/pinwheel-studio" target="_blank" rel="noopener" style="font-weight:600">Source on GitHub</a>
+          <span style="color:#8A837A">{{ helpVersion }}</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
 
   <sc-if value="{{ hasBusy }}" hint-placeholder-val="{{ false }}">
     <div style="position:fixed; inset:0; background:rgba(36,33,29,.28); display:flex; align-items:center; justify-content:center; z-index:100">

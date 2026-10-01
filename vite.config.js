@@ -1,13 +1,18 @@
+import { readFileSync } from 'fs';
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 import tightenCsp from './scripts/csp-plugin.js';
 import serviceWorker from './scripts/sw-plugin.js';
 
-// `base` is relative, so one build works under user.github.io/pinwheel/, a custom
-// domain or a plain file server with no rewriting.
+const version = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
+
 export default defineConfig({
+  // `base` is relative, so one build works under user.github.io/pinwheel/, a custom
+  // domain or a plain file server with no rewriting.
   base: './',
+  define: { 'import.meta.env.VITE_APP_VERSION': JSON.stringify(version) },
   plugins: [react(), tightenCsp(), serviceWorker()],
   server: {
     // Pinned: strictPort makes a clash fail loudly instead of silently moving the

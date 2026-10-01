@@ -32,6 +32,9 @@ export default function StudioView(v) {
               <a href="spec.html" style={{ fontSize: "14px", fontWeight: "600", color: "var(--pw-muted)" }}>
                 Spec & file format
               </a>
+              <button onClick={v.toggleHelp} title="Help & support" style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", cursor: "pointer", color: "var(--pw-ink)", fontSize: "15px", fontWeight: "700", lineHeight: "1", flex: "none" }} className="pw-h1">
+                ?
+              </button>
               <button onClick={v.toggleTheme} title={v.themeTitle} style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", cursor: "pointer", color: "var(--pw-ink)", fontSize: "16px", lineHeight: "1", flex: "none" }} className="pw-h1">
                 {v.themeGlyph}
               </button>
@@ -117,6 +120,14 @@ export default function StudioView(v) {
                   <span style={{ color: "var(--pw-muted-2)", fontSize: "14px" }}>
                     {v.galCount}
                   </span>
+                  {v.galHint ? (
+                    <>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600", color: "var(--pw-accent-deep)", background: "var(--pw-accent-tint)", borderRadius: "14px", padding: "4px 10px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--pw-accent)" }} />
+                        {v.galHint}
+                      </span>
+                    </>
+                  ) : null}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                   {toArray(v.galCats).map((c, $index) => (
@@ -205,6 +216,9 @@ export default function StudioView(v) {
               <div style={{ flex: "1", display: "flex", justifyContent: "center", minWidth: "0" }}>
                 <input value={v.docName ?? ''} onChange={v.onDocName} style={{ width: "min(320px, 100%)", height: "32px", border: "1px solid transparent", background: "transparent", borderRadius: "7px", textAlign: "center", fontSize: "14px", fontWeight: "600", outline: "none" }} className="pw-h5" />
               </div>
+              <button onClick={v.toggleHelp} title="Help & support" style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", cursor: "pointer", color: "var(--pw-ink)", fontSize: "15px", fontWeight: "700", lineHeight: "1", flex: "none" }} className="pw-h1">
+                ?
+              </button>
               <button onClick={v.toggleTheme} title={v.themeTitle} style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", cursor: "pointer", color: "var(--pw-ink)", fontSize: "16px", lineHeight: "1", flex: "none" }} className="pw-h1">
                 {v.themeGlyph}
               </button>
@@ -471,6 +485,26 @@ export default function StudioView(v) {
                             </Fragment>
                           ))}
                           <div style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--pw-muted-2)" }}>
+                            Text styles
+                          </div>
+                          <div style={{ fontSize: "12px", color: "var(--pw-muted-2)", marginTop: "-6px" }}>
+                            Adds a heading, or restyles the selected text.
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                            {toArray(v.styleItems).map((s, $index) => (
+                              <Fragment key={$index}>
+                                <button onClick={s.onClick} title={s.label} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "center", justifyContent: "center", padding: "12px 6px 9px", border: "1px solid var(--pw-line-soft)", background: "var(--pw-surface)", borderRadius: "8px", cursor: "pointer", minHeight: "72px", color: "var(--pw-ink)", overflow: "hidden" }} className="pw-h3">
+                                  <span style={sty(s.style)}>
+                                    {s.sample}
+                                  </span>
+                                  <span style={{ fontSize: "11px", color: "var(--pw-muted)" }}>
+                                    {s.label}
+                                  </span>
+                                </button>
+                              </Fragment>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--pw-muted-2)" }}>
                             Font combinations
                           </div>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
@@ -684,6 +718,16 @@ export default function StudioView(v) {
                               <div style={sty(p.hoverStyle)} />
                             </>
                           ) : null}
+                          {p.hoverHint ? (
+                            <>
+                              <div style={sty(p.hoverTintStyle)}>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 10px", borderRadius: "14px", background: "rgba(255,255,255,.92)", color: "var(--pw-ink)", fontSize: "12px", fontWeight: "600", boxShadow: "0 2px 8px rgba(0,0,0,.18)", whiteSpace: "nowrap" }}>
+                                  <span style={{ width: "10px", height: "8px", border: "1.5px solid var(--pw-ink)", borderRadius: "2px" }} />
+                                  {p.hoverHint}
+                                </span>
+                              </div>
+                            </>
+                          ) : null}
                           {toArray(p.multi).map((mb, $index) => (
                             <Fragment key={$index}>
                               <div style={sty(mb)} />
@@ -860,6 +904,53 @@ export default function StudioView(v) {
       <input type="file" ref={v.setImgInput} onChange={v.onImageFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
       <input type="file" ref={v.setFileInput} onChange={v.onProjectFile} accept=".pinwheel,.zip" style={{ display: "none" }} />
       <input type="file" ref={v.setLogoInput} onChange={v.onLogoFile} accept="image/*" style={{ display: "none" }} />
+      {v.hasHelp ? (
+        <>
+          <div onClick={v.toggleHelp} style={{ position: "fixed", inset: "0", background: "rgba(36,33,29,.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "90" }}>
+            <div onClick={v.stopClick} style={{ background: "var(--pw-surface)", borderRadius: "14px", padding: "24px 26px", boxShadow: "0 20px 50px rgba(0,0,0,.2)", width: "min(440px, calc(100vw - 32px))", display: "flex", flexDirection: "column", gap: "14px", fontSize: "14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <Mark size={22} />
+                <div style={{ fontWeight: "700", fontSize: "17px", flex: "1" }}>
+                  Help & support
+                </div>
+                <button onClick={v.toggleHelp} title="Close" style={{ width: "30px", height: "30px", border: "none", background: "transparent", borderRadius: "7px", cursor: "pointer", fontSize: "18px", color: "var(--pw-muted)" }} className="pw-h4">
+                  ×
+                </button>
+              </div>
+              <div style={{ color: "var(--pw-text-2)", lineHeight: "1.5" }}>
+                Pinwheel Studio is free and open source. Everything runs in your browser and nothing you make leaves your machine.
+              </div>
+              <a href="https://github.com/theanam/pinwheel-studio/issues" target="_blank" rel="noopener" style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--pw-line)", color: "var(--pw-ink)", textDecoration: "none" }} className="pw-h3">
+                <span style={{ fontWeight: "700" }}>
+                  Report a bug or request a feature
+                </span>
+                <span style={{ fontSize: "13px", color: "var(--pw-muted)" }}>
+                  github.com/theanam/pinwheel-studio/issues
+                </span>
+              </a>
+              <a href="mailto:anam.ahmed.a@gmail.com?subject=Pinwheel%20Studio" style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--pw-line)", color: "var(--pw-ink)", textDecoration: "none" }} className="pw-h3">
+                <span style={{ fontWeight: "700" }}>
+                  Email the maker
+                </span>
+                <span style={{ fontSize: "13px", color: "var(--pw-muted)" }}>
+                  anam.ahmed.a@gmail.com
+                </span>
+              </a>
+              <div style={{ display: "flex", gap: "14px", fontSize: "13px", flexWrap: "wrap" }}>
+                <a href="spec.html" target="_blank" rel="noopener" style={{ fontWeight: "600" }}>
+                  Spec & file format
+                </a>
+                <a href="https://github.com/theanam/pinwheel-studio" target="_blank" rel="noopener" style={{ fontWeight: "600" }}>
+                  Source on GitHub
+                </a>
+                <span style={{ color: "var(--pw-muted-2)" }}>
+                  {v.helpVersion}
+                </span>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
       {v.hasBusy ? (
         <>
           <div style={{ position: "fixed", inset: "0", background: "rgba(36,33,29,.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "100" }}>
