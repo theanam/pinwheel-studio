@@ -12,7 +12,7 @@ templates. No account, no server, no uploads: your files never leave your machin
 
 - **Local-first.** It is a static site. Every feature, including background removal,
   runs on your device. Nothing you make is sent anywhere.
-- **Real templates, not pictures.** Over 8,000 templates across 72 formats, every
+- **Real templates, not pictures.** Over 9,000 templates across 72 formats, every
   one made of ordinary text, shapes and image frames you can edit, recolour and
   re-layout. Templates are generated from hand-built layouts, palettes, type
   pairings and copy packs, so swapping a palette or a font pairing restyles a whole

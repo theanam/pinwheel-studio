@@ -540,7 +540,11 @@ export default class Studio extends React.Component {
     e.stopPropagation(); e.preventDefault(); const el = this.selEls()[0]; if (!el) return;
     const n = document.querySelector(`[data-page-node="${this.pg.id}"]`).getBoundingClientRect(), z = this.state.zoom;
     const cx = n.left + (el.x + el.w / 2) * z, cy = n.top + (el.y + el.h / 2) * z; this.pushHist(); this._dragging = true;
-    this.drag(ev => { let a = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI + 90; if (ev.shiftKey) a = Math.round(a / 15) * 15; else { const r = Math.round(a / 45) * 45; if (Math.abs(a - r) < 3) a = r; } a = ((Math.round(a) % 360) + 540) % 360 - 180; this.setDoc((d, p) => { p.els.find(q => q.id === el.id).rot = a; }, false); this.setState({ dragInfo: a + '°' }); }, () => { this._dragging = false; this.setState({ dragInfo: null }); }, e);
+    // Rotation is relative to where the drag began: the handle hangs below the
+    // element, so an absolute angle would read 180° before the pointer had moved.
+    const ang = ev => Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
+    const a0 = ang(e), r0 = el.rot || 0;
+    this.drag(ev => { let a = r0 + ang(ev) - a0; if (ev.shiftKey) a = Math.round(a / 15) * 15; else { const r = Math.round(a / 45) * 45; if (Math.abs(a - r) < 3) a = r; } a = ((Math.round(a) % 360) + 540) % 360 - 180; this.setDoc((d, p) => { p.els.find(q => q.id === el.id).rot = a; }, false); this.setState({ dragInfo: a + '°' }); }, () => { this._dragging = false; this.setState({ dragInfo: null }); }, e);
   };
   onPageDown(e, i) {
     if (e.button !== 0) return; e.stopPropagation();

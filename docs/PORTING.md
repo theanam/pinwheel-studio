@@ -93,7 +93,7 @@ four things differ from `_source/Pinwheel Studio.dc.html`:
     single pointer id so a second finger cannot steer a move.
 
 `src/presets.js` has grown well past the prototype — 72 formats with safe zones and
-story arcs, 74 layouts including photo-first and occasion layouts, 31 copy packs, and
+story arcs, 81 layouts including photo-first, occasion and podcast layouts, 40 copy packs, and
 procedural sample art on every frame — and `src/render.js` draws that sample art and the `path` shape that occasion motifs
 (`src/motifs.js`) use.
 
@@ -126,6 +126,13 @@ at the top.
     (photo-quote, memorial) now budget their stacks from the space they have
     instead of fixed fractions, so a long title or a short format cannot push the
     button or the last line off the page or under a motif.
+
+15. Podcast: five copy packs (interview, true crime, tech, comedy, wellness) and five
+    layouts (Host & Guest, Press Play, Guest Quote, Episode Number, and channel art
+    for the YouTube banner). The extra packs are `niche`: they appear only through
+    layouts that name them, and those layouts ask for `every` pack they name, so
+    adding them did not reshuffle any existing template. New layouts go at the end
+    of the list for the same reason.
 
 ## Browser smoke test
 

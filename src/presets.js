@@ -208,7 +208,14 @@ export const FORMAT = Object.fromEntries(FORMATS.map(f => [f.id, f]));
 /* ---------- topics (copy packs) ---------- */
 const TOPICS = [
   { id: 'sale', name: 'Retail sale', kw: 'sale discount promo retail shop offer deal', brand: 'Northfield', kicker: 'This weekend only', title: 'The Big Summer Sale', short: 'Up to 50% off', word: 'Sale', sub: 'Everything in store and online. No code, no catch — just good things for less.', cta: 'Shop the sale', handle: '@northfieldgoods', url: 'northfield.shop', stat: ['50%', 'off everything'], items: ['Free shipping over $50', '30-day easy returns', 'Members shop first', 'New drops daily'], date: ['21', 'Jun', 'June 21 – 23', '10am – 8pm'], place: 'All stores & online', price: '$29', badge: 'Hot deal', quote: 'Best sale of the year, hands down. I stocked up on everything I’d been eyeing.', author: 'Priya Nair', role: 'Customer since 2019', tags: ['Apparel', 'Home', 'Outdoor', 'Gifts'], chart: [['Mon', 18], ['Tue', 26], ['Wed', 35], ['Thu', 50]], vs: ['Full price', 'Sale price'], count: ['3', 'days left'], ep: 'Drop 07', menu: [['Linen shirt', '$29'], ['Canvas tote', '$14'], ['Stoneware mug', '$9'], ['Wool throw', '$48']], person: 'Jordan Blake', job: 'Store Manager', pairs: ['heavy', 'impact', 'round', 'condensed', 'geo', 'rubik', 'slab'], pals: ['tomato', 'citrus', 'electric', 'mono', 'sky', 'cobalt'] },
-  { id: 'podcast', name: 'Podcast', brand: 'Late Signals', kicker: 'New episode', title: 'How Great Ideas Actually Happen', short: 'Ideas are cheap?', word: 'Listen', sub: 'Designer Mara Ellis on patience, taste, and the unglamorous art of shipping.', cta: 'Listen now', handle: '@latesignals', url: 'latesignals.fm', stat: ['42', 'episodes and counting'], items: ['Why taste is a skill', 'The 100-draft rule', 'Shipping before you’re ready', 'Staying curious'], date: ['12', 'Mar', 'Every Tuesday', '6am PT'], place: 'Wherever you listen', price: 'Free', badge: 'Ep. 42', quote: 'Good ideas don’t arrive. They get dragged out of a hundred bad ones.', author: 'Mara Ellis', role: 'Product designer', tags: ['Design', 'Craft', 'Careers'], chart: [['S1', 12], ['S2', 20], ['S3', 31], ['S4', 44]], vs: ['Instinct', 'Process'], count: ['42', 'episode'], ep: 'EP. 42', menu: [['Intro', '0:00'], ['Taste', '6:40'], ['Drafts', '21:15'], ['Shipping', '38:02']], person: 'Sam Okafor', job: 'Host & Producer', pairs: ['grotesk', 'art', 'impact', 'instrument', 'round', 'bricolage'], pals: ['midnight', 'electric', 'plum', 'citrus', 'lavender'] },
+  { id: 'podcast', name: 'Podcast', kw: 'podcast youtube episode show audio interview', brand: 'Late Signals', kicker: 'New episode', title: 'How Great Ideas Actually Happen', short: 'Ideas are cheap?', word: 'Listen', sub: 'Designer Mara Ellis on patience, taste, and the unglamorous art of shipping.', cta: 'Listen now', handle: '@latesignals', url: 'latesignals.fm', stat: ['42', 'episodes and counting'], items: ['Why taste is a skill', 'The 100-draft rule', 'Shipping before you’re ready', 'Staying curious'], date: ['12', 'Mar', 'Every Tuesday', '6am PT'], place: 'Wherever you listen', price: 'Free', badge: 'Ep. 42', quote: 'Good ideas don’t arrive. They get dragged out of a hundred bad ones.', author: 'Mara Ellis', role: 'Product designer', tags: ['Design', 'Craft', 'Careers'], chart: [['S1', 12], ['S2', 20], ['S3', 31], ['S4', 44]], vs: ['Instinct', 'Process'], count: ['42', 'episode'], ep: 'EP. 42', menu: [['Intro', '0:00'], ['Taste', '6:40'], ['Drafts', '21:15'], ['Shipping', '38:02']], person: 'Sam Okafor', job: 'Host & Producer', pairs: ['grotesk', 'art', 'impact', 'instrument', 'round', 'bricolage'], pals: ['midnight', 'electric', 'plum', 'citrus', 'lavender'] },
+  // Podcast packs beyond the first are `niche`: they only appear through the layouts
+  // that name them, so adding one does not reshuffle every other template.
+  { id: 'podcast-interview', name: 'Interview podcast', niche: true, kw: 'podcast youtube episode interview guest founder conversation show', brand: 'The Founder Hour', kicker: 'Guest episode', title: 'What Nobody Tells You About Raising Money', short: 'Raising money, honestly', word: 'Guest', sub: 'Investor Priya Shah on term sheets, bad advice and the round she almost walked away from.', cta: 'Watch the episode', handle: '@founderhour', url: 'founderhour.tv', stat: ['1.2M', 'downloads this year'], items: ['The one slide that matters', 'Why warm intros are overrated', 'Negotiating from no', 'Life after the round'], date: ['03', 'Oct', 'New every Thursday', '7am ET'], place: 'YouTube & Spotify', price: 'Free', badge: 'Full episode', quote: 'The best founders I’ve backed were the ones who could say no in a room full of yes.', author: 'Priya Shah', role: 'Partner, Northline Ventures', tags: ['Startups', 'Fundraising', 'Interviews'], chart: [['Q1', 180], ['Q2', 260], ['Q3', 410], ['Q4', 520]], vs: ['Bootstrapped', 'Funded'], count: ['87', 'episode'], ep: 'EP. 87', menu: [['Cold open', '0:00'], ['The pitch', '4:10'], ['Term sheets', '19:30'], ['Walking away', '41:05']], person: 'Daniel Reyes', job: 'Host', pairs: ['grotesk', 'impact', 'instrument', 'geo', 'barlow', 'bricolage'], pals: ['midnight', 'cobalt', 'electric', 'mono', 'sand'] },
+  { id: 'podcast-crime', name: 'True crime podcast', niche: true, kw: 'podcast youtube episode true crime mystery case investigation series', brand: 'Dark Water', kicker: 'New case', title: 'The Vanishing at Pine Lake', short: 'Pine Lake', word: 'Case', sub: 'A quiet town, a locked cabin and a thirty-year silence. Part one of three.', cta: 'Listen to part one', handle: '@darkwaterpod', url: 'darkwater.fm', stat: ['3', 'part series'], items: ['The last phone call', 'A witness who waited', 'The sheriff’s notebook', 'What the lake gave back'], date: ['31', 'Oct', 'New episodes Mondays', 'Midnight'], place: 'Everywhere you listen', price: 'Free', badge: 'Part 1 of 3', quote: 'Everyone in that town knew something. Nobody knew everything.', author: 'Lena Ortiz', role: 'Host & investigator', tags: ['True crime', 'Mystery', 'Series'], chart: [['Ep 1', 50], ['Ep 2', 72], ['Ep 3', 95], ['Ep 4', 130]], vs: ['The story', 'The evidence'], count: ['12', 'cases this season'], ep: 'CASE 12', menu: [['The call', '0:00'], ['The cabin', '8:45'], ['The witness', '22:10'], ['The lake', '39:00']], person: 'Lena Ortiz', job: 'Host', pairs: ['condensed', 'impact', 'editorial', 'heavy', 'slab', 'instrument'], pals: ['midnight', 'mono', 'plum', 'forest', 'tomato'] },
+  { id: 'podcast-tech', name: 'Tech podcast', niche: true, kw: 'podcast youtube episode tech ai software startup gadgets show', brand: 'Stack & Signal', kicker: 'This week in tech', title: 'Is AI Coming for Your Job?', short: 'AI vs your job', word: 'Tech', sub: 'Two engineers, one skeptic, and a very long list of things that still break in production.', cta: 'Watch now', handle: '@stacksignal', url: 'stacksignal.dev', stat: ['250K', 'subscribers'], items: ['What actually shipped this week', 'The hype-to-reality ratio', 'Our tools of the month', 'Listener questions'], date: ['18', 'Sep', 'Every Wednesday', '9am PT'], place: 'YouTube', price: 'Free', badge: 'Ep. 118', quote: 'The model is impressive. The demo is a lie. Both things are true.', author: 'Noah Kim', role: 'Staff engineer', tags: ['AI', 'Dev tools', 'Careers'], chart: [['Jan', 20], ['Feb', 35], ['Mar', 48], ['Apr', 70]], vs: ['Hype', 'Reality'], count: ['118', 'episode'], ep: 'EP. 118', menu: [['Intro', '0:00'], ['Agents', '5:30'], ['Layoffs', '24:00'], ['Q&A', '47:15']], person: 'Ava Lindqvist', job: 'Co-host', pairs: ['grotesk', 'geo', 'rubik', 'impact', 'barlow', 'modern-serif'], pals: ['electric', 'midnight', 'cobalt', 'mono', 'citrus'] },
+  { id: 'podcast-comedy', name: 'Comedy podcast', niche: true, kw: 'podcast youtube episode comedy funny friends banter show', brand: 'Two Idiots, One Mic', kicker: 'New episode', title: 'We Ranked Every Breakfast Cereal', short: 'Cereal, ranked', word: 'LOL', sub: 'A ninety-minute argument nobody asked for, with a special guest who regrets agreeing to this.', cta: 'Watch the chaos', handle: '@twoidiotsonemic', url: 'twoidiots.fm', stat: ['200', 'episodes of nonsense'], items: ['The tier list', 'Hot takes hotline', 'Guest humiliation', 'The apology segment'], date: ['05', 'Nov', 'Fridays', 'Whenever we remember'], place: 'YouTube, Spotify, your car', price: 'Free', badge: 'Ep. 200', quote: 'If you disagree with this ranking you are wrong and we love you.', author: 'Jordan Blake', role: 'Co-host', tags: ['Comedy', 'Rankings', 'Chaos'], chart: [['Mon', 10], ['Tue', 14], ['Wed', 22], ['Thu', 30]], vs: ['Team Crunch', 'Team Flakes'], count: ['200', 'episode'], ep: 'EP. 200', menu: [['Intro', '0:00'], ['The list', '3:00'], ['Guest', '31:20'], ['Apologies', '78:00']], person: 'Sam Okafor', job: 'Co-host', pairs: ['heavy', 'impact', 'round', 'bricolage', 'poster', 'rubik'], pals: ['citrus', 'tomato', 'electric', 'lavender', 'sky'] },
+  { id: 'podcast-wellness', name: 'Wellness podcast', niche: true, kw: 'podcast youtube episode wellness health sleep mindfulness habits show', brand: 'Slow Mornings', kicker: 'Episode 56', title: 'How to Actually Sleep Better', short: 'Sleep, fixed', word: 'Rest', sub: 'Sleep scientist Dr. Hana Ito on light, caffeine and the one habit that beats every gadget.', cta: 'Listen now', handle: '@slowmornings', url: 'slowmornings.co', stat: ['8', 'hours, for once'], items: ['Morning light, not screens', 'Caffeine has a curfew', 'The wind-down hour', 'When to see a doctor'], date: ['21', 'Jan', 'New every Sunday', '7am'], place: 'Wherever you listen', price: 'Free', badge: 'Ep. 56', quote: 'You can’t out-supplement a bedroom that’s lit like an office.', author: 'Dr. Hana Ito', role: 'Sleep scientist', tags: ['Sleep', 'Habits', 'Health'], chart: [['Wk1', 5.5], ['Wk2', 6.2], ['Wk3', 7], ['Wk4', 7.8]], vs: ['Before', 'After'], count: ['56', 'episode'], ep: 'EP. 56', menu: [['Intro', '0:00'], ['Light', '6:00'], ['Caffeine', '18:30'], ['Wind-down', '35:00']], person: 'Maya Chen', job: 'Host', pairs: ['editorial', 'instrument', 'fraunces', 'bookish', 'classic', 'round'], pals: ['sage', 'sand', 'paper', 'lavender', 'ocean'] },
   { id: 'travel', name: 'Travel', kw: 'travel trip guide tourism vacation holiday city', brand: 'Wanderfolk', kicker: 'Field notes', title: '48 Hours in Lisbon', short: 'Lisbon in 48 hours', word: 'Lisbon', sub: 'Tiled alleys, custard tarts at 8am and the best sunset in Europe — our slow guide.', cta: 'Read the guide', handle: '@wanderfolk', url: 'wanderfolk.co', stat: ['7', 'hills, one city'], items: ['Sunrise at Miradouro da Graça', 'Pastéis still warm at 8am', 'Tram 28 at golden hour', 'Fado in Alfama'], date: ['14', 'Jun', 'June 14 – 16', 'Departs 7:40am'], place: 'Lisbon, Portugal', price: '$1,290', badge: 'New guide', quote: 'Lisbon doesn’t ask you to hurry. It hands you a coffee and points at the river.', author: 'Inês Duarte', role: 'Local guide', tags: ['City break', 'Food', 'Sunsets'], chart: [['Jun', 24], ['Jul', 28], ['Aug', 29], ['Sep', 26]], vs: ['Tourist route', 'Local route'], count: ['12', 'days to go'], ep: 'Guide 03', menu: [['Pastel de nata', '€1.40'], ['Bifana', '€3.50'], ['Vinho verde', '€4'], ['Grilled sardines', '€9']], person: 'Lena Moreau', job: 'Travel Editor', pairs: ['editorial', 'instrument', 'script', 'modern-serif', 'poster', 'luxe', 'fraunces'], pals: ['sand', 'ocean', 'terracotta', 'sky', 'paper'] },
   { id: 'food', name: 'Food & dining', kw: 'food dinner restaurant menu recipe supper pasta chef', brand: 'Sunday Table', kicker: 'Supper club', title: 'Sunday Pasta Night', short: 'Fresh pasta Sunday', word: 'Pasta', sub: 'Hand-rolled pasta, natural wine and one long table. Bring a friend, leave with ten.', cta: 'Reserve a seat', handle: '@sundaytable', url: 'sundaytable.kitchen', stat: ['12', 'seats a night'], items: ['Burrata & charred peaches', 'Cacio e pepe, made tableside', 'Brown butter gnocchi', 'Olive oil cake'], date: ['09', 'Nov', 'Sunday, Nov 9', '7:00 pm'], place: '118 Mercer St', price: '$65', badge: 'Chef’s pick', quote: 'The kind of dinner where you forget to check your phone for three hours.', author: 'Dana Whitfield', role: 'Regular guest', tags: ['Vegetarian', 'Wine', 'Communal'], chart: [['Jan', 30], ['Feb', 42], ['Mar', 55], ['Apr', 71]], vs: ['Dried', 'Fresh'], count: ['4', 'seats left'], ep: 'Menu 11', menu: [['Burrata', '$16'], ['Cacio e pepe', '$22'], ['Gnocchi', '$24'], ['Olive oil cake', '$11']], person: 'Marco Bellini', job: 'Head Chef', pairs: ['fatface', 'modern-serif', 'script', 'classic', 'bookish', 'instrument', 'fraunces'], pals: ['terracotta', 'tomato', 'paper', 'sage', 'forest'] },
   { id: 'fitness', name: 'Fitness', kw: 'fitness gym workout training health strength', brand: 'Ironline', kicker: '30-day program', title: 'The Strength Reset', short: '30 days stronger', word: 'Lift', sub: 'Three sessions a week, 40 minutes each. Progressive, simple, built to stick.', cta: 'Start free', handle: '@ironline.fit', url: 'ironline.fit', stat: ['+38%', 'average strength gain'], items: ['Squat, hinge, push, pull', 'Train 3× a week', 'Log every set', 'Sleep like it’s your job'], date: ['01', 'Sep', 'Starts Sept 1', '6:30 am'], place: 'Ironline Studio, Floor 2', price: '$49/mo', badge: 'Beginner friendly', quote: 'I finally stopped program-hopping. Thirty days in, my deadlift is up 40 pounds.', author: 'Chris Tan', role: 'Member', tags: ['Strength', 'Mobility', 'Coaching'], chart: [['Wk1', 60], ['Wk2', 68], ['Wk3', 77], ['Wk4', 83]], vs: ['Day 1', 'Day 30'], count: ['7', 'days to go'], ep: 'Week 01', menu: [['Drop-in', '$22'], ['10-pack', '$180'], ['Monthly', '$49'], ['Coaching', '$99']], person: 'Alex Rivera', job: 'Head Coach', pairs: ['sports', 'impact', 'heavy', 'condensed', 'rubik', 'barlow'], pals: ['electric', 'citrus', 'mono', 'cobalt', 'tomato'] },
@@ -250,12 +257,13 @@ const TOPICS = [
 // drawn object (or scenery), `prop` is what the person in a portrait frame holds or
 // wears — so a roaster's templates show coffee, not a stranger.
 const SUBJECTS = {
-  sale: ['bag', null], podcast: ['mic', 'headphones'], travel: ['landscape', 'sunhat'], food: ['plate', 'chefhat'], fitness: ['dumbbell', 'headband'], tech: ['laptop', null], wedding: ['ring', 'crown'], realestate: ['house', null], music: ['guitar', 'headphones'], education: ['palette', 'beret'], beauty: ['bottle', 'flower'], gaming: ['controller', 'headphones'], coffee: ['coffee', 'cup'], nonprofit: ['sapling', null], finance: ['piggy', null], fashion: ['hanger', 'sunglasses'], hiring: ['briefcase', 'lanyard'],
+  sale: ['bag', null], podcast: ['mic', 'headphones'], 'podcast-interview': ['mic', 'headphones'], 'podcast-crime': ['mic', null], 'podcast-tech': ['laptop', 'headphones'], 'podcast-comedy': ['mic', 'partyhat'], 'podcast-wellness': ['coffee', null], travel: ['landscape', 'sunhat'], food: ['plate', 'chefhat'], fitness: ['dumbbell', 'headband'], tech: ['laptop', null], wedding: ['ring', 'crown'], realestate: ['house', null], music: ['guitar', 'headphones'], education: ['palette', 'beret'], beauty: ['bottle', 'flower'], gaming: ['controller', 'headphones'], coffee: ['coffee', 'cup'], nonprofit: ['sapling', null], finance: ['piggy', null], fashion: ['hanger', 'sunglasses'], hiring: ['briefcase', 'lanyard'],
   birthday: ['cake', 'partyhat'], 'birthday-kid': ['cake', 'partyhat'], 'birthday-wish': ['cake', 'partyhat'], engagement: ['ring', 'crown'], anniversary: ['ring', null], christmas: ['landscape', 'santahat'], eid: ['lantern', null], puja: ['diya', 'flower'], diwali: ['diya', null], easter: ['egg', 'bunnyears'], thanksgiving: ['pumpkin', null], memorial: ['candle', null], baby: ['rattle', null], graduation: ['cap', 'mortarboard'], newyear: ['fireworks', 'partyhat'], halloween: ['pumpkin', 'witchhat'], valentine: ['heart', 'heart'], 'mothers-day': ['flower', 'flower'],
 };
 TOPICS.forEach(t => { const [obj, prop] = SUBJECTS[t.id] || ['landscape', null]; t.subject = { obj, prop }; });
 export const TOPIC = Object.fromEntries(TOPICS.map(t => [t.id, t]));
 const LOUD = ['reaction', 'versus', 'before-after', 'sale-burst', 'product-spot', 'episode'];
+const PODCASTS = TOPICS.filter(t => t.id.startsWith('podcast')).map(t => t.id);
 const CALM = ['wedding', 'engagement', 'anniversary', 'christmas', 'eid', 'puja', 'diwali', 'easter', 'thanksgiving', 'baby', 'mothers-day', 'valentine'];
 TOPICS.forEach(t => { if (CALM.includes(t.id)) t.avoid = LOUD; });
 export const OCCASIONS = TOPICS.filter(t => t.occasion).map(t => t.id);
@@ -1660,6 +1668,92 @@ def('motif-band', 'Motif Border', 'sp', A3, c => {
   c.vstack([k, hd, s, d, b], [u * 3, u * 3, u * 4, u * 5], m + sz + u * 6, H - m - sz - u * 6);
 }, { topics: OCCASIONS, nogarnish: true });
 
+// Podcast layouts come last so the layouts before them keep their catalogue index,
+// which keeps every existing template's copy pack and type pairing the same.
+// A row of audio bars, the podcast signature. `split` is the played-so-far share.
+function wave(c, x, y, w, h, n, played, rest, split = .4) {
+  const bw = w / n;
+  for (let i = 0; i < n; i++) { const hh = h * (.18 + .82 * Math.abs(Math.sin(i * .7 + c.rng() * 2)) * (.5 + c.rng() * .5)); c.r(x + i * bw, y + (h - hh) / 2, bw * .55, hh, { fill: i < n * split ? played : rest, radius: bw * .27, name: 'Wave' }); }
+}
+
+def('podcast-guest', 'Host & Guest', 'ts', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
+  c.bg(P.ink);
+  const d = wide ? H * .44 : Math.min(W * .36, H * .26), gap = u * 4;
+  const cxR = wide ? W - m - d : W / 2 + gap / 2, cxL = cxR - d - gap, cy = wide ? H / 2 - d / 2 : m + u;
+  c.o(cxL - u, cy - u, d + 2 * u, d + 2 * u, { fill: P.accent, name: 'Halo' }); c.i(cxL, cy, d, d, { mask: 'circle', label: 'Host' });
+  c.o(cxR - u, cy - u, d + 2 * u, d + 2 * u, { fill: P.accent2, name: 'Halo' }); c.i(cxR, cy, d, d, { mask: 'circle', label: 'Guest' });
+  const x = m, w = wide ? cxL - m - u * 4 : W - 2 * m, top = wide ? m : cy + d + u * 6, bot = H - m;
+  const b = c.btn(C.ep, x, 0, u * 2.8, { fill: P.accent, color: P.onAccent, upper: true, square: true });
+  const g = c.t('with ' + C.author + ' · ' + C.role, x, 0, w, u * 3.2, { color: mix(P.bg, P.ink, .3), weight: 600 });
+  const wv = { h: u * 7, set y(v) { this._y = v; } };
+  const hd = c.hd(C.title, x, 0, w, u * 10, 3, Math.max(u * 6, (bot - top - b.h - g.h - wv.h - u * 12) * (wide ? .9 : 1)), { color: P.bg, lh: 1.02 });
+  c.els.splice(c.els.indexOf(hd), 1); c.els.splice(c.els.indexOf(g), 0, hd);
+  c.vstack([b, hd, g, wv], [u * 3, u * 2.5, u * 4], top, bot, wide ? 'center' : 'top');
+  wave(c, x, wv._y, w, wv.h, 30, P.accent, mix(P.bg, P.ink, .75));
+  // Stacked under the portraits, the whole group sits centred on the page.
+  if (!wide) { const dy = r1((H - (wv._y + wv.h - (cy - u))) / 2 - (cy - u)); c.els.forEach(e => { e.y = r1(e.y + dy); }); }
+}, { topics: PODCASTS, every: true, photo: true, nogarnish: true });
+
+def('podcast-play', 'Press Play', 'tsp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
+  c.bg(P.accent2);
+  const d = wide ? H * .6 : Math.min(W * .46, H * .28), px = wide ? W - m - d : W / 2 - d / 2, py = wide ? H / 2 - d / 2 : m;
+  c.o(px, py, d, d, { fill: P.bg, name: 'Play' }); c.s('triangle', px + d * .36, py + d * .3, d * .36, d * .4, { fill: P.ink, rot: 90, name: 'Play icon' });
+  const x = m, w = wide ? px - m - u * 5 : W - 2 * m, top = wide ? m : py + d + u * 5, bot = H - m;
+  const k = c.kick(x, 0, w, { color: P.onAccent2 });
+  const s = c.t(C.sub, x, 0, Math.min(w, u * 70), u * 3.2, { color: mix(P.onAccent2, P.accent2, .2) });
+  const pills = { h: u * 6.6, set y(v) { this._y = v; } };
+  const hd = c.hd(C.title, x, 0, w, u * (wide ? 12 : 11), 3, Math.max(u * 6, bot - top - k.h - s.h - pills.h - u * 11), { color: P.onAccent2 });
+  c.els.splice(c.els.indexOf(hd), 1); c.els.splice(c.els.indexOf(s), 0, hd);
+  c.vstack([k, hd, s, pills], [u * 2.5, u * 2.5, u * 4], top, bot);
+  c.pills(['YouTube', 'Spotify', 'Apple Podcasts'], x, pills._y, w, u * 2.4, { fill: P.bg, color: P.ink, stroke: P.bg });
+}, { topics: PODCASTS, every: true, photo: true, nogarnish: true });
+
+def('podcast-quote', 'Guest Quote', 'tsp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
+  const pw = wide ? W * .38 : W, ph = wide ? H : H * .42;
+  c.r(wide ? W - pw : 0, 0, pw, ph, { fill: P.accent, name: 'Stage' });
+  c.i(wide ? W - pw + u * 3 : m, wide ? u * 6 : 0, wide ? pw - u * 6 : W - 2 * m, wide ? H - u * 6 : ph, { label: 'Cutout — try Remove BG', tint: mix(P.accent, P.bg, .3) });
+  const x = m, w = wide ? W - pw - 2 * m - u * 2 : W - 2 * m, top = wide ? m : ph + m * .8, bot = H - m;
+  const b = c.btn(C.ep, x, 0, u * 2.6, { fill: P.ink, color: P.bg, upper: true, square: true });
+  const a = c.t(C.author, x, 0, w, u * 3.4, { weight: 700 }); const r = c.t(C.role + ' · ' + C.brand, x, 0, w, u * 2.9, { color: P.muted });
+  const q = c.hd('“' + C.quote + '”', x, 0, w, u * (wide ? 7 : 6.5), 5, Math.max(u * 6, bot - top - b.h - a.h - r.h - u * 9), { upper: false, lh: 1.15 });
+  c.els.splice(c.els.indexOf(q), 1); c.els.splice(c.els.indexOf(a), 0, q);
+  c.vstack([b, q, a, r], [u * 3, u * 4, u * .6], top, bot);
+}, { topics: PODCASTS, every: true, photo: true, nogarnish: true });
+
+def('podcast-number', 'Episode Number', 'ts', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
+  c.bg(P.ink);
+  const pw = wide ? W * .45 : W, ph = wide ? H : H * .46;
+  c.i(0, 0, pw, ph, { label: 'Host portrait' });
+  const x = wide ? pw + m : m, w = wide ? W - pw - 2 * m : W - 2 * m, top = wide ? m : ph + m * .8, bot = H - m;
+  const k = c.kick(x, 0, w, { color: P.accent });
+  const d = c.t(C.date[2] + '  ·  ' + C.date[3], x, 0, w, u * 3, { color: mix(P.bg, P.ink, .3), weight: 600 });
+  // The episode number and the title share what the two lines leave.
+  const rest = bot - top - k.h - d.h - u * 8;
+  const num = c.hd(C.count[0], x, 0, w, u * (wide ? 28 : 22), 1, Math.max(u * 8, rest * .5), { color: P.accent, upper: false, name: 'Number' });
+  const hd = c.hd(C.title, x, 0, w, u * 8, 3, Math.max(u * 5, rest - num.h), { color: P.bg });
+  [num, hd].forEach(e => c.els.splice(c.els.indexOf(e), 1)); c.els.splice(c.els.indexOf(d), 0, num, hd);
+  c.vstack([k, num, hd, d], [u, u * 2, u * 5], top, bot);
+}, { topics: PODCASTS, every: true, photo: true, nogarnish: true });
+
+def('podcast-channel', 'Podcast Channel Art', 'b', ['banner'], c => {
+  const { W, H, u, m, P, C } = c;
+  c.bg(P.ink);
+  const d = H - 2 * m;
+  c.o(W - m - d - u * 1.5, m - u * 1.5, d + u * 3, d + u * 3, { fill: P.accent, name: 'Halo' }); c.i(W - m - d, m, d, d, { mask: 'circle', label: 'Host' });
+  // The safe area is a thin strip of a 2560 px canvas, so everything is sized up.
+  const x = m + u * 2, w = W - d - 3 * m - u * 60;
+  const k = c.kick(x, 0, w, { color: P.accent, size: u * 4.4 });
+  const s = c.t(C.date[2] + '  ·  ' + C.place, x, 0, w, u * 5.4, { color: mix(P.bg, P.ink, .3), weight: 600 });
+  const hd = c.hd(C.brand, x, 0, w, u * 30, 1, Math.max(u * 10, H - 2 * m - k.h - s.h - u * 6), { color: P.bg, name: 'Show name' });
+  c.els.splice(c.els.indexOf(hd), 1); c.els.splice(c.els.indexOf(s), 0, hd);
+  c.vstack([k, hd, s], [u * 2, u * 3], m, H - m);
+  wave(c, W - m - d - u * 54, H / 2 - u * 7, u * 46, u * 14, 26, P.accent2, mix(P.bg, P.ink, .75), .5);
+}, { topics: PODCASTS, every: true, photo: true, nogarnish: true });
+
 export const LAYOUT = Object.fromEntries(LAYOUTS.map(l => [l.id, l]));
 export const PAIRING = Object.fromEntries(PAIRINGS.map(p => [p.id, p]));
 export const PALETTE = Object.fromEntries(PALETTES.map(p => [p.id, p]));
@@ -1680,10 +1774,11 @@ export function catalog() {
     const per = Math.min(12, Math.max(2, Math.ceil(52 / Ls.length)));
     Ls.forEach((l, li) => {
       // Designs built around a photo are what most people come for; weight them up.
-      const n = l.photo ? Math.ceil(per * 1.5) : per;
+      // A layout that asks for `every` pack it names gets at least one of each.
+      const n = Math.max(l.photo ? Math.ceil(per * 1.5) : per, l.every && l.topics ? l.topics.length : 0);
       // A layout can name the copy packs it suits (an invitation frame wants occasions);
       // a copy pack can name the layouts it tolerates (memorial copy never gets a burst).
-      const pool = l.topics ? l.topics.map(id => TOPIC[id]) : TOPICS;
+      const pool = l.topics ? l.topics.map(id => TOPIC[id]) : TOPICS.filter(t => !t.niche);
       for (let j = 0; j < n; j++) {
         const ti = (li * 5 + fi * 3 + j * 7) % pool.length;
         let t = pool[ti];

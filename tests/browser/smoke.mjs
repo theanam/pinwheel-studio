@@ -176,6 +176,25 @@ try {
   await p.wait(200);
   check(await p.eval(`__studio.pg.els.find(e => e.id === ${JSON.stringify(hl.id)}).text === 'Spring'`), 'highlighted text keeps the typed text after clicking another element');
 
+  // Rotation: pressing the handle must not jump; a small drag turns a little.
+  await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'text'); __studio.setState({ sel: [el.id] }); })()`);
+  await p.wait(100);
+  const rot0 = await p.eval(`__studio.selEls()[0].rot || 0`);
+  const hdl = await p.eval(`(() => { const r = document.querySelector('[title="Rotate"]').getBoundingClientRect(); const el = __studio.selEls()[0]; const n = document.querySelector('[data-page-node="' + __studio.pg.id + '"]').getBoundingClientRect(); const z = __studio.state.zoom; return { x: r.left + r.width / 2, y: r.top + r.height / 2, cx: n.left + (el.x + el.w / 2) * z, cy: n.top + (el.y + el.h / 2) * z }; })()`);
+  await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: hdl.x, y: hdl.y });
+  await p.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: hdl.x, y: hdl.y, button: 'left', clickCount: 1 });
+  await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: hdl.x + 1, y: hdl.y, button: 'left' });
+  await p.wait(80);
+  const rotPress = await p.eval(`__studio.selEls()[0].rot || 0`);
+  check(Math.abs(rotPress - rot0) < 3, `pressing the rotate handle does not jump (${rot0}° → ${rotPress}°)`);
+  // Sweep the pointer 30° clockwise around the element's centre.
+  const rad = Math.hypot(hdl.x - hdl.cx, hdl.y - hdl.cy), base = Math.atan2(hdl.y - hdl.cy, hdl.x - hdl.cx);
+  for (let i = 1; i <= 6; i++) { const t = base - (Math.PI / 6) * i / 6; await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: hdl.cx + Math.cos(t) * rad, y: hdl.cy + Math.sin(t) * rad, button: 'left' }); }
+  await p.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: hdl.x, y: hdl.y, button: 'left', clickCount: 1 });
+  await p.wait(100);
+  const rot1 = await p.eval(`__studio.selEls()[0].rot || 0`);
+  check(Math.abs(((rot1 - rot0 + 540) % 360 - 180) + 30) < 4, `a 30° sweep rotates about 30° (${rot0}° → ${rot1}°)`);
+
   // ---- tablet ----
   await p.size(1000, 760);
   await p.wait(400);
