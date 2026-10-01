@@ -38,7 +38,7 @@ templates. No account, no server, no uploads: your files never leave your machin
 | **Background removal** | One click, on your device, using an on-device neural network. The original is kept so you can restore it. |
 | **Layout** | Snapping to page and element edges, alignment, grouping, box select, a layers panel with drag to reorder, hide and lock, and 150 steps of undo. |
 | **Charts and QR codes** | Bar, line, pie and donut charts from a few lines of data, and QR codes for links. |
-| **Brands** | As many brand kits as you like, switched from the home page. Each holds four colours, two fonts, a logo, saved colour schemes, saved text styles and a library of images that stay on your device. Build one from a logo: the studio reads its colours and offers several kits to pick from. Download a brand as one `.pinwheel` file and open it on another device. |
+| **Brands** | As many brand kits as you like. Each holds four colours, two fonts, a logo, your own uploaded typefaces, saved colour schemes, saved text styles and a library of images that stay on your device. Pick a brand on the home page and every template previews in its colours and fonts and opens already branded; pick "No brand" to see templates in their own style. Build one from a logo: the studio reads its colours and offers several kits to pick from. Download a brand as one `.pinwheel` file and open it on another device. |
 | **Recents** | The last 100 designs you touched, saved or not, with live thumbnails on the home page. Kept on your device until you clear the browser's site data. |
 | **Export** | Multi-page PDF, PNG, JPG and SVG, with fonts embedded, at standard, high or print resolution. On desktop Chrome and Edge a real save dialog, and Save writes back to the file you opened; on phones the share sheet; elsewhere a download. |
 
@@ -87,18 +87,20 @@ A `.pinwheel` file is a zip, and the manifest says what kind of thing is inside.
 design:
 
 ```
-manifest.json     format, kind "design", version, size, page count, asset index
+manifest.json     format, kind "design", version, size, page count, asset and font index
 document.json     the document: pages, elements, theme
 assets/           the original images, by id
+fonts/            any uploaded fonts the design uses
 thumbnail.png     a preview of the first page
 ```
 
 A brand kit, as downloaded from the Brand panel:
 
 ```
-manifest.json     format, kind "brand", version, asset index
+manifest.json     format, kind "brand", version, asset and font index
 brand.json        colours, fonts, logo id, colour schemes, text styles
 assets/           the logo and every image saved to the brand
+fonts/            the brand's uploaded typefaces
 ```
 
 Opening either kind, from the Open button, a double-click or a drop onto the home

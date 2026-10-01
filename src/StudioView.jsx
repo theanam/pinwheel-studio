@@ -123,6 +123,19 @@ export default function StudioView(v) {
                   </span>
                 </div>
                 <div style={sty(v.rowStyle)}>
+                  <div onClick={v.useNoBrand} style={sty(v.noBrandStyle)} className="pw-h3">
+                    <span style={{ width: "40px", height: "40px", borderRadius: "8px", border: "1.5px dashed var(--pw-line-strong)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--pw-muted-2)", fontSize: "18px", flex: "none" }}>
+                      ◌
+                    </span>
+                    <span style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <span style={{ fontWeight: "700", fontSize: "14px" }}>
+                        No brand
+                      </span>
+                      <span style={{ fontSize: "11px", color: "var(--pw-muted-2)" }}>
+                        Templates in their own style
+                      </span>
+                    </span>
+                  </div>
                   {toArray(v.brandCards).map((b, $index) => (
                     <Fragment key={$index}>
                       <div onClick={b.onClick} style={sty(b.style)} className="pw-h3">
@@ -225,6 +238,17 @@ export default function StudioView(v) {
                   <span style={{ color: "var(--pw-muted-2)", fontSize: "14px" }}>
                     {v.galCount}
                   </span>
+                  {v.brandNote ? (
+                    <>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: "600", color: "var(--pw-accent-deep)", background: "var(--pw-accent-tint)", borderRadius: "14px", padding: "4px 6px 4px 10px" }} className="pw-brand-note">
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--pw-accent)" }} />
+                        {v.brandNote}
+                        <button onClick={v.clearBrandNote} title="Show templates in their own style" style={{ height: "20px", padding: "0 8px", borderRadius: "10px", border: "none", background: "var(--pw-surface)", color: "var(--pw-ink)", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>
+                          Show original
+                        </button>
+                      </span>
+                    </>
+                  ) : null}
                   {v.galHint ? (
                     <>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600", color: "var(--pw-accent-deep)", background: "var(--pw-accent-tint)", borderRadius: "14px", padding: "4px 10px" }}>
@@ -972,6 +996,46 @@ export default function StudioView(v) {
                             </Fragment>
                           ))}
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                            <span style={{ fontSize: "13px", fontWeight: "600" }}>
+                              Uploaded fonts
+                            </span>
+                            <button onClick={v.uploadFont} title="Add a .ttf, .otf, .woff or .woff2 file to the brand" style={{ height: "26px", padding: "0 9px", borderRadius: "6px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", fontWeight: "600", cursor: "pointer", color: "var(--pw-ink)", fontSize: "12px" }} className="pw-h1">
+                              + Upload font
+                            </button>
+                          </div>
+                          {v.noFonts ? (
+                            <>
+                              <div style={{ fontSize: "12px", color: "var(--pw-muted-2)", marginTop: "-6px" }}>
+                                Your own typefaces, kept with the brand and offered in every font picker. Exports embed them.
+                              </div>
+                            </>
+                          ) : null}
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            {toArray(v.brandFontItems).map((f, $index) => (
+                              <Fragment key={$index}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 8px 8px 10px", border: "1px solid var(--pw-line-soft)", background: "var(--pw-surface)", borderRadius: "8px" }}>
+                                  <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", gap: "3px" }}>
+                                    <span style={sty(f.sampleStyle)} title={f.file}>
+                                      {f.label}
+                                    </span>
+                                    <span style={{ fontSize: "11px", color: "var(--pw-muted-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                      {f.file}
+                                    </span>
+                                  </div>
+                                  <button onClick={f.onHeading} title="Use for headings" style={sty(f.hStyle)} className="pw-h1">
+                                    H
+                                  </button>
+                                  <button onClick={f.onBody} title="Use for body text" style={sty(f.bStyle)} className="pw-h1">
+                                    B
+                                  </button>
+                                  <button onClick={f.onRemove} title="Remove font" style={{ width: "26px", height: "26px", borderRadius: "6px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", cursor: "pointer", color: "var(--pw-muted)", fontSize: "13px", padding: "0" }} className="pw-h1">
+                                    ×
+                                  </button>
+                                </div>
+                              </Fragment>
+                            ))}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                             <div style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--pw-muted-2)" }}>
                               Text styles
                             </div>
@@ -1149,7 +1213,7 @@ export default function StudioView(v) {
                           {p.hoverHint ? (
                             <>
                               <div style={sty(p.hoverTintStyle)}>
-                                <button onPointerDown={p.onHoverReplace} onPointerEnter={p.onHoverKeep} title="Choose an image for this frame" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "none", borderRadius: "16px", background: "rgba(255,255,255,.94)", color: "var(--pw-ink)", fontSize: "12px", fontWeight: "600", boxShadow: "0 2px 8px rgba(0,0,0,.18)", whiteSpace: "nowrap", cursor: "pointer", pointerEvents: "auto" }} className="pw-h6">
+                                <button onPointerDown={p.onHoverReplace} onPointerEnter={p.onHoverKeep} onPointerLeave={p.onHoverLeave} title="Choose an image for this frame" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "none", borderRadius: "16px", background: "rgba(255,255,255,.94)", color: "var(--pw-ink)", fontSize: "12px", fontWeight: "600", boxShadow: "0 2px 8px rgba(0,0,0,.18)", whiteSpace: "nowrap", cursor: "pointer", pointerEvents: "auto" }} className="pw-h6">
                                   <span style={{ width: "10px", height: "8px", border: "1.5px solid var(--pw-ink)", borderRadius: "2px" }} />
                                   {p.hoverHint}
                                 </button>
@@ -1242,13 +1306,23 @@ export default function StudioView(v) {
                             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                               {c.hasLabel ? (
                                 <>
-                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "13px", minHeight: "20px" }}>
                                     <span style={{ fontWeight: "600" }}>
                                       {c.label}
                                     </span>
-                                    <span style={{ color: "var(--pw-muted-2)", fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px" }}>
-                                      {c.display}
-                                    </span>
+                                    {c.isSlider ? (
+                                      c.editing ? (
+                                        <input type="number" className="pw-slider-edit" value={c.editText ?? ''} step={c.step} onChange={c.onEditChange} onKeyDown={c.onEditKey} onBlur={c.commitEdit} autoFocus onFocus={c.selectAll} style={{ width: "76px", height: "22px", border: "1px solid var(--pw-accent-line)", borderRadius: "5px", padding: "0 6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", background: "var(--pw-surface)", color: "var(--pw-ink)", outline: "none", textAlign: "right" }} />
+                                      ) : (
+                                        <button onClick={c.startEdit} title="Click to type a value" style={{ border: "none", background: "transparent", color: "var(--pw-muted-2)", fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", cursor: "text", padding: "1px 4px", borderRadius: "4px" }} className="pw-h1">
+                                          {c.display}
+                                        </button>
+                                      )
+                                    ) : (
+                                      <span style={{ color: "var(--pw-muted-2)", fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px" }}>
+                                        {c.display}
+                                      </span>
+                                    )}
                                   </div>
                                 </>
                               ) : null}
@@ -1370,10 +1444,11 @@ export default function StudioView(v) {
       <input type="file" ref={v.setFileInput} onChange={v.onProjectFile} accept=".pinwheel,.zip" style={{ display: "none" }} />
       <input type="file" ref={v.setLogoInput} onChange={v.onLogoFile} accept="image/*" style={{ display: "none" }} />
       <input type="file" ref={v.setBrandAssetInput} onChange={v.onBrandAssetFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
+      <input type="file" ref={v.setFontInput} onChange={v.onFontFile} accept=".ttf,.otf,.woff,.woff2" multiple="multiple" style={{ display: "none" }} />
       {v.hasWiz ? (
         <>
           <div onClick={v.wiz.close} style={{ position: "fixed", inset: "0", background: "rgba(36,33,29,.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "80" }}>
-            <div onClick={v.stopClick} style={sty({ background: "var(--pw-surface)", boxShadow: "0 20px 50px rgba(0,0,0,.22)", display: "flex", flexDirection: "column", gap: "14px", fontSize: "14px", overflow: "auto", ...v.wizCardStyle })}>
+            <div onClick={v.stopClick} className="pw-wiz" style={sty({ background: "var(--pw-surface)", boxShadow: "0 20px 50px rgba(0,0,0,.22)", display: "flex", flexDirection: "column", gap: "14px", fontSize: "14px", overflow: "auto", ...v.wizCardStyle })}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <Mark size={22} />
                 <div style={{ display: "flex", flexDirection: "column", flex: "1", minWidth: "0" }}>

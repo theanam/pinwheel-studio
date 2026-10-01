@@ -3,6 +3,7 @@
 // layouts. Needs `npm run dev` running (or PINWHEEL_URL pointing at a build).
 // Screenshots land in tests/browser/shots/.
 import { launch, page } from './cdp.mjs';
+import fs from 'node:fs';
 const URL = process.env.PINWHEEL_URL || 'http://localhost:5185/';
 const chrome = await launch();
 const fails = [];
@@ -27,23 +28,23 @@ try {
   await p.clickText('Create a brand');
   await p.until(`document.body.innerText.includes('Step 1 of 3')`);
   await p.type('input[placeholder="e.g. Northwind Coffee"]', 'Northwind');
-  await p.clickText('Upload a logo');
+  await p.clickText('Upload a logo', '.pw-wiz button');
   await p.eval(feed('input[type=file][accept="image/*"]:not([multiple])', LOGO));
   try { await p.until(`document.body.innerText.includes('Colour kits on the next step were drawn from this logo')`); }
   catch (e) { console.log('wiz state:', JSON.stringify(await p.eval(`(() => { const w = __studio.state.wiz; return w && { step: w.step, logo: !!w.logo, fromLogo: w.fromLogo, busy: w.busy, kits: w.kits.length }; })()`))); throw e; }
   await p.shot('02-wizard-logo');
-  await p.clickText('Next');
+  await p.clickText('Next', '.pw-wiz button');
   await p.until(`document.body.innerText.includes('Kits from your logo')`);
   await p.wait(300);
   await p.shot('03-wizard-kits');
   const kitNames = await p.eval(`[...document.querySelectorAll('button')].map(b => b.textContent).filter(t => /Logo colours|Bold|Dark|Soft|Minimal|Secondary lead|High contrast/.test(t)).length`);
   check(kitNames >= 5, `wizard offers several kits from the logo (${kitNames})`);
-  await p.clickText('Dark');
-  await p.clickText('Next');
+  await p.clickText('Dark', '.pw-wiz button');
+  await p.clickText('Next', '.pw-wiz button');
   await p.until(`document.body.innerText.includes('Suggested pairings')`);
-  await p.clickText('Impact');
+  await p.clickText('Impact', '.pw-wiz button');
   await p.shot('04-wizard-fonts');
-  await p.clickText('Create brand');
+  await p.clickText('Create brand', '.pw-wiz button');
   await p.until(`document.body.innerText.includes('Northwind')`);
   await p.wait(300);
   await p.shot('05-home-brand-created');
@@ -52,8 +53,33 @@ try {
   await p.wait(700);
   check(await p.eval(`(async () => { const l = await (await import('/src/store.js')).listBrands(); return l.length === 2 && l.some(b => b.name === 'Northwind' && b.logo); })()`), 'brand persisted to IndexedDB');
 
+  // ---- brand preview on the home page ----
+  // A new brand is not applied by itself: "No brand" stays selected and templates
+  // keep their own style. Choosing a brand restyles the previews, says so, and
+  // opens templates already branded.
+  const hexRgb = h => `rgb(${parseInt(h.slice(1, 3), 16)}, ${parseInt(h.slice(3, 5), 16)}, ${parseInt(h.slice(5, 7), 16)})`;
+  const thumbBg = () => p.eval(`(() => { const n = document.querySelector('main section:last-of-type [data-page-node]'); return n ? n.style.backgroundColor : null; })()`);
+  check(await p.eval(`__studio.state.brandOn === false && !document.querySelector('.pw-brand-note')`), 'no brand is selected by default on the home page');
+  const bgOff = await thumbBg();
+  check(await p.eval(`(() => { const d = [...document.querySelectorAll('main div.pw-h3')].find(d => d.textContent.includes('Northwind') && d.textContent.length < 160); if (!d) return false; d.click(); return true; })()`), 'clicked the Northwind brand card');
+  await p.wait(400);
+  const bgOn = await thumbBg();
+  check(await p.eval(`__studio.state.brandOn === true && !!document.querySelector('.pw-brand-note')`), 'picking a brand turns the preview on with a note');
+  check(bgOn !== bgOff && bgOn === hexRgb(brand.bg), `template previews take the brand background (${bgOff} → ${bgOn})`);
+  await p.click('main section:last-of-type button[title*="—"]');
+  await p.until(`__studio.state.screen === 'editor'`);
+  await p.wait(300);
+  check(await p.eval(`__studio.state.doc.theme.accent === __studio.state.brand.accent && __studio.state.doc.theme.display === __studio.state.brand.heading`), 'a template opened with a brand selected is already in the brand');
+  await p.clickText('Pinwheel');
+  await p.until(`__studio.state.screen === 'home'`); await p.wait(300);
+  await p.clickText('Show original');
+  await p.wait(300);
+  check(await p.eval(`__studio.state.brandOn === false && !document.querySelector('.pw-brand-note')`), '"Show original" turns the preview off');
+  check((await thumbBg()) === bgOff, 'previews are back to their own style');
+
   // ---- editor: new doc from a template, brand panel, recents ----
-  await p.click('main section:last-of-type button[title]');
+  try { await p.click('main section:last-of-type button[title*="—"]'); }
+  catch (e) { console.log('DIAG', await p.eval(`JSON.stringify({ screen: __studio.state.screen, wiz: !!__studio.state.wiz, dialog: !!__studio.state.dialog, sections: [...document.querySelectorAll('main section')].map(s => (s.querySelector('h1,h2') || {}).textContent), lastText: (document.querySelector('main section:last-of-type') || {}).innerText && document.querySelector('main section:last-of-type').innerText.slice(0, 200) })`)); throw e; }
   await p.until(`__studio.state.screen === 'editor'`);
   await p.wait(500);
   await p.shot('06-editor-desktop');
@@ -69,6 +95,25 @@ try {
   await p.wait(100);
   try { await p.clickText('+ From selection'); } catch (e) { console.log('DIAG', await p.eval(`JSON.stringify({ panel: __studio.state.panel, sel: __studio.state.sel, tail: document.querySelector('aside') && document.querySelector('aside').innerText.slice(0, 400) })`)); throw e; }
   check(await p.eval(`__studio.state.brand.textStyles.length === 1`), 'text style saved to brand');
+  // Uploaded fonts: a real TTF from the system goes into the brand, shows in the
+  // font picker, can be chosen for headings, and travels in a .pinwheel file.
+  const fontPath = process.env.PINWHEEL_TEST_FONT || '/System/Library/Fonts/Supplemental/Arial Bold.ttf';
+  if (fs.existsSync(fontPath)) {
+    const b64 = fs.readFileSync(fontPath).toString('base64');
+    await p.eval(feed('input[type=file][accept=".ttf,.otf,.woff,.woff2"]', `(async () => { const r = await fetch('data:font/ttf;base64,${b64}'); return new File([await r.blob()], 'Arial Bold.ttf', { type: 'font/ttf' }); })()`));
+    await p.until(`Object.keys(__studio.state.brand.fonts).length === 1`);
+    await p.wait(200);
+    const fam = await p.eval(`Object.values(__studio.state.brand.fonts)[0].family`);
+    check(fam === 'Arial Bold' && await p.eval(`document.fonts.check("16px '${fam}'")`), `font uploaded to the brand and loaded (${fam})`);
+    await p.click('aside button[title="Change font"]', 0);
+    await p.wait(200);
+    check(await p.eval(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Uploaded') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('Arial Bold') && b.textContent.includes('brand'))`), 'the font picker lists the uploaded font first');
+    await p.clickText('Arial Bold', 'button[title="Arial Bold"]');
+    await p.wait(200);
+    check(await p.eval(`__studio.state.brand.heading === 'Arial Bold'`), 'uploaded font chosen for headings');
+    const fontRt = await p.eval(`(async () => { const s = __studio; const d = structuredClone(s.state.doc); d.pages[0].els.find(e => e.type === 'text').font = 'Arial Bold'; const blob = await s.IO.packProject(d, s.state.assets, null, s.fontsFor(d)); const r = await s.IO.openProject(blob); const kit = await s.IO.openProject(await s.IO.packBrandKit(s.state.brand, s.B.brandForKit(s.state.brand))); return { design: Object.values(r.fonts).map(f => f.family), kit: Object.values(kit.fonts).map(f => f.family), kitSrc: Object.values(kit.fonts)[0].src.slice(0, 14) }; })()`);
+    check(fontRt.design.includes('Arial Bold') && fontRt.kit.includes('Arial Bold') && fontRt.kitSrc.startsWith('data:font/ttf'), 'the font travels in design and brand-kit files ' + JSON.stringify(fontRt));
+  } else console.log('  skip  font upload (no test font at ' + fontPath + ')');
   await p.clickText('Text');
   await p.wait(200);
   check(await p.eval(`document.body.innerText.includes('Style 1 ◆')`), 'brand text style listed first in the Text panel');
@@ -150,7 +195,7 @@ try {
   await p.wait(400);
   await p.shot('08-home-recents');
   const rec = await p.eval(`(() => ({ n: __studio.state.recents.length, name: __studio.state.recents[0].name, thumbs: document.querySelectorAll('.pw-recent').length }))()`);
-  check(rec.n === 1 && rec.thumbs === 1, 'recents lists the design ' + JSON.stringify(rec));
+  check(rec.n >= 1 && rec.thumbs === rec.n && rec.name === 'Slow Morning Roasters', 'recents lists the design, newest first ' + JSON.stringify(rec));
   await p.click('.pw-recent');
   await p.until(`__studio.state.screen === 'editor'`);
   check(await p.eval(`__studio.state.doc.name === ${JSON.stringify(rec.name)}`), 'reopened from recents');
@@ -176,6 +221,24 @@ try {
   await p.wait(200);
   check(await p.eval(`__studio.pg.els.find(e => e.id === ${JSON.stringify(hl.id)}).text === 'Spring'`), 'highlighted text keeps the typed text after clicking another element');
 
+  // Hovering an empty frame shows a "Replace image" pill that survives the pointer
+  // moving onto it, and goes away once the pointer leaves.
+  await p.eval(`__studio.fromTemplate(__studio.P.catalog().find(t => t.layout === 'hero-photo' && t.fmt === 'ig-post'))`);
+  await p.wait(400);
+  await p.eval(`__studio.setState({ panel: null, sel: [] })`); await p.wait(100);
+  const fr = await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'image' && !e.asset); const b = document.querySelector('[data-el-id="' + el.id + '"]').getBoundingClientRect(); return { x: b.left + b.width * .3, y: b.top + b.height * .3 }; })()`);
+  await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: fr.x, y: fr.y }); await p.wait(150);
+  const pill = await p.eval(`(() => { const b = document.querySelector('button[title="Choose an image for this frame"]'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+  check(!!pill, 'hovering an empty frame shows the Replace image pill');
+  if (pill) {
+    for (let i = 1; i <= 4; i++) await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: fr.x + (pill.x - fr.x) * i / 4, y: fr.y + (pill.y - fr.y) * i / 4 });
+    await p.wait(300);
+    check(await p.eval(`!!document.querySelector('button[title="Choose an image for this frame"]')`), 'the pill stays while the pointer is on it');
+    const off = await p.eval(`(() => { const r = __studio.canvasEl.getBoundingClientRect(); return { x: r.left + 8, y: r.bottom - 8 }; })()`);
+    await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: off.x, y: off.y }); await p.wait(350);
+    check(await p.eval(`!document.querySelector('button[title="Choose an image for this frame"]')`), 'the pill goes away when the pointer leaves');
+  }
+
   // Rotation: pressing the handle must not jump; a small drag turns a little.
   await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'text'); __studio.setState({ sel: [el.id] }); })()`);
   await p.wait(100);
@@ -194,6 +257,19 @@ try {
   await p.wait(100);
   const rot1 = await p.eval(`__studio.selEls()[0].rot || 0`);
   check(Math.abs(((rot1 - rot0 + 540) % 360 - 180) + 30) < 4, `a 30° sweep rotates about 30° (${rot0}° → ${rot1}°)`);
+
+  // Sliders: the value can be typed, and the range follows the value past its end.
+  await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'text'); __studio.setState({ sel: [el.id], panel: null }); __studio.patchSel(x => { x.shadow = { x: 20, y: 20, blur: 0, color: '#111111', long: true }; }); })()`);
+  await p.wait(150);
+  const lenBtn = await p.eval(`(() => { const row = [...document.querySelectorAll('aside span')].find(s => s.textContent.trim() === 'Length'); const b = row && row.parentElement.querySelector('button'); return b ? { text: b.textContent.trim(), max: +row.parentElement.parentElement.querySelector('input[type=range]').max } : null; })()`);
+  check(lenBtn && /px$/.test(lenBtn.text), 'the long-shadow Length value is clickable ' + JSON.stringify(lenBtn));
+  await p.eval(`[...document.querySelectorAll('aside span')].find(s => s.textContent.trim() === 'Length').parentElement.querySelector('button').click()`);
+  await p.wait(100);
+  await p.type('aside input.pw-slider-edit', '500');
+  await p.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await p.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+  await p.wait(150);
+  const afterLen = await p.eval(`(() => { const el = __studio.selEls()[0]; const len = Math.round(Math.hypot(el.shadow.x, el.shadow.y)); const row = [...document.querySelectorAll('aside span')].find(s => s.textContent.trim() === 'Length'); const range = row.parentElement.parentElement.querySelector('input[type=range]'); return { len, max: +range.max, val: +range.value, editing: !!document.querySelector('aside input.pw-slider-edit') }; })()`);
+  check(Math.abs(afterLen.len - 500) <= 1 && afterLen.max >= 500 && Math.abs(afterLen.val - 500) <= 1 && !afterLen.editing, 'typed 500 px: shadow is 500 and the slider now reaches it ' + JSON.stringify(afterLen));
 
   // ---- tablet ----
   await p.size(1000, 760);
@@ -262,7 +338,7 @@ try {
   await p.clickText('Create a brand');
   await p.wait(300);
   await p.shot('16-phone-wizard');
-  await p.clickText('Next'); await p.wait(200);
+  await p.clickText('Next', '.pw-wiz button'); await p.wait(200);
   await p.shot('17-phone-wizard-kits');
   await p.eval(`__studio.closeWizard()`);
 

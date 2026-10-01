@@ -23,6 +23,10 @@ input[type=range] { accent-color: var(--pw-accent); width: 100%; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--pw-line-strong); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
 
+/* Chip rows scroll sideways without a visible scrollbar. */
+.pw-chips { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.pw-chips::-webkit-scrollbar { display: none; }
+
 /* Dialogs (Radix) pop in place: a short fade with a touch of scale, no travel. */
 .pw-dialog-overlay { animation: pw-fade .08s ease-out; }
 .pw-dialog { animation: pw-pop .1s ease-out; }

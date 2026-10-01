@@ -264,7 +264,9 @@ export function shadowCSS(sh, size) {
   const x = sh.x || 0, y = sh.y || 0, blur = sh.blur || 0, color = sh.color || 'rgba(0,0,0,.35)';
   if (!sh.long) return `${x}px ${y}px ${blur}px ${color}`;
   const len = Math.hypot(x, y); if (len < 1) return `0 0 ${blur}px ${color}`;
-  const n = Math.min(160, Math.ceil(len)), out = [], r = v => Math.round(v * 10) / 10;
+  // One layer per pixel of length keeps the diagonal edge smooth; the cap only
+  // matters for shadows longer than the page is likely to be.
+  const n = Math.min(720, Math.ceil(len)), out = [], r = v => Math.round(v * 10) / 10;
   for (let i = 1; i <= n; i++) out.push(`${r(x * i / n)}px ${r(y * i / n)}px ${blur}px ${color}`);
   return out.join(',');
 }

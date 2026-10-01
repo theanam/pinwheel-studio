@@ -134,6 +134,16 @@ at the top.
     adding them did not reshuffle any existing template. New layouts go at the end
     of the list for the same reason.
 
+16. Uploaded fonts. A brand carries `fonts` (TTF, OTF, WOFF, WOFF2 as data URLs);
+    `io.js` registers them with the FontFace API, offers them under an "Uploaded"
+    chip in every font picker, writes `@font-face` rules for them into exports, and
+    packs them into `fonts/` of design files (the ones used) and brand kits (all).
+17. Brand preview. `brandOn` (IndexedDB `kv`) is off by default: the home gallery
+    shows templates in their own style. Picking a brand restyles every preview
+    through `brandify` (theme map plus pairing) with a note above the gallery, and
+    templates then open already branded, as do blank designs; "No brand" starts a
+    blank design from the neutral paper palette instead.
+
 ## Browser smoke test
 
 `npm run test:browser` (`tests/browser/smoke.mjs`) drives a local headless Chrome

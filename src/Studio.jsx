@@ -17,7 +17,10 @@ export default class Studio extends React.Component {
     galCat: 'All', galOcc: null, galQ: '', galLimit: 48, tplQ: '', tplSame: true, tplLimit: 24, menu: null, busy: null, toast: null,
     cropMode: false, exportScale: 2, relayout: true,
     brand: { bg: '#FBF7F0', ink: '#1F1B16', accent: '#1F7D62', accent2: '#2F6F73', heading: 'DM Serif Display', body: 'DM Sans', logo: null, assets: {}, palettes: [], textStyles: [] },
-    brands: [], recents: [], recentsAll: false, wiz: null, propsOpen: false, phoneMenu: null, dialog: null, dialogValue: '',
+    brands: [], recents: [], recentsAll: false, wiz: null, propsOpen: false, phoneMenu: null, dialog: null, dialogValue: '', sliderEdit: null,
+    // brandOn: templates and new designs take the active brand's colours and fonts.
+    // Off by default, so the gallery shows every template in its own style.
+    brandOn: false, fonts: {},
     customW: 1080, customH: 1080, fmtsAll: false,
     helpOpen: false, layerDrag: null, layerOver: null, fontQ: '', fontCat: 'all', fontAnchor: null,
     vw: typeof window !== 'undefined' ? window.innerWidth : 1280,
@@ -68,6 +71,7 @@ export default class Studio extends React.Component {
   setFileInput = n => { this.fileInput = n; };
   setLogoInput = n => { this.logoInput = n; };
   setBrandAssetInput = n => { this.brandAssetInput = n; };
+  setFontInput = n => { this.fontInput = n; };
 
   // 'system' follows prefers-color-scheme; 'light' / 'dark' pin it via data-theme.
   applyTheme(t) { const r = document.documentElement; if (t === 'system') delete r.dataset.theme; else r.dataset.theme = t; }
@@ -98,7 +102,9 @@ export default class Studio extends React.Component {
       const { brands, brand } = await this.loadBrands();
       await this.migrateLocalStorage(brand);
       const recents = await this.loadRecents();
-      this.setState({ ready: true, brands, brand, recents, assets: { ...this.state.assets, ...brand.assets } }, () => {
+      let brandOn = false; try { brandOn = !!(await DB.getKV('brandOn')); } catch (e) { }
+      const fonts = B.allFonts(brands); Object.values(fonts).forEach(f => IO.registerFont(f.family, f.src, f.mime));
+      this.setState({ ready: true, brands, brand, brandOn, fonts, recents, assets: { ...this.state.assets, ...brand.assets } }, () => {
         if (this._pendingFile) { const [f, h] = this._pendingFile; this._pendingFile = null; this.openProjectFile(f, h); }
         else if (this.props.startScreen === 'editor') this.newDoc('ig-post');
       });
@@ -145,6 +151,39 @@ export default class Studio extends React.Component {
   /** Shallow update of the active brand, mirrored into the brands list. */
   setBrand(patch) { this.setState(s => { const b = { ...s.brand, ...patch, updated: Date.now() }; return { brand: b, brands: s.brands.map(x => x.id === b.id ? b : x) }; }); }
   activateBrand = id => { const b = this.state.brands.find(x => x.id === id); if (!b) return; this.setState(s => ({ brand: b, assets: { ...s.assets, ...b.assets }, menu: null })); this.DB.setKV('brandId', id).catch(() => { }); };
+  /** Use a brand for templates and new designs (id), or none (null). */
+  useBrand = id => { if (id) this.activateBrand(id); this.setState({ brandOn: !!id }); this.DB.setKV('brandOn', !!id).catch(() => { }); };
+  /** Every uploaded font the editor knows: all brands' plus any that came in with a file. */
+  refreshFonts(extra = {}) {
+    const fonts = { ...this.B.allFonts(this.state.brands), ...(this._fileFonts || {}), ...extra };
+    Object.values(fonts).forEach(f => this.IO.registerFont(f.family, f.src, f.mime));
+    this.setState({ fonts }); return fonts;
+  }
+  onFontFile = async e => {
+    const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+    this.setState({ busy: 'Adding font…' });
+    try {
+      let fonts = { ...this.state.brand.fonts };
+      for (const f of files) {
+        const r = await this.IO.readFontFile(f); const family = this.B.fontFamilyFrom(r.name, [...this.P.FONTS.map(x => x.name), ...Object.keys(this.state.fonts), ...Object.values(fonts).map(x => x.family)]);
+        if (!(await this.IO.registerFont(family, r.src, r.mime))) throw new Error('That font could not be loaded');
+        fonts = { ...fonts, ['f' + this.P.nid()]: { ...r, family } };
+      }
+      this.setBrand({ fonts }); this.setState(s => ({ fonts: { ...s.fonts, ...Object.fromEntries(Object.values(fonts).map(f => [f.family, f])) } }));
+      this.toast(files.length > 1 ? `Added ${files.length} fonts to the brand` : 'Font added to the brand');
+    } catch (err) { this.toast(err.message || 'Could not read that font'); }
+    this.setState({ busy: null });
+  };
+  uploadFont = () => this.fontInput && this.fontInput.click();
+  async removeBrandFont(id) {
+    const b = this.state.brand, f = b.fonts[id]; if (!f) return;
+    if (!(await this.ask({ title: `Remove “${f.family}”?`, body: 'Designs already using it fall back to a standard font on this device.', confirmLabel: 'Remove', danger: true }))) return;
+    const fonts = { ...b.fonts }; delete fonts[id];
+    const patch = { fonts }; if (b.heading === f.family) patch.heading = this.B.DEFAULT_BRAND.heading; if (b.body === f.family) patch.body = this.B.DEFAULT_BRAND.body;
+    this.setBrand(patch); setTimeout(() => this.refreshFonts(), 0);
+  }
+  /** The uploaded fonts a document uses, keyed by a file-safe id, for packing. */
+  fontsFor(doc) { const used = new Set(this.IO.usedFonts(doc)); return Object.fromEntries(Object.values(this.state.fonts).filter(f => used.has(f.family)).map(f => [f.family.replace(/\W+/g, '-').toLowerCase(), f])); }
   createBrand(partial) { const b = this.B.newBrand(partial); this.setState(s => ({ brands: [...s.brands, b], brand: b, assets: { ...s.assets, ...b.assets } }), () => this.saveBrandSoon()); return b; }
   renameBrand = async () => { const n = await this.ask({ title: 'Rename brand', input: { value: this.state.brand.name, placeholder: 'Brand name' }, confirmLabel: 'Rename' }); if (n) this.setBrand({ name: n }); };
   duplicateBrand = () => { const { id, ...rest } = structuredClone(this.state.brand); this.createBrand({ ...rest, name: rest.name + ' copy', created: Date.now() }); this.toast('Brand duplicated'); };
@@ -153,10 +192,10 @@ export default class Studio extends React.Component {
     this.setState(s => { const brands = s.brands.filter(x => x.id !== b.id); const next = brands[0] || this.B.newBrand(); return { brands: brands.length ? brands : [next], brand: next, assets: { ...s.assets, ...next.assets }, menu: null }; }, () => { this.DB.deleteBrand(b.id).catch(() => { }); this.saveBrandSoon(); });
   };
   /** A kit opened from a .pinwheel file: replaces a brand with the same id, else is added. */
-  async importBrandKit(json, assets) {
-    const b = this.B.brandFromKit(json, assets); const exists = this.state.brands.some(x => x.id === b.id);
+  async importBrandKit(json, assets, fonts = {}) {
+    const b = this.B.brandFromKit(json, assets, fonts); const exists = this.state.brands.some(x => x.id === b.id);
     if (exists && !(await this.ask({ title: `Replace “${b.name}”?`, body: 'A brand with this id is already on this device. The one in the file replaces it, including its images, schemes and styles.', confirmLabel: 'Replace' }))) return;
-    this.setState(s => ({ brands: exists ? s.brands.map(x => x.id === b.id ? b : x) : [...s.brands, b], brand: b, assets: { ...s.assets, ...b.assets }, menu: null, wiz: null }), () => { this.saveBrandSoon(); this.toast('Imported brand kit “' + b.name + '”'); });
+    this.setState(s => ({ brands: exists ? s.brands.map(x => x.id === b.id ? b : x) : [...s.brands, b], brand: b, assets: { ...s.assets, ...b.assets }, menu: null, wiz: null }), () => { this.saveBrandSoon(); this.refreshFonts(); this.toast('Imported brand kit “' + b.name + '”'); });
   }
   exportBrandKit = async () => {
     const b = this.state.brand, name = this.IO.safe(b.name) + '-brand-kit.pinwheel';
@@ -215,7 +254,11 @@ export default class Studio extends React.Component {
     catch (err) { this.toast(err.message || 'Could not open that design'); await this.loadRecents(); }
     this.setState({ busy: null });
   };
-  deleteRecent = async id => { await this.DB.deleteRecent(id).catch(() => { }); this.setState(s => ({ recents: s.recents.filter(r => r.id !== id) })); };
+  deleteRecent = async id => {
+    const r = this.state.recents.find(x => x.id === id);
+    if (!(await this.ask({ title: `Remove “${r ? r.name || 'Untitled' : 'this design'}” from recents?`, body: 'It is removed from this device. A .pinwheel file you saved is not affected.', confirmLabel: 'Remove', danger: true }))) return;
+    await this.DB.deleteRecent(id).catch(() => { }); this.setState(s => ({ recents: s.recents.filter(x => x.id !== id) }));
+  };
   clearRecents = async () => { if (!(await this.ask({ title: 'Clear recent designs?', body: 'Every design kept on this device is removed. Files you saved as .pinwheel are not affected.', confirmLabel: 'Clear all', danger: true }))) return; await this.DB.clearRecents().catch(() => { }); this.setState({ recents: [] }); };
 
   /* ---------- infra ---------- */
@@ -270,11 +313,16 @@ export default class Studio extends React.Component {
 
   /* ---------- documents ---------- */
   brandTheme() { const b = this.state.brand, P = this.P; return { ...P.makeTheme({ id: 'brand', name: 'Brand kit', bg: b.bg, ink: b.ink, accent: b.accent, accent2: b.accent2, surface: P.mix(b.bg, 'var(--pw-surface)', .6) }), display: b.heading, body: b.body, pairId: null }; }
+  brandPair() { const b = this.state.brand; return { display: b.heading, body: b.body, dw: this.ONEW.includes(b.heading) ? 400 : 700, upper: false, track: -.01, id: null }; }
+  /** Restyle a built document in the active brand's colours and fonts. In place. */
+  brandify(doc) { this.applyThemeTo(doc, this.brandTheme()); this.applyPairingTo(doc, this.brandPair()); return doc; }
+  /** What a blank design starts from: the brand when one is in use, else a neutral default. */
+  defaultTheme() { if (this.state.brandOn) return this.brandTheme(); const P = this.P, pr = P.PAIRING.editorial; return { ...P.makeTheme(P.PALETTE.paper), display: pr.display, body: pr.body, pairId: pr.id }; }
   newDoc(fmtId, w, h) {
     this.note('format', fmtId, 1);
     const f = this.P.FORMAT[fmtId]; const W = f ? f.w : Math.max(16, Math.min(8000, w | 0)), H = f ? f.h : Math.max(16, Math.min(8000, h | 0));
     this.fileHandle = null;
-    this.openDoc({ name: 'Untitled ' + (f ? f.name : 'design'), w: W, h: H, fmt: f ? f.id : 'custom', theme: this.brandTheme(), created: new Date().toISOString(), pages: [{ id: this.P.nid(), bg: 'var(--pw-surface)', els: [] }] }, {});
+    this.openDoc({ name: 'Untitled ' + (f ? f.name : 'design'), w: W, h: H, fmt: f ? f.id : 'custom', theme: this.defaultTheme(), created: new Date().toISOString(), pages: [{ id: this.P.nid(), bg: 'var(--pw-surface)', els: [] }] }, {});
   }
   openDoc(doc, assets) {
     this.hist = []; this.fut = []; this.dirty = false; if (!doc.id) doc.id = this.B.bid('d');
@@ -285,7 +333,7 @@ export default class Studio extends React.Component {
   // Assets restored from an autosave written before alpha detection existed.
   ensureAlpha(assets) { Object.entries(assets).forEach(([id, a]) => { if (!a || a.alpha !== undefined || !a.src) return; this.IO.hasAlpha(a.src).then(v => this.setState(s => s.assets[id] ? { assets: { ...s.assets, [id]: { ...s.assets[id], alpha: v } } } : null)); }); }
   fromTemplate(desc) {
-    this.note('topic', desc.topic, 1.5); this.note('format', desc.fmt, 1); const b = this.P.build(desc); b.created = new Date().toISOString(); this.fileHandle = null; this.openDoc(b, {}); }
+    this.note('topic', desc.topic, 1.5); this.note('format', desc.fmt, 1); const b = this.P.build(desc); if (this.state.brandOn) this.brandify(b); b.created = new Date().toISOString(); this.fileHandle = null; this.openDoc(b, {}); }
   // Text the user wrote survives the swap: whatever differs from the design's own
   // template goes into the slot with the same role in the new one (title → title,
   // sub → sub …), so "My Shop Sale" stays "My Shop Sale" in every layout.
@@ -293,7 +341,7 @@ export default class Studio extends React.Component {
   async applyTemplate(desc) {
     const edits = this.editedText(); const n = Object.keys(edits).length;
     if (this.dirty && !(await this.ask({ title: 'Switch template?', body: 'You have made changes to this design. The new template replaces its pages' + (n ? `, keeping the text you wrote (${n} field${n > 1 ? 's' : ''}).` : '.') + ' You can undo afterwards.', confirmLabel: 'Switch', cancelLabel: 'Keep my edits', danger: true }))) return;
-    const b = this.P.build(desc); const kept = this.P.carryText(b, edits); this.pushHist();
+    const b = this.P.build(desc); if (this.state.brandOn) this.brandify(b); const kept = this.P.carryText(b, edits); this.pushHist();
     this.setState(s => ({ doc: { ...s.doc, w: b.w, h: b.h, fmt: b.fmt, tpl: b.tpl, theme: b.theme, pages: b.pages, name: s.doc.name.startsWith('Untitled') ? b.name : s.doc.name }, sel: [], page: 0, editingId: null }), () => { this.dirty = false; setTimeout(() => this.fitZoom(), 30); if (n && kept.length < n) this.toast(`Kept ${kept.length} of ${n} edited texts — this layout has fewer slots`); });
   }
   fitZoom = () => { const n = this.canvasEl, d = this.state.doc; if (!n || !d) return; const ph = this.layout === 'phone'; const z = Math.min((n.clientWidth - (ph ? 32 : 100)) / d.w, (n.clientHeight - (ph ? 70 : 110)) / d.h, 3); this.setState({ zoom: Math.max(.04, Math.floor(z * 100) / 100) }); };
@@ -335,23 +383,20 @@ export default class Studio extends React.Component {
     doc.theme = { ...nt, display: old.display, body: old.body, pairId: old.pairId };
   }
   applyPalette(pal) { const t = this.P.makeTheme(pal); this.setDoc(d => this.applyThemeTo(d, t)); }
-  applyPairing(pair) {
-    this.setDoc(d => {
-      const old = d.theme, u = Math.min(d.w, d.h) / 100; const oldP = this.P.PAIRING[old.pairId];
-      d.pages.forEach(p => p.els.forEach(e => {
-        if (e.type === 'chart') e.font = pair.body;
-        if (e.type !== 'text') return;
-        const isD = e.font === old.display && (old.display !== old.body || e.size >= u * 6);
-        if (isD) { e.font = pair.display; e.weight = pair.dw || 700; if (!oldP || e.upper === oldP.upper) e.upper = !!pair.upper; e.ls = pair.track ?? 0; if (pair.lh && e.lh < 1.2) e.lh = pair.lh; }
-        else if (e.font === old.body) { e.font = pair.body; if (this.ONEW.includes(pair.body)) e.weight = 400; }
-      }));
-      d.theme = { ...d.theme, display: pair.display, body: pair.body, pairId: pair.id || null };
-    });
+  applyPairingTo(d, pair) {
+    const old = d.theme, u = Math.min(d.w, d.h) / 100; const oldP = this.P.PAIRING[old.pairId];
+    d.pages.forEach(p => p.els.forEach(e => {
+      if (e.type === 'chart') e.font = pair.body;
+      if (e.type !== 'text') return;
+      const isD = e.font === old.display && (old.display !== old.body || e.size >= u * 6);
+      if (isD) { e.font = pair.display; e.weight = pair.dw || 700; if (!oldP || e.upper === oldP.upper) e.upper = !!pair.upper; e.ls = pair.track ?? 0; if (pair.lh && e.lh < 1.2) e.lh = pair.lh; }
+      else if (e.font === old.body) { e.font = pair.body; if (this.ONEW.includes(pair.body)) e.weight = 400; }
+    }));
+    d.theme = { ...d.theme, display: pair.display, body: pair.body, pairId: pair.id || null };
   }
+  applyPairing(pair) { this.setDoc(d => this.applyPairingTo(d, pair)); }
   applyBrand = () => {
-    const b = this.state.brand; const t = this.brandTheme();
-    this.setDoc(d => this.applyThemeTo(d, t));
-    setTimeout(() => this.applyPairing({ display: b.heading, body: b.body, dw: this.ONEW.includes(b.heading) ? 400 : 700, upper: false, track: -.01, id: null }), 0);
+    this.setDoc(d => this.brandify(d));
     this.toast('Brand applied');
   };
   shuffleStyle = () => { const P = this.P; const pal = P.PALETTES[Math.floor(Math.random() * P.PALETTES.length)], pair = P.PAIRINGS[Math.floor(Math.random() * P.PAIRINGS.length)]; this.applyPalette(pal); setTimeout(() => this.applyPairing(pair), 0); };
@@ -473,7 +518,14 @@ export default class Studio extends React.Component {
     if (!el || el.text === text) return;
     this.setDoc(dd => dd.pages.forEach(p => p.els.forEach(x => { if (x.id === id) x.text = text; })));
   };
-  onHover = id => { if (!this._dragging && this.state.hoverId !== id) this.setState({ hoverId: id }); };
+  // Leaving an element clears the hover after a beat, so the pointer can cross
+  // onto the "Replace image" pill (drawn in the overlay, outside the frame's DOM)
+  // without the pill vanishing underneath it. Entering anything cancels the clear.
+  onHover = id => {
+    if (this._dragging) return; clearTimeout(this._hoverT);
+    if (id) { if (this.state.hoverId !== id) this.setState({ hoverId: id }); }
+    else this._hoverT = setTimeout(() => { if (this.state.hoverId) this.setState({ hoverId: null }); }, 160);
+  };
   startMove(e, sel, pi) {
     const d = this.state.doc, pg = d.pages[pi], z = this.state.zoom, sx = e.clientX, sy = e.clientY;
     const start = pg.els.filter(x => sel.includes(x.id)).map(x => ({ id: x.id, x: x.x, y: x.y }));
@@ -632,7 +684,7 @@ export default class Studio extends React.Component {
     const sink = await IO.openSink(name, type); if (sink === 'cancel') { this.setState({ menu: null, phoneMenu: null }); return; }
     const send = sink ? (blob => sink.write(blob)) : ((blob, n) => IO.deliver(blob, n, doc.name));
     await this.prep('Preparing export…');
-    const opt = { scale: this.state.exportScale, onProgress: t => this.setState({ busy: t }), send };
+    const opt = { scale: this.state.exportScale, onProgress: t => this.setState({ busy: t }), send, fonts: this.state.fonts };
     try {
       const nodes = this.pageNodes(scope);
       if (kind === 'pdf') await IO.exportPDF(nodes, doc, opt);
@@ -653,7 +705,7 @@ export default class Studio extends React.Component {
     }
     await this.prep('Packing .pinwheel file…');
     try {
-      const blob = await IO.packProject({ ...doc, brand: this.B.brandForFile(this.state.brand) }, this.state.assets, this.pageNodes('all')[0]);
+      const blob = await IO.packProject({ ...doc, brand: this.B.brandForFile(this.state.brand) }, this.state.assets, this.pageNodes('all')[0], this.fontsFor(doc));
       if (sink) { await sink.write(blob); this.toast('Saved ' + (sink.handle && sink.handle.name || name)); }
       else { const r = await IO.deliver(blob, name, doc.name); if (r !== 'cancelled') this.toast(r === 'shared' ? 'Shared ' + name : 'Saved ' + name); }
     } catch (err) { console.error(err); this.fileHandle = null; this.toast('Save failed — ' + err.message); }
@@ -675,8 +727,12 @@ export default class Studio extends React.Component {
     this.setState({ busy: 'Opening ' + f.name + '…' });
     try {
       const r = await this.IO.openProject(f);
-      if (r.kind === 'brand') this.importBrandKit(r.brand, r.assets);
-      else { this.fileHandle = handle && typeof handle.createWritable === 'function' ? handle : null; this.openDoc(r.doc, r.assets); this.toast('Opened ' + r.doc.name); }
+      if (r.kind === 'brand') this.importBrandKit(r.brand, r.assets, r.fonts);
+      else {
+        // Fonts that came with the file stay available for the session.
+        if (r.fonts && Object.keys(r.fonts).length) { this._fileFonts = { ...(this._fileFonts || {}), ...Object.fromEntries(Object.values(r.fonts).map(f => [f.family, f])) }; this.refreshFonts(); }
+        this.fileHandle = handle && typeof handle.createWritable === 'function' ? handle : null; this.openDoc(r.doc, r.assets); this.toast('Opened ' + r.doc.name);
+      }
     } catch (err) { console.error(err); this.toast(err.message || 'Could not open that file'); }
     this.setState({ busy: null });
   };
@@ -749,8 +805,11 @@ export default class Studio extends React.Component {
   segStyle(on, grow = true) { return { flex: grow ? '1 1 auto' : 'none', height: 28, padding: '0 9px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? 'var(--pw-surface)' : 'transparent', color: on ? 'var(--pw-ink)' : 'var(--pw-muted)', boxShadow: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', whiteSpace: 'nowrap' }; }
   btnStyle(kind) { return { height: 32, padding: '0 11px', borderRadius: 7, border: kind === 'primary' ? 'none' : '1px solid var(--pw-line-2)', background: kind === 'primary' ? this.CORAL : kind === 'on' ? 'var(--pw-ink)' : 'var(--pw-surface)', color: kind === 'primary' || kind === 'on' ? 'var(--pw-surface)' : kind === 'danger' ? '#B23A22' : 'var(--pw-ink)', fontWeight: 600, fontSize: 13, cursor: 'pointer', flex: kind === 'primary' ? '1 1 100%' : '1 1 auto' }; }
   thumbFor(desc, maxW, maxH) {
-    const key = desc.id + '|' + maxW + '|' + maxH; if (this.thumbCache.has(key)) return this.thumbCache.get(key);
+    const st = this.state, bk = st.brandOn ? `|${st.brand.id}:${st.brand.updated}` : '';
+    const key = desc.id + '|' + maxW + '|' + maxH + bk; if (this.thumbCache.has(key)) return this.thumbCache.get(key);
     let b = this.builtCache.get(desc.id); if (!b) { b = this.P.build(desc); this.builtCache.set(desc.id, b); }
+    if (bk) b = this.brandify(structuredClone(b));
+    if (this.thumbCache.size > 800) this.thumbCache.clear();
     const n = this.R.renderThumb(React.createElement, b, b.pages[0], maxW, maxH, {}); this.thumbCache.set(key, n); return n;
   }
   miniEl(el, box = 48) { const h = React.createElement; return h('div', { style: { position: 'relative', width: box, height: box, pointerEvents: 'none' } }, this.R.renderEl(h, { id: 'mini', rot: 0, opacity: 1, x: (box - el.w) / 2, y: (box - el.h) / 2, ...el }, {})); }
@@ -761,8 +820,20 @@ export default class Studio extends React.Component {
     if (allowNone) out.unshift({ title: 'None', onClick: () => set(null), style: { width: 26, height: 26, borderRadius: 7, border: '1px solid var(--pw-line-strong)', background: 'linear-gradient(135deg, #FFF 45%, #D94B3A 45%, #D94B3A 55%, #FFF 55%)', cursor: 'pointer', padding: 0, outline: !cur ? '2px solid ' + this.CORAL : 'none', outlineOffset: 2 } });
     return out;
   }
+  // A slider's number can be typed. The typed value is not clipped to the slider's
+  // range: the range stretches to include whatever the value is, so a 500 px shadow
+  // is as reachable as a 50 px one.
+  sliderExtras(c) {
+    const st = this.state, key = c.label, ed = st.sliderEdit && st.sliderEdit.key === key ? st.sliderEdit : null;
+    const commit = () => { const e = this.state.sliderEdit; if (!e || e.key !== key) return; this.setState({ sliderEdit: null }); const v = parseFloat(e.text); if (Number.isFinite(v) && v !== c.value) c.onChange({ target: { value: String(v) } }); };
+    return { min: Math.min(c.min, c.value), max: Math.max(c.max, c.value), editing: !!ed, editText: ed ? ed.text : '',
+      startEdit: () => this.setState({ sliderEdit: { key, text: String(Math.round(c.value * 1000) / 1000) } }),
+      onEditChange: e => this.setState({ sliderEdit: { key, text: e.target.value } }),
+      onEditKey: e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } else if (e.key === 'Escape') { e.preventDefault(); this.setState({ sliderEdit: null }); } },
+      commitEdit: commit, selectAll: e => e.target.select() };
+  }
   ctl(c) {
-    const k = c.k; return { label: '', display: '', ...c, hasLabel: !!c.label && k !== 'btns', isSlider: k === 'slider', isNums: k === 'nums', isColor: k === 'color', isSelect: k === 'select', isSeg: k === 'seg', isText: k === 'text', isArea: k === 'area', isBtns: k === 'btns', isNote: k === 'note', gridStyle: { display: 'grid', gridTemplateColumns: `repeat(${c.cols || 2}, minmax(0, 1fr))`, gap: 6 }, selectNode: k === 'select' ? (c.selFont ? this.fontPickerEl('font:el', c.value, c.onPick) : this.selectEl(c.value, c.options, c.onChange, { height: 34, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 8px', fontSize: 13, background: 'var(--pw-surface)', width: '100%' })) : null };
+    const k = c.k; if (k === 'slider') c = { ...c, ...this.sliderExtras(c) }; return { label: '', display: '', ...c, hasLabel: !!c.label && k !== 'btns', isSlider: k === 'slider', isNums: k === 'nums', isColor: k === 'color', isSelect: k === 'select', isSeg: k === 'seg', isText: k === 'text', isArea: k === 'area', isBtns: k === 'btns', isNote: k === 'note', gridStyle: { display: 'grid', gridTemplateColumns: `repeat(${c.cols || 2}, minmax(0, 1fr))`, gap: 6 }, selectNode: k === 'select' ? (c.selFont ? this.fontPickerEl('font:el', c.value, c.onPick) : this.selectEl(c.value, c.options, c.onChange, { height: 34, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 8px', fontSize: 13, background: 'var(--pw-surface)', width: '100%' })) : null };
   }
   selectEl(value, options, onChange, style) {
     const h = React.createElement;
@@ -781,12 +852,14 @@ export default class Studio extends React.Component {
     if (open) {
       const a = st.fontAnchor || { left: 0, top: 0, bottom: 0, width: 260 }, vh = window.innerHeight, up = vh - a.top < 360 && a.bottom > vh - a.top;
       const q = st.fontQ.trim().toLowerCase(), cat = st.fontCat, pick = name => { onPick(name); this.setState({ menu: null }); };
-      const list = P.FONTS.filter(f => (cat === 'all' || f.cat === cat) && (!q || f.name.toLowerCase().includes(q)));
+      const custom = Object.values(st.fonts).map(f => ({ name: f.family, cat: 'brand' })), cats = custom.length ? [P.FONT_CATS[0], ['brand', 'Uploaded'], ...P.FONT_CATS.slice(1)] : P.FONT_CATS;
+      const list = [...custom, ...P.FONTS].filter(f => (cat === 'all' || f.cat === cat) && (!q || f.name.toLowerCase().includes(q)));
       const pos = up ? { bottom: vh - a.bottom + 4, maxHeight: Math.min(460, a.bottom - 16) } : { top: a.top + 4, maxHeight: Math.min(460, vh - a.top - 16) };
-      const width = Math.max(a.width, 300), left = Math.max(8, Math.min(a.left, window.innerWidth - width - 8));
+      const width = Math.max(a.width, 360), left = Math.max(8, Math.min(a.left, window.innerWidth - width - 8));
       kids.push(h('div', { key: 'p', onClick: e => e.stopPropagation(), style: { position: 'fixed', left, width, ...pos, zIndex: 32, display: 'flex', flexDirection: 'column', gap: 6, padding: 8, background: 'var(--pw-surface)', border: '1px solid var(--pw-line)', borderRadius: 10, boxShadow: '0 12px 32px rgba(36,33,29,.18)' } },
         h('input', { key: 'q', autoFocus: true, value: st.fontQ, placeholder: 'Search fonts', onChange: e => this.setState({ fontQ: e.target.value }), onKeyDown: e => { if (e.key === 'Escape') this.setState({ menu: null }); if (e.key === 'Enter' && list.length) pick(list[0].name); }, style: { height: 32, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 10px', fontSize: 13, outline: 'none', background: 'var(--pw-surface)', flex: 'none' } }),
-        h('div', { key: 'c', style: { display: 'flex', flexWrap: 'wrap', gap: 3, background: 'var(--pw-track)', padding: 3, borderRadius: 8, flex: 'none' } }, P.FONT_CATS.map(([id, label]) => h('button', { key: id, onClick: () => this.setState({ fontCat: id }), style: { ...this.segStyle(cat === id), height: 24, fontSize: 12, padding: '0 7px' } }, label))),
+        // One row of chips; it scrolls sideways rather than wrapping into orphans.
+        h('div', { key: 'c', className: 'pw-chips', style: { display: 'flex', gap: 2, background: 'var(--pw-track)', padding: 3, borderRadius: 8, flex: 'none', overflowX: 'auto' } }, cats.map(([id, label]) => h('button', { key: id, onClick: () => this.setState({ fontCat: id }), style: { ...this.segStyle(cat === id, false), height: 24, fontSize: 12, padding: '0 8px' } }, label))),
         h('div', { key: 'l', style: { overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1, minHeight: 0 } },
           list.length ? list.map(f => { const on = f.name === value; return h('button', { key: f.name, onClick: () => pick(f.name), title: f.name, className: on ? undefined : 'pw-h1', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, height: 38, padding: '0 10px', border: 'none', borderRadius: 7, background: on ? 'var(--pw-accent-tint)' : 'transparent', color: 'var(--pw-ink)', cursor: 'pointer', textAlign: 'left', flex: 'none' } },
             h('span', { style: { fontFamily: `'${f.name}'`, fontSize: 17, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, f.name), h('span', { style: { fontSize: 11, color: on ? 'var(--pw-accent-deep)' : 'var(--pw-muted-2)', flex: 'none' } }, on ? '✓' : f.cat)); })
@@ -940,7 +1013,7 @@ export default class Studio extends React.Component {
         out.hoverHint = 'Replace image'; out.hoverTintStyle = { ...out.hoverStyle, outline: 'none', opacity: 1, background: 'rgba(36,33,29,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: h.mask === 'circle' ? '50%' : h.mask === 'rounded' ? Math.max(h.radius || 0, Math.min(h.w, h.h) * .08) * z : (h.radius || 0) * z };
         // The pill is the one part of the overlay that takes the pointer: it opens the
         // file picker for this frame, and keeps the hover alive while the pointer is on it.
-        out.onHoverKeep = () => this.onHover(h.id);
+        out.onHoverKeep = () => this.onHover(h.id); out.onHoverLeave = () => this.onHover(null);
         out.onHoverReplace = e => { e.stopPropagation(); e.preventDefault(); this.replaceTarget = h.id; this.setState({ sel: [h.id], page: pi, editingId: null }); this.imgInput && this.imgInput.click(); };
       }
     } }
@@ -1006,7 +1079,7 @@ export default class Studio extends React.Component {
       repoURL: 'https://github.com/theanam/pinwheel-studio', hasHelp: st.helpOpen, toggleHelp: this.toggleHelp, stopClick: this.stopClick, helpVersion: 'Pinwheel Studio ' + (import.meta.env.VITE_APP_VERSION || '1.0'),
       toggleTheme: this.toggleTheme, themeGlyph: this.isDark() ? '☀' : '☾', themeTitle: this.isDark() ? 'Switch to light mode' : 'Switch to dark mode',
       phone, tablet, desktop: layout === 'desktop',
-      setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, setBrandAssetInput: this.setBrandAssetInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, onBrandAssetFile: this.onBrandAssetFile, openFile: this.openFile,
+      setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, setBrandAssetInput: this.setBrandAssetInput, setFontInput: this.setFontInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, onBrandAssetFile: this.onBrandAssetFile, onFontFile: this.onFontFile, openFile: this.openFile,
       hasWiz: !!st.wiz, wiz: st.ready ? this.wizVals() : null, wizCardStyle: phone ? { position: 'fixed', inset: 0, borderRadius: 0, width: '100%', maxHeight: '100%', padding: '16px 16px calc(16px + env(safe-area-inset-bottom))' } : { width: 'min(720px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 40px)', borderRadius: 16, padding: 24 },
       menuOpen: !!st.menu, closeMenus: () => this.setState({ menu: null }) };
     if (!st.ready) return base;
@@ -1035,7 +1108,7 @@ export default class Studio extends React.Component {
         hasRecents: st.recents.length > 0, recentsCount: `${st.recents.length} on this device`, clearRecents: this.clearRecents,
         recents: st.recents.slice(0, st.recentsAll ? this.DB.RECENTS_MAX : recMax).map(r => {
           const ar = (r.w || 1) / (r.h || 1); const w = Math.round(Math.max(recH * .6, Math.min(recH * ar, recH * 2.2)));
-          const key = `rec|${r.id}|${r.updated}|${w}|${recH}`; let thumb = this.thumbCache.get(key); if (!thumb && this.thumbCache.size > 800) this.thumbCache.clear();
+          const key = `rec|${r.id}|${r.updated}|${w}|${recH}`; let thumb = this.thumbCache.get(key);
           if (!thumb) { try { thumb = R.renderThumb(h, { w: r.w, h: r.h }, r.preview.page, w, recH, { assets: r.preview.assets || {} }); } catch (e) { thumb = null; } this.thumbCache.set(key, thumb); }
           const f = P.FORMAT[r.fmt];
           return { name: r.name || 'Untitled', meta: `${f ? f.name : `${r.w} × ${r.h}`}${r.pages > 1 ? ` · ${r.pages} pages` : ''} · ${this.B.ago(r.updated)}`, title: 'Open ' + (r.name || 'Untitled'), thumb, onClick: () => this.openRecent(r.id), onDelete: e => { e.stopPropagation(); this.deleteRecent(r.id); },
@@ -1044,9 +1117,13 @@ export default class Studio extends React.Component {
         }),
         recentsHasMore: st.recents.length > recMax, recentsMoreLabel: st.recentsAll ? 'Show fewer' : `All ${st.recents.length} →`, toggleRecents: () => this.setState(s => ({ recentsAll: !s.recentsAll })),
         recentsRowStyle: phone ? { display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 6, scrollSnapType: 'x proximity' } : { display: 'flex', flexWrap: 'wrap', gap: '22px 18px', alignItems: 'flex-start' },
-        // Brands: switch, edit, or build a new one.
-        brandCards: st.brands.map(x => { const on = x.id === b.id; const logo = x.logo && x.assets[x.logo]; return { name: x.name, on, hint: on ? 'Active brand' : 'Tap to use', hasLogo: !!logo, logoStyle: { width: 40, height: 40, borderRadius: 8, flex: 'none', background: x.bg, backgroundImage: logo ? `url("${logo.src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', border: '1px solid var(--pw-line-soft)' }, sw: [x.bg, x.ink, x.accent, x.accent2].map(c => ({ flex: 1, background: c })), onClick: () => this.activateBrand(x.id), onEdit: e => { e.stopPropagation(); this.startWizard(x.id); },
+        // Brands: none (templates in their own style), or one whose colours and fonts
+        // restyle every template preview and every design opened from here.
+        brandCards: st.brands.map(x => { const on = st.brandOn && x.id === b.id; const logo = x.logo && x.assets[x.logo]; return { name: x.name, on, hint: on ? 'Previewing templates in this brand' : 'Tap to preview templates in this brand', hasLogo: !!logo, logoStyle: { width: 40, height: 40, borderRadius: 8, flex: 'none', background: x.bg, backgroundImage: logo ? `url("${logo.src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', border: '1px solid var(--pw-line-soft)' }, sw: [x.bg, x.ink, x.accent, x.accent2].map(c => ({ flex: 1, background: c })), onClick: () => this.useBrand(x.id), onEdit: e => { e.stopPropagation(); this.startWizard(x.id); },
           style: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px 10px 10px', borderRadius: 12, border: '1px solid ' + (on ? 'var(--pw-accent-line)' : 'var(--pw-line)'), background: on ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', cursor: 'pointer', textAlign: 'left', color: 'var(--pw-ink)', flex: 'none', minWidth: phone ? 200 : 220, scrollSnapAlign: 'start' } }; }),
+        noBrandOn: !st.brandOn, useNoBrand: () => this.useBrand(null),
+        noBrandStyle: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 10px 10px', borderRadius: 12, border: '1px solid ' + (!st.brandOn ? 'var(--pw-accent-line)' : 'var(--pw-line)'), background: !st.brandOn ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', cursor: 'pointer', textAlign: 'left', color: 'var(--pw-ink)', flex: 'none', scrollSnapAlign: 'start' },
+        brandNote: st.brandOn ? `Previewing in ${b.name}’s colours and fonts` : '', clearBrandNote: () => this.useBrand(null),
         newBrand: () => this.startWizard(), importBrand: this.openFile,
         fmts: (st.fmtsAll ? P.FORMATS : P.FORMATS.slice(0, 12)).map(f => { const s = 28 / Math.max(f.w, f.h); return { name: f.name, dims: `${f.w} × ${f.h}`, onClick: () => this.newDoc(f.id), iconStyle: { width: Math.max(6, f.w * s), height: Math.max(6, f.h * s), border: '1.5px solid var(--pw-ink)', borderRadius: 2 } }; }),
         fmtsHasMore: P.FORMATS.length > 12, fmtsMoreLabel: st.fmtsAll ? 'Show fewer' : `All ${P.FORMATS.length} formats →`, toggleFmts: () => this.setState(s => ({ fmtsAll: !s.fmtsAll })),
@@ -1178,6 +1255,10 @@ export default class Studio extends React.Component {
         brandPals: b.palettes.map(p => ({ name: p.name, sw: [p.bg, p.ink, p.accent, p.accent2].map(c => ({ flex: 1, background: c })), onApply: () => this.applyPalette(p), onUse: () => { this.setBrand({ bg: p.bg, ink: p.ink, accent: p.accent, accent2: p.accent2 }); this.toast('Brand colours updated'); }, onRemove: () => this.setBrand({ palettes: b.palettes.filter(x => x.id !== p.id) }), style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 8, border: '1px solid ' + (t.id === p.id ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 9 } })),
         noPals: !b.palettes.length, savePalette: this.savePaletteToBrand,
         brandFonts: [['heading', 'Headings'], ['body', 'Body']].map(([k, l]) => ({ label: l, value: b[k], selectNode: this.fontPickerEl('font:' + k, b[k], val => setB(k, val), true) })),
+        uploadFont: this.uploadFont, noFonts: !Object.keys(b.fonts || {}).length,
+        brandFontItems: Object.entries(b.fonts || {}).map(([id, f]) => ({ label: f.family, file: f.name, sampleStyle: { fontFamily: `'${f.family}'`, fontSize: 20, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }, isHeading: b.heading === f.family, isBody: b.body === f.family,
+          onHeading: () => setB('heading', f.family), onBody: () => setB('body', f.family), onRemove: () => this.removeBrandFont(id),
+          hStyle: { ...small, flex: 'none', padding: '0 8px', background: b.heading === f.family ? 'var(--pw-accent-tint)' : 'var(--pw-surface)' }, bStyle: { ...small, flex: 'none', padding: '0 8px', background: b.body === f.family ? 'var(--pw-accent-tint)' : 'var(--pw-surface)' } })),
         brandStyles: b.textStyles.map(sty => { const pr = this.styleProps(sty, 22); const css = R.textStyle({ ...pr, size: 22, lh: 1, align: 'center' }); return { label: sty.name, onClick: () => this.applyTextStyle(sty), onRemove: e => { e.stopPropagation(); this.setBrand({ textStyles: b.textStyles.filter(x => x.id !== sty.id) }); }, style: { ...css, display: 'block', padding: pr.bg ? '2px 8px' : 0, borderRadius: pr.bg ? 6 : 0, whiteSpace: 'nowrap' } }; }),
         noStyles: !b.textStyles.length, saveStyle: this.saveTextStyleToBrand, canSaveStyle, saveStyleStyle: { ...small, flex: 'none', opacity: canSaveStyle ? 1 : .5 },
         hasLogo: !!(b.logo && st.assets[b.logo]), logoStyle: { width: '100%', height: '100%', backgroundImage: b.logo && st.assets[b.logo] ? `url("${st.assets[b.logo].src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }, addLogo: this.addLogo,

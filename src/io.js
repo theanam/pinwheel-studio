@@ -1,5 +1,6 @@
 // Pinwheel Studio — I/O: export (PDF/PNG/JPG/SVG), native .pinwheel files, on-device background removal.
 import { FONTS, fontURL } from './presets.js';
+import { FONT_MIME, FONT_FORMAT } from './brand.js';
 
 // Self-hosting mode (spec §3 and §12): `npm run vendor` downloads the pinned
 // libraries and the model into public/vendor and turns on VITE_VENDOR, after which
@@ -99,8 +100,11 @@ const fontCache = new Map();
 export function usedFonts(doc) {
   const s = new Set(); doc.pages.forEach(p => p.els.forEach(e => { if (e.font) s.add(e.font); })); return [...s];
 }
-async function fontCSS(families) {
+/** @font-face rules for the families a design uses: Google fonts fetched and inlined,
+ *  uploaded fonts (`custom`, family → { src, mime }) written straight from their data URL. */
+async function fontCSS(families, custom = {}) {
   const parts = await Promise.all(families.map(async fam => {
+    if (custom[fam] && custom[fam].src) return `@font-face { font-family: '${fam.replace(/'/g, '')}'; src: url(${custom[fam].src})${FONT_FORMAT[custom[fam].mime] ? ` format('${FONT_FORMAT[custom[fam].mime]}')` : ''}; font-display: block; }`;
     if (fontCache.has(fam)) return fontCache.get(fam);
     const f = FONTS.find(x => x.name === fam); if (!f) return '';
     try {
@@ -122,8 +126,8 @@ export async function pageToCanvas(node, doc, scale = 2, css) {
   return h2i.toCanvas(node, { width: doc.w, height: doc.h, pixelRatio: scale, fontEmbedCSS: css, filter: skipPlaceholders, cacheBust: false, style: { transform: 'none' } });
 }
 
-export async function exportPDF(nodes, doc, { scale = 2, onProgress, send = download } = {}) {
-  const [jsPDF, css] = await Promise.all([lib('jspdf'), fontCSS(usedFonts(doc))]);
+export async function exportPDF(nodes, doc, { scale = 2, onProgress, send = download, fonts = {} } = {}) {
+  const [jsPDF, css] = await Promise.all([lib('jspdf'), fontCSS(usedFonts(doc), fonts)]);
   const pdf = new jsPDF({ orientation: doc.w >= doc.h ? 'l' : 'p', unit: 'px', format: [doc.w, doc.h], hotfixes: ['px_scaling'], compress: true });
   for (let i = 0; i < nodes.length; i++) {
     onProgress && onProgress(`Rendering page ${i + 1} of ${nodes.length}…`);
@@ -135,8 +139,8 @@ export async function exportPDF(nodes, doc, { scale = 2, onProgress, send = down
   return send(pdf.output('blob'), safe(doc.name) + '.pdf');
 }
 
-export async function exportImages(nodes, doc, { fmt = 'png', scale = 2, onProgress, send = download } = {}) {
-  const css = await fontCSS(usedFonts(doc));
+export async function exportImages(nodes, doc, { fmt = 'png', scale = 2, onProgress, send = download, fonts = {} } = {}) {
+  const css = await fontCSS(usedFonts(doc), fonts);
   const mime = fmt === 'jpg' ? 'image/jpeg' : 'image/png';
   const blobs = [];
   for (let i = 0; i < nodes.length; i++) {
@@ -150,8 +154,8 @@ export async function exportImages(nodes, doc, { fmt = 'png', scale = 2, onProgr
   return send(await z.generateAsync({ type: 'blob', mimeType: 'application/zip' }), `${safe(doc.name)}-${fmt}.zip`);
 }
 
-export async function exportSVG(nodes, doc, { send = download } = {}) {
-  const [h2i, css] = await Promise.all([lib('h2i'), fontCSS(usedFonts(doc))]);
+export async function exportSVG(nodes, doc, { send = download, fonts = {} } = {}) {
+  const [h2i, css] = await Promise.all([lib('h2i'), fontCSS(usedFonts(doc), fonts)]);
   const out = [];
   for (const n of nodes) out.push(await h2i.toSvg(n, { width: doc.w, height: doc.h, fontEmbedCSS: css, filter: skipPlaceholders, style: { transform: 'none' } }));
   const svgBlob = u => new Blob([decodeURIComponent(u.split(',')[1])], { type: 'image/svg+xml' });
@@ -182,6 +186,19 @@ async function packAssets(z, ids, assets) {
   }
   return index;
 }
+async function packFonts(z, fonts) {
+  const index = {};
+  for (const [id, f] of Object.entries(fonts || {})) {
+    if (!f || !f.src) continue; const blob = await dataURLToBlob(f.src); const ext = Object.keys(FONT_MIME).find(k => FONT_MIME[k] === (f.mime || blob.type)) || 'ttf'; const path = `fonts/${id}.${ext}`;
+    z.file(path, blob); index[id] = { path, mime: f.mime || blob.type, name: f.name || id, family: f.family, bytes: blob.size };
+  }
+  return index;
+}
+async function unpackFonts(z, index) {
+  const fonts = {};
+  for (const [id, f] of Object.entries(index || {})) { const file = z.file(f.path); if (!file) continue; const b = await file.async('blob'); fonts[id] = { name: f.name, family: f.family, mime: f.mime, src: await blobToDataURL(new Blob([b], { type: f.mime })) }; }
+  return fonts;
+}
 async function unpackAssets(z, index) {
   const assets = {};
   for (const [id, a] of Object.entries(index || {})) { const f = z.file(a.path); if (!f) continue; const b = await f.async('blob'); const src = await blobToDataURL(new Blob([b], { type: a.mime })); assets[id] = { name: a.name, w: a.w, h: a.h, src, alpha: await hasAlpha(src, a.mime) }; }
@@ -189,23 +206,27 @@ async function unpackAssets(z, index) {
 }
 const manifestBase = (kind, name) => ({ format: 'pinwheel', kind, version: FORMAT_VERSION, app: 'Pinwheel Studio', modified: new Date().toISOString(), name });
 /** Build the .pinwheel blob for a design. */
-export async function packProject(doc, assets, thumbNode) {
+export async function packProject(doc, assets, thumbNode, fonts = {}) {
   const JSZip = await lib('jszip'); const z = new JSZip();
   const used = new Set(); doc.pages.forEach(p => { if (p.bgAsset) used.add(p.bgAsset); p.els.forEach(e => { if (e.asset) used.add(e.asset); if (e.origAsset) used.add(e.origAsset); }); });
   if (doc.brand && doc.brand.logo) used.add(doc.brand.logo);
   const manifest = { ...manifestBase('design', doc.name), created: doc.created || new Date().toISOString(), size: { w: doc.w, h: doc.h, unit: 'px' }, pages: doc.pages.length, assets: {} };
   manifest.assets = await packAssets(z, used, assets);
+  // Uploaded fonts the design uses travel in fonts/ (spec §5); Google fonts stay by name.
+  const usedFam = new Set(usedFonts(doc)); const useFonts = Object.fromEntries(Object.entries(fonts).filter(([, f]) => f && usedFam.has(f.family)));
+  if (Object.keys(useFonts).length) manifest.fonts = await packFonts(z, useFonts);
   z.file('manifest.json', JSON.stringify(manifest, null, 2));
   z.file('document.json', JSON.stringify(doc, null, 2));
   if (thumbNode) { try { const cv = await pageToCanvas(thumbNode, doc, Math.min(1, 480 / Math.max(doc.w, doc.h))); z.file('thumbnail.png', await new Promise(r => cv.toBlob(r, 'image/png'))); } catch (e) { } }
   return z.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: PINWHEEL_MIME });
 }
-export async function saveProject(doc, assets, thumbNode, send = download) { return send(await packProject(doc, assets, thumbNode), safe(doc.name) + '.pinwheel'); }
+export async function saveProject(doc, assets, thumbNode, send = download, fonts) { return send(await packProject(doc, assets, thumbNode, fonts), safe(doc.name) + '.pinwheel'); }
 /** Build the .pinwheel blob for a brand kit: colours, fonts, schemes, text styles and every brand asset. */
 export async function packBrandKit(brand, brandJSON) {
   const JSZip = await lib('jszip'); const z = new JSZip();
   const manifest = { ...manifestBase('brand', brand.name), created: new Date(brand.created || Date.now()).toISOString(), assets: {} };
   manifest.assets = await packAssets(z, Object.keys(brand.assets || {}), brand.assets || {});
+  if (Object.keys(brand.fonts || {}).length) manifest.fonts = await packFonts(z, brand.fonts);
   z.file('manifest.json', JSON.stringify(manifest, null, 2));
   z.file('brand.json', JSON.stringify(brandJSON, null, 2));
   return z.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: PINWHEEL_MIME });
@@ -221,14 +242,34 @@ export async function openProject(file) {
   const kind = man.kind || 'design';
   if (kind === 'brand') {
     const bf = z.file('brand.json'); if (!bf) throw new Error('This brand kit has no brand.json');
-    return { kind, brand: JSON.parse(await bf.async('string')), assets: await unpackAssets(z, man.assets), manifest: man };
+    return { kind, brand: JSON.parse(await bf.async('string')), assets: await unpackAssets(z, man.assets), fonts: await unpackFonts(z, man.fonts), manifest: man };
   }
   if (kind !== 'design') throw new Error(`Pinwheel Studio cannot open a "${kind}" file`);
   const df = z.file('document.json'); if (!df) throw new Error('This file has no document.json');
   const doc = JSON.parse(await df.async('string'));
-  return { kind, doc: migrate(doc, man.version), assets: await unpackAssets(z, man.assets), manifest: man };
+  return { kind, doc: migrate(doc, man.version), assets: await unpackAssets(z, man.assets), fonts: await unpackFonts(z, man.fonts), manifest: man };
 }
 function migrate(doc, v) { return doc; }
+
+/* ---------- uploaded fonts ---------- */
+/** Read a font file (TTF, OTF, WOFF, WOFF2) as a data URL with its MIME type. */
+export async function readFontFile(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase(); const mime = FONT_MIME[ext];
+  if (!mime) throw new Error('Use a .ttf, .otf, .woff or .woff2 file');
+  const src = await blobToDataURL(new Blob([await file.arrayBuffer()], { type: mime }));
+  return { name: file.name, mime, src };
+}
+const registered = new Map();
+/** Make an uploaded font available to the page under `family`. Idempotent. */
+export async function registerFont(family, src, mime) {
+  if (!family || !src || typeof FontFace === 'undefined') return false;
+  if (registered.get(family) === src) return true;
+  try {
+    const old = registered.has(family) && [...document.fonts].find(f => f.family === family || f.family === `"${family}"`); if (old) document.fonts.delete(old);
+    const face = new FontFace(family, `url(${src})${FONT_FORMAT[mime] ? ` format('${FONT_FORMAT[mime]}')` : ''}`, { display: 'block' });
+    await face.load(); document.fonts.add(face); registered.set(family, src); return true;
+  } catch (e) { console.warn('Could not load font', family, e); return false; }
+}
 
 /* ---------- images ---------- */
 export function loadImage(src) { return new Promise((res, rej) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src; }); }

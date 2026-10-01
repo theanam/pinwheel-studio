@@ -14,7 +14,7 @@ export const bid = (p = 'b') => p + Date.now().toString(36) + (++_n).toString(36
 /** A fresh brand with every field present. `partial` overrides the defaults. */
 export function newBrand(partial = {}) {
   const now = Date.now();
-  return { id: bid(), name: 'My brand', created: now, updated: now, ...DEFAULT_BRAND, assets: {}, palettes: [], textStyles: [], ...partial };
+  return { id: bid(), name: 'My brand', created: now, updated: now, ...DEFAULT_BRAND, assets: {}, fonts: {}, palettes: [], textStyles: [], ...partial };
 }
 
 /** Fill in whatever an older record (the v1 localStorage kit) is missing. */
@@ -22,6 +22,7 @@ export function migrateBrand(b) {
   if (!b || typeof b !== 'object') return newBrand();
   const out = { ...newBrand(), ...b };
   if (!out.assets || typeof out.assets !== 'object') out.assets = {};
+  if (!out.fonts || typeof out.fonts !== 'object') out.fonts = {};
   if (!Array.isArray(out.palettes)) out.palettes = [];
   if (!Array.isArray(out.textStyles)) out.textStyles = [];
   if (out.logo && !out.assets[out.logo]) out.logo = null;
@@ -40,16 +41,33 @@ export const brandAssetIds = b => [...new Set([...(b.logo ? [b.logo] : []), ...O
 /** brand.json inside a brand-kit file: everything except the asset bytes, which
  *  live in assets/ and are indexed by the manifest. */
 export function brandForKit(b) {
-  const { assets, ...rest } = b;
-  return { ...rest, assets: Object.fromEntries(Object.entries(assets || {}).map(([id, a]) => [id, { name: a.name, w: a.w, h: a.h, alpha: !!a.alpha }])) };
+  const { assets, fonts, ...rest } = b;
+  return { ...rest, assets: Object.fromEntries(Object.entries(assets || {}).map(([id, a]) => [id, { name: a.name, w: a.w, h: a.h, alpha: !!a.alpha }])),
+    fonts: Object.fromEntries(Object.entries(fonts || {}).map(([id, f]) => [id, { name: f.name, family: f.family, mime: f.mime }])) };
 }
 
 /** Rebuild a brand from brand.json and the decoded assets of a kit file. */
-export function brandFromKit(json, assets) {
-  const inline = {};
+export function brandFromKit(json, assets, fonts = {}) {
+  const inline = {}, inlineFonts = {};
   for (const [id, meta] of Object.entries(json.assets || {})) if (assets[id]) inline[id] = { ...meta, ...assets[id] };
-  return migrateBrand({ ...json, assets: inline });
+  for (const [id, meta] of Object.entries(json.fonts || {})) if (fonts[id]) inlineFonts[id] = { ...meta, ...fonts[id] };
+  return migrateBrand({ ...json, assets: inline, fonts: inlineFonts });
 }
+
+/* ---------- uploaded fonts ---------- */
+export const FONT_MIME = { ttf: 'font/ttf', otf: 'font/otf', woff: 'font/woff', woff2: 'font/woff2' };
+export const FONT_FORMAT = { 'font/ttf': 'truetype', 'font/otf': 'opentype', 'font/woff': 'woff', 'font/woff2': 'woff2' };
+/** A CSS family name from a font file name: "Brand-Sans_Bold.woff2" → "Brand Sans Bold",
+ *  made unique against the names already in use. */
+export function fontFamilyFrom(fileName, taken = []) {
+  let base = String(fileName || 'Font').replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/[^\w ]/g, '') || 'Font';
+  base = base.replace(/\b\w/g, ch => ch.toUpperCase());
+  const used = new Set(taken.map(t => t.toLowerCase())); let name = base, n = 2;
+  while (used.has(name.toLowerCase())) name = `${base} ${n++}`;
+  return name;
+}
+/** Every uploaded font across all brands, by family: the editor's font registry. */
+export function allFonts(brands) { const out = {}; for (const b of brands) for (const f of Object.values(b.fonts || {})) if (f.family && f.src && !out[f.family]) out[f.family] = f; return out; }
 
 /** A palette entry for the brand's saved colour schemes. */
 export const paletteFrom = (t, name) => ({ id: bid('p'), name: name || 'Scheme', bg: t.bg, ink: t.ink, accent: t.accent, accent2: t.accent2 });

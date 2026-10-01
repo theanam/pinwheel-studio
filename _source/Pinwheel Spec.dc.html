@@ -162,7 +162,7 @@ northwind-brand-kit.pinwheel             kind "brand"
           <li><b>How files leave the app.</b> Desktop Chromium gets the File System Access API: a save dialog, and a handle so Save writes back to the file that was opened. Phones and tablets get the Web Share API, which hands the finished file to the share sheet. Everywhere else the file is a download. Saving never needs a server.</li>
           <li><b>Newer files</b> open read-only with a warning rather than being silently corrupted.</li>
           <li><b>Garbage collection.</b> Only assets that are referenced get written, so deleted uploads never bloat a file.</li>
-          <li><b>Fonts are referenced by family name</b>, not embedded, because they're all OFL Google Fonts. v1.1 adds optional <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">fonts/</code> for user-uploaded fonts.</li>
+          <li><b>Google Fonts are referenced by family name</b>, not embedded, because they're all OFL. Fonts the user uploaded to a brand travel as files in <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">fonts/</code>, indexed by the manifest: a design carries the ones it uses, a brand kit all of its own.</li>
           <li><b>MIME type</b> <code style="font-family:'IBM Plex Mono', monospace; font-size:14px">application/vnd.pinwheel+zip</code>. The PWA registers a file handler so double-clicking a file opens the studio.</li>
         </ul>
       </section>

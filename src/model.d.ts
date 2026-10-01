@@ -78,12 +78,22 @@ export interface BrandKit extends BrandColors {
 /** A brand as stored on the device and packed into a brand-kit file. Several can
  *  coexist; one is active. `assets` is the brand's own image library (the logo is
  *  one of them), inline in IndexedDB and written to assets/ in a kit file. */
+/** A font file the user uploaded. `family` is the CSS name text elements refer to. */
+export interface CustomFont {
+  name: string;
+  family: string;
+  mime: 'font/ttf' | 'font/otf' | 'font/woff' | 'font/woff2';
+  /** Data URL of the file; absent in brand.json, where the bytes live in fonts/. */
+  src?: string;
+}
+
 export interface Brand extends BrandKit {
   id: string;
   name: string;
   created: number;
   updated: number;
   assets: Record<AssetId, Asset>;
+  fonts: Record<string, CustomFont>;
   palettes: BrandPalette[];
   textStyles: BrandTextStyle[];
 }
@@ -286,6 +296,8 @@ export interface ManifestBase {
   modified: ISODate;
   name: string;
   assets: AssetIndex;
+  /** Uploaded fonts in fonts/: a design carries the ones it uses, a brand kit all of its own. */
+  fonts?: Record<string, { path: string; mime: string; name: string; family: string; bytes: number }>;
 }
 
 /** A design: document.json plus assets/ and thumbnail.png. */

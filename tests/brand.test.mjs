@@ -1,6 +1,6 @@
 // node tests/brand.test.mjs — brand kits, logo palettes and the recents trim, all pure.
 import assert from 'node:assert/strict';
-import { newBrand, migrateBrand, brandForFile, brandForKit, brandFromKit, paletteFrom, textStyleFrom, ago, DEFAULT_BRAND } from '../src/brand.js';
+import { newBrand, migrateBrand, brandForFile, brandForKit, brandFromKit, paletteFrom, textStyleFrom, ago, DEFAULT_BRAND, fontFamilyFrom, allFonts } from '../src/brand.js';
 import { dominantColors, kitsFromColors, kitsFromPixels, ensureContrast, hsl } from '../src/palette.js';
 import { beyond, RECENTS_MAX } from '../src/store.js';
 import { contrast, makeTheme, catalog, build, textByKey, editedText, carryText, descFor } from '../src/presets.js';
@@ -43,6 +43,19 @@ assert.ok(textStyleFrom({ ...el, shadow: true }, theme).softShadow);
 const now = Date.parse('2026-10-01T12:00:00Z');
 assert.equal(ago(now - 20e3, now), 'just now'); assert.equal(ago(now - 5 * 60e3, now), '5 min ago'); assert.equal(ago(now - 3 * 3600e3, now), '3 h ago');
 assert.equal(ago(now - 30 * 3600e3, now), 'yesterday'); assert.equal(ago(now - 3 * 86400e3, now), '3 days ago'); assert.equal(ago(now - 15 * 86400e3, now), '2 wk ago');
+
+/* ---------- uploaded fonts ---------- */
+assert.equal(fontFamilyFrom('Brand-Sans_Bold.woff2'), 'Brand Sans Bold');
+assert.equal(fontFamilyFrom('inter.ttf', ['Inter']), 'Inter 2');
+assert.equal(fontFamilyFrom('.ttf'), 'Font'); assert.equal(fontFamilyFrom('weird*name!.otf'), 'Weirdname');
+const fb = newBrand({ name: 'F', fonts: { f1: { name: 'Brand Sans.woff2', family: 'Brand Sans', mime: 'font/woff2', src: 'data:font/woff2;base64,AAAA' } } });
+assert.ok(fb.fonts && migrateBrand({}).fonts, 'brands carry a fonts map');
+const fkit = brandForKit(fb);
+assert.equal(fkit.fonts.f1.src, undefined); assert.equal(fkit.fonts.f1.family, 'Brand Sans');
+const fback = brandFromKit(JSON.parse(JSON.stringify(fkit)), {}, { f1: { src: 'data:font/woff2;base64,AAAA' } });
+assert.equal(fback.fonts.f1.src, 'data:font/woff2;base64,AAAA'); assert.equal(fback.fonts.f1.mime, 'font/woff2');
+assert.deepEqual(Object.keys(allFonts([fb, newBrand(), fb])), ['Brand Sans'], 'registry lists each family once');
+assert.deepEqual(brandFromKit(fkit, {}, {}).fonts, {}, 'a kit missing the font bytes drops the font');
 
 /* ---------- recents trim ---------- */
 const metas = Array.from({ length: 105 }, (_, i) => ({ id: 'd' + i, updated: 1000 + i }));
