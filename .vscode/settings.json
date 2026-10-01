@@ -1,0 +1,23 @@
+{
+  // Peacock: a teal frame so this window is easy to spot among others.
+  "peacock.color": "#0E7C7B",
+  "workbench.colorCustomizations": {
+    "activityBar.background": "#0E7C7B",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBar.activeBorder": "#f6f6f6",
+    "activityBarBadge.background": "#b8f2f1",
+    "activityBarBadge.foreground": "#15202b",
+    "titleBar.activeBackground": "#0E7C7B",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#0E7C7B99",
+    "titleBar.inactiveForeground": "#e7e7e799",
+    "statusBar.background": "#0a5a59",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#0E7C7B",
+    "statusBarItem.remoteBackground": "#0a5a59",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "sash.hoverBorder": "#0E7C7B"
+  }
+}
