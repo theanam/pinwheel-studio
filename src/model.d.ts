@@ -138,6 +138,8 @@ export interface ImageElement extends BaseElement {
   asset?: AssetId;
   /** The pre-cutout original, kept so background removal is reversible. */
   origAsset?: AssetId;
+  /** Edge softness of the cutout in px, applied when the background was removed. */
+  feather?: number;
   mask: 'none' | 'rounded' | 'circle' | 'arch';
   radius: number;
   /** Focus point, in per cent of the frame. */

@@ -173,7 +173,11 @@ async function fetchModel(onProgress) {
   }
   throw new Error('Could not download the background-removal model');
 }
-export async function removeBackground(src, onProgress) {
+// Masks are cached per source image so the edge can be re-feathered without running
+// the model again. A handful of entries is plenty; they are 320×320 canvases.
+const maskCache = new Map();
+async function segment(src, onProgress) {
+  if (maskCache.has(src)) return maskCache.get(src);
   const ort = await lib('ort');
   ort.env.wasm.wasmPaths = ORT_WASM; ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1;
   if (!session) { const buf = await fetchModel(onProgress); onProgress && onProgress('Starting model…'); session = await ort.InferenceSession.create(buf, { executionProviders: ['wasm'] }); }
@@ -188,7 +192,24 @@ export async function removeBackground(src, onProgress) {
   const mc = document.createElement('canvas'); mc.width = mc.height = S; const mx2 = mc.getContext('2d'); const md = mx2.createImageData(S, S);
   for (let i = 0; i < S * S; i++) { let a = (d[i] - mn) / (mx - mn + 1e-8); a = Math.min(1, Math.max(0, (a - .08) / .84)); md.data[i * 4 + 3] = a * 255; }
   mx2.putImageData(md, 0, 0);
-  const W = img.naturalWidth, H = img.naturalHeight; const fc = document.createElement('canvas'); fc.width = W; fc.height = H; const fx = fc.getContext('2d');
-  fx.drawImage(img, 0, 0); fx.globalCompositeOperation = 'destination-in'; fx.imageSmoothingQuality = 'high'; fx.drawImage(mc, 0, 0, W, H);
+  if (maskCache.size > 8) maskCache.delete(maskCache.keys().next().value);
+  maskCache.set(src, mc); return mc;
+}
+/**
+ * Cut the subject out of an image. `feather` is the softness of the edge in output
+ * pixels: the mask is blurred by that radius before it is applied, so 0 keeps the
+ * model's own edge and larger values blend the subject into whatever sits behind it.
+ */
+export async function removeBackground(src, onProgress, { feather = 0 } = {}) {
+  const [mc, img] = await Promise.all([segment(src, onProgress), loadImage(src)]);
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const S = mc.width, f = Math.max(0, +feather || 0);
+  // Blur at full output size so the feather is in output pixels, with a margin so
+  // the blur does not pick up the transparent canvas edge and eat the subject.
+  const pad = Math.ceil(f * 3), bc = document.createElement('canvas'); bc.width = W + pad * 2; bc.height = H + pad * 2; const bx = bc.getContext('2d');
+  bx.imageSmoothingQuality = 'high'; if (f) bx.filter = `blur(${f}px)`;
+  bx.drawImage(mc, 0, 0, S, S, pad, pad, W, H);
+  const fc = document.createElement('canvas'); fc.width = W; fc.height = H; const fx = fc.getContext('2d');
+  fx.drawImage(img, 0, 0); fx.globalCompositeOperation = 'destination-in'; fx.drawImage(bc, -pad, -pad);
   return { src: fc.toDataURL('image/png'), w: W, h: H, alpha: true };
 }

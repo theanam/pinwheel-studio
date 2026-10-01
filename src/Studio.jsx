@@ -471,13 +471,29 @@ export default class Studio extends React.Component {
     const el = this.selEls()[0]; if (!el || !el.asset) return;
     this.setState({ busy: 'Loading on-device model…' });
     try {
-      const r = await this.IO.removeBackground(this.state.assets[el.asset].src, t => this.setState({ busy: t }));
+      const feather = el.feather ?? 0;
+      const r = await this.IO.removeBackground(this.state.assets[el.asset].src, t => this.setState({ busy: t }), { feather });
       const id = 'a' + this.P.nid(); this.setState(s => ({ assets: { ...s.assets, [id]: { ...r, name: 'cutout.png' } }, uploads: [id, ...s.uploads] }));
-      this.setDoc(d => d.pages.forEach(p => p.els.forEach(x => { if (x.id === el.id) { x.origAsset = x.origAsset || x.asset; x.asset = id; } })));
+      this.setDoc(d => d.pages.forEach(p => p.els.forEach(x => { if (x.id === el.id) { x.origAsset = x.origAsset || x.asset; x.asset = id; x.feather = feather; } })));
       this.toast('Background removed on this device');
     } catch (err) { console.error(err); this.toast(err.message || 'Background removal failed'); }
     this.setState({ busy: null });
   };
+  // Feathering re-composites the cached mask over the original at the new softness and
+  // swaps the cutout's pixels in place, so the document only records the number.
+  // Debounced: the slider fires continuously and compositing a full-size image is
+  // tens of milliseconds.
+  setFeather(el, v) {
+    this.patchSel({ feather: v }, 'feather');
+    clearTimeout(this._ft);
+    this._ft = setTimeout(async () => {
+      const cur = this.pg && this.pg.els.find(x => x.id === el.id); const orig = cur && cur.origAsset && this.state.assets[cur.origAsset]; if (!cur || !orig) return;
+      try {
+        const r = await this.IO.removeBackground(orig.src, t => this.setState({ busy: t }), { feather: v });
+        this.setState(s => s.assets[cur.asset] ? { assets: { ...s.assets, [cur.asset]: { ...s.assets[cur.asset], ...r } }, busy: null } : { busy: null });
+      } catch (err) { console.error(err); this.setState({ busy: null }); this.toast(err.message || 'Could not re-feather the cutout'); }
+    }, 160);
+  }
 
   /* ---------- view helpers ---------- */
   segStyle(on, grow = true) { return { flex: grow ? '1 1 auto' : 'none', height: 28, padding: '0 9px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? 'var(--pw-surface)' : 'transparent', color: on ? 'var(--pw-ink)' : 'var(--pw-muted)', boxShadow: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none', whiteSpace: 'nowrap' }; }
@@ -617,7 +633,8 @@ export default class Studio extends React.Component {
       const c = [];
       if (!el.asset) c.push(note('Empty frame. Drop a photo onto it, drag one from Uploads, or choose a file.'));
       c.push(btns([[el.asset ? 'Replace' : 'Choose image', () => { this.replaceTarget = el.id; this.imgInput && this.imgInput.click(); }, el.asset ? undefined : 'primary'], ...(el.asset ? [['Crop', () => this.setState(s => ({ cropMode: !s.cropMode })), this.state.cropMode ? 'on' : undefined], ['Flip', () => pp(x => { x.flip = !x.flip; })]] : [])]));
-      if (el.asset) c.push(btns([el.origAsset ? ['Restore original', () => pp(x => { x.asset = x.origAsset; delete x.origAsset; })] : ['Remove background', this.removeBg, 'primary', 'Runs U²-Netp on this device — nothing is uploaded']]));
+      if (el.asset) c.push(btns([el.origAsset ? ['Restore original', () => pp(x => { x.asset = x.origAsset; delete x.origAsset; delete x.feather; })] : ['Remove background', this.removeBg, 'primary', 'Runs U²-Netp on this device — nothing is uploaded']]));
+      if (el.asset && el.origAsset) c.push(slider('Feather edge', el.feather ?? 0, 0, 40, 1, v => this.setFeather(el, v), (el.feather ?? 0) + 'px'));
       if (this.state.cropMode && el.asset) { c.push(note('Drag the image on the canvas to reposition. Esc when done.')); c.push(slider('Zoom', el.zoom || 1, 1, 4, .01, v => pp({ zoom: v }, 'zoom'), (el.zoom || 1).toFixed(2) + '×')); c.push(slider('Focus X', el.cx ?? 50, 0, 100, 1, v => pp({ cx: v }, 'cx'), Math.round(el.cx ?? 50) + '%')); c.push(slider('Focus Y', el.cy ?? 50, 0, 100, 1, v => pp({ cy: v }, 'cy'), Math.round(el.cy ?? 50) + '%')); }
       c.push(seg('Mask', [['Rect', !el.mask || el.mask === 'none', () => pp({ mask: 'none' })], ['Rounded', el.mask === 'rounded', () => pp({ mask: 'rounded' })], ['Circle', el.mask === 'circle', () => pp({ mask: 'circle' })], ['Arch', el.mask === 'arch', () => pp({ mask: 'arch' })]]));
       if (!el.mask || el.mask === 'none') c.push(slider('Corner radius', el.radius || 0, 0, Math.round(Math.min(el.w, el.h) / 2), 1, v => pp({ radius: v }, 'irad'), String(Math.round(el.radius || 0))));
@@ -669,7 +686,13 @@ export default class Studio extends React.Component {
     if (hoverId && !sel.includes(hoverId) && !this._dragging) { const h = p.els.find(e => e.id === hoverId); if (h) {
       out.hasHover = true; out.hoverStyle = { position: 'absolute', left: h.x * z, top: h.y * z, width: h.w * z, height: h.h * z, transform: `rotate(${h.rot || 0}deg)`, outline: `1.5px solid ${C}`, opacity: .55, pointerEvents: 'none', zIndex: 2 };
       // A frame still showing sample art or a placeholder is an invitation: say so on hover.
-      if (h.type === 'image' && !h.asset && !h.locked) { out.hoverHint = 'Replace photo'; out.hoverTintStyle = { ...out.hoverStyle, outline: 'none', opacity: 1, background: 'rgba(36,33,29,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: h.mask === 'circle' ? '50%' : h.mask === 'rounded' ? Math.max(h.radius || 0, Math.min(h.w, h.h) * .08) * z : (h.radius || 0) * z }; }
+      if (h.type === 'image' && !h.asset && !h.locked) {
+        out.hoverHint = 'Replace image'; out.hoverTintStyle = { ...out.hoverStyle, outline: 'none', opacity: 1, background: 'rgba(36,33,29,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: h.mask === 'circle' ? '50%' : h.mask === 'rounded' ? Math.max(h.radius || 0, Math.min(h.w, h.h) * .08) * z : (h.radius || 0) * z };
+        // The pill is the one part of the overlay that takes the pointer: it opens the
+        // file picker for this frame, and keeps the hover alive while the pointer is on it.
+        out.onHoverKeep = () => this.onHover(h.id);
+        out.onHoverReplace = e => { e.stopPropagation(); e.preventDefault(); this.replaceTarget = h.id; this.setState({ sel: [h.id], page: pi, editingId: null }); this.imgInput && this.imgInput.click(); };
+      }
     } }
     if (els.length) {
       const one = els.length === 1, e0 = els[0]; const b = one ? { x: e0.x, y: e0.y, w: e0.w, h: e0.h, rot: e0.rot || 0 } : { ...this.bbox(els), rot: 0 };
@@ -770,7 +793,7 @@ export default class Studio extends React.Component {
       Object.assign(v, {
         shapeItems: [...R.SHAPES.map(s => [s, {}]), ['star', { name: 'Sparkle', points: 4, inner: .32 }]].map(([s, x]) => { const [name, ar] = R.SHAPE_INFO[s], w = ar >= 1 ? 40 : 40 * ar, hh = ar >= 1 ? 40 / ar : 40; return { label: x.name || name, onClick: () => this.addShape(s, x), thumb: this.miniEl({ type: 'shape', shape: s, w, h: hh, fill: ['rect', 'ellipse', 'heart', 'star', 'cloud', 'bolt'].includes(s) ? C : ink, points: s === 'burst' ? 14 : s === 'gear' ? 8 : 5, inner: s === 'burst' ? .78 : s === 'ring' ? .62 : .5, sides: 6, ...x }) }; }),
         lineItems: [['Line', {}], ['Dashed', { dash: true }], ['Arrow', { arrow: true }]].map(([l, o]) => ({ label: l, onClick: () => this.addLine(o), thumb: this.miniEl({ type: 'line', w: 60, h: 10, stroke: ink, sw: 3, ...o }, 64) })),
-        frameItems: [['Square frame', 'none'], ['Rounded frame', 'rounded'], ['Circle frame', 'circle'], ['Arch frame', 'arch']].map(([l, m]) => ({ label: l, onClick: () => this.addFrame(m), thumb: this.miniEl({ type: 'image', w: 38, h: m === 'arch' ? 46 : 38, mask: m, tint: '#E3DED6', label: ' ', filters: P.NOFILTER }) }))
+        frameItems: [['Square image', 'none'], ['Rounded image', 'rounded'], ['Circle image', 'circle'], ['Arch image', 'arch']].map(([l, m]) => ({ label: l, onClick: () => this.addFrame(m), thumb: this.miniEl({ type: 'image', w: 38, h: m === 'arch' ? 46 : 38, mask: m, tint: '#E3DED6', label: ' ', filters: P.NOFILTER }) }))
       });
     }
     if (st.panel === 'text') {

@@ -438,6 +438,21 @@ export default function StudioView(v) {
                       {v.pElements ? (
                         <>
                           <div style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--pw-muted-2)" }}>
+                            Images
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
+                            {toArray(v.frameItems).map((s, $index) => (
+                              <Fragment key={$index}>
+                                <button onClick={s.onClick} title={s.label} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--pw-line-soft)", background: "var(--pw-surface)", borderRadius: "8px", cursor: "pointer", padding: "0" }} className="pw-h3">
+                                  {s.thumb}
+                                </button>
+                              </Fragment>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: "12px", color: "var(--pw-muted-2)", marginTop: "-6px" }}>
+                            Drop a photo on it, or click it on the canvas to choose a file.
+                          </div>
+                          <div style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--pw-muted-2)" }}>
                             Shapes
                           </div>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
@@ -456,18 +471,6 @@ export default function StudioView(v) {
                             {toArray(v.lineItems).map((s, $index) => (
                               <Fragment key={$index}>
                                 <button onClick={s.onClick} title={s.label} style={{ height: "52px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--pw-line-soft)", background: "var(--pw-surface)", borderRadius: "8px", cursor: "pointer", padding: "0" }} className="pw-h3">
-                                  {s.thumb}
-                                </button>
-                              </Fragment>
-                            ))}
-                          </div>
-                          <div style={{ fontSize: "12px", fontWeight: "700", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--pw-muted-2)" }}>
-                            Image frames
-                          </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
-                            {toArray(v.frameItems).map((s, $index) => (
-                              <Fragment key={$index}>
-                                <button onClick={s.onClick} title={s.label} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--pw-line-soft)", background: "var(--pw-surface)", borderRadius: "8px", cursor: "pointer", padding: "0" }} className="pw-h3">
                                   {s.thumb}
                                 </button>
                               </Fragment>
@@ -725,10 +728,10 @@ export default function StudioView(v) {
                           {p.hoverHint ? (
                             <>
                               <div style={sty(p.hoverTintStyle)}>
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 10px", borderRadius: "14px", background: "rgba(255,255,255,.92)", color: "var(--pw-ink)", fontSize: "12px", fontWeight: "600", boxShadow: "0 2px 8px rgba(0,0,0,.18)", whiteSpace: "nowrap" }}>
+                                <button onPointerDown={p.onHoverReplace} onPointerEnter={p.onHoverKeep} title="Choose an image for this frame" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "none", borderRadius: "16px", background: "rgba(255,255,255,.94)", color: "var(--pw-ink)", fontSize: "12px", fontWeight: "600", boxShadow: "0 2px 8px rgba(0,0,0,.18)", whiteSpace: "nowrap", cursor: "pointer", pointerEvents: "auto" }} className="pw-h6">
                                   <span style={{ width: "10px", height: "8px", border: "1.5px solid var(--pw-ink)", borderRadius: "2px" }} />
                                   {p.hoverHint}
-                                </span>
+                                </button>
                               </div>
                             </>
                           ) : null}

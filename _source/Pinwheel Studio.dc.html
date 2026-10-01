@@ -262,6 +262,13 @@ input[type=range]{accent-color:#E8674A;width:100%}
               </sc-if>
 
               <sc-if value="{{ pElements }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#8A837A">Images</div>
+                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px">
+                  <sc-for list="{{ frameItems }}" as="s" hint-placeholder-count="4">
+                    <button onClick="{{ s.onClick }}" title="{{ s.label }}" style="aspect-ratio:1; display:flex; align-items:center; justify-content:center; border:1px solid #EAE6DF; background:#FFFFFF; border-radius:8px; cursor:pointer; padding:0" style-hover="border-color:#E8674A">{{ s.thumb }}</button>
+                  </sc-for>
+                </div>
+                <div style="font-size:12px; color:#8A837A; margin-top:-6px">Drop a photo on it, or click it on the canvas to choose a file.</div>
                 <div style="font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#8A837A">Shapes</div>
                 <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px">
                   <sc-for list="{{ shapeItems }}" as="s" hint-placeholder-count="12">
@@ -272,12 +279,6 @@ input[type=range]{accent-color:#E8674A;width:100%}
                 <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px">
                   <sc-for list="{{ lineItems }}" as="s" hint-placeholder-count="3">
                     <button onClick="{{ s.onClick }}" title="{{ s.label }}" style="height:52px; display:flex; align-items:center; justify-content:center; border:1px solid #EAE6DF; background:#FFFFFF; border-radius:8px; cursor:pointer; padding:0" style-hover="border-color:#E8674A">{{ s.thumb }}</button>
-                  </sc-for>
-                </div>
-                <div style="font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#8A837A">Image frames</div>
-                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px">
-                  <sc-for list="{{ frameItems }}" as="s" hint-placeholder-count="4">
-                    <button onClick="{{ s.onClick }}" title="{{ s.label }}" style="aspect-ratio:1; display:flex; align-items:center; justify-content:center; border:1px solid #EAE6DF; background:#FFFFFF; border-radius:8px; cursor:pointer; padding:0" style-hover="border-color:#E8674A">{{ s.thumb }}</button>
                   </sc-for>
                 </div>
               </sc-if>
@@ -404,7 +405,7 @@ input[type=range]{accent-color:#E8674A;width:100%}
                   <sc-if value="{{ p.hasHover }}" hint-placeholder-val="{{ false }}"><div style="{{ p.hoverStyle }}"></div></sc-if>
                   <sc-if value="{{ p.hoverHint }}" hint-placeholder-val="{{ false }}">
                     <div style="{{ p.hoverTintStyle }}">
-                      <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:14px; background:rgba(255,255,255,.92); color:#24211D; font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.18); white-space:nowrap"><span style="width:10px; height:8px; border:1.5px solid #24211D; border-radius:2px"></span>{{ p.hoverHint }}</span>
+                      <button onPointerDown="{{ p.onHoverReplace }}" onPointerEnter="{{ p.onHoverKeep }}" title="Choose an image for this frame" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:none; border-radius:16px; background:rgba(255,255,255,.94); color:#24211D; font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.18); white-space:nowrap; cursor:pointer; pointer-events:auto" style-hover="background:#FFFFFF"><span style="width:10px; height:8px; border:1.5px solid #24211D; border-radius:2px"></span>{{ p.hoverHint }}</button>
                     </div>
                   </sc-if>
                   <sc-for list="{{ p.multi }}" as="mb" hint-placeholder-count="0"><div style="{{ mb }}"></div></sc-for>
