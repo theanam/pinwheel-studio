@@ -75,6 +75,10 @@ try {
   await p.clickText('Show original');
   await p.wait(300);
   check(await p.eval(`__studio.state.brandOn === false && !document.querySelector('.pw-brand-note')`), '"Show original" turns the preview off');
+  // The choice is not remembered: a fresh visit starts with no brand.
+  await p.eval(`__studio.useBrand(__studio.state.brand.id)`); await p.wait(200);
+  await p.goto(URL); await p.until(`document.body.innerText.includes('What are you making today?')`); await p.wait(400);
+  check(await p.eval(`__studio.state.brandOn === false && !document.querySelector('.pw-brand-note')`), 'a new visit starts with no brand selected');
   check((await thumbBg()) === bgOff, 'previews are back to their own style');
 
   // ---- editor: new doc from a template, brand panel, recents ----

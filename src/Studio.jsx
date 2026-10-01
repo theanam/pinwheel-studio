@@ -19,7 +19,8 @@ export default class Studio extends React.Component {
     brand: { bg: '#FBF7F0', ink: '#1F1B16', accent: '#1F7D62', accent2: '#2F6F73', heading: 'DM Serif Display', body: 'DM Sans', logo: null, assets: {}, palettes: [], textStyles: [] },
     brands: [], recents: [], recentsAll: false, wiz: null, propsOpen: false, phoneMenu: null, dialog: null, dialogValue: '', sliderEdit: null,
     // brandOn: templates and new designs take the active brand's colours and fonts.
-    // Off by default, so the gallery shows every template in its own style.
+    // Off on every visit, so the gallery always opens with templates in their own
+    // style; the choice lasts for the session only.
     brandOn: false, fonts: {},
     customW: 1080, customH: 1080, fmtsAll: false,
     helpOpen: false, layerDrag: null, layerOver: null, fontQ: '', fontCat: 'all', fontAnchor: null,
@@ -102,9 +103,8 @@ export default class Studio extends React.Component {
       const { brands, brand } = await this.loadBrands();
       await this.migrateLocalStorage(brand);
       const recents = await this.loadRecents();
-      let brandOn = false; try { brandOn = !!(await DB.getKV('brandOn')); } catch (e) { }
       const fonts = B.allFonts(brands); Object.values(fonts).forEach(f => IO.registerFont(f.family, f.src, f.mime));
-      this.setState({ ready: true, brands, brand, brandOn, fonts, recents, assets: { ...this.state.assets, ...brand.assets } }, () => {
+      this.setState({ ready: true, brands, brand, fonts, recents, assets: { ...this.state.assets, ...brand.assets } }, () => {
         if (this._pendingFile) { const [f, h] = this._pendingFile; this._pendingFile = null; this.openProjectFile(f, h); }
         else if (this.props.startScreen === 'editor') this.newDoc('ig-post');
       });
@@ -152,7 +152,7 @@ export default class Studio extends React.Component {
   setBrand(patch) { this.setState(s => { const b = { ...s.brand, ...patch, updated: Date.now() }; return { brand: b, brands: s.brands.map(x => x.id === b.id ? b : x) }; }); }
   activateBrand = id => { const b = this.state.brands.find(x => x.id === id); if (!b) return; this.setState(s => ({ brand: b, assets: { ...s.assets, ...b.assets }, menu: null })); this.DB.setKV('brandId', id).catch(() => { }); };
   /** Use a brand for templates and new designs (id), or none (null). */
-  useBrand = id => { if (id) this.activateBrand(id); this.setState({ brandOn: !!id }); this.DB.setKV('brandOn', !!id).catch(() => { }); };
+  useBrand = id => { if (id) this.activateBrand(id); this.setState({ brandOn: !!id }); };
   /** Every uploaded font the editor knows: all brands' plus any that came in with a file. */
   refreshFonts(extra = {}) {
     const fonts = { ...this.B.allFonts(this.state.brands), ...(this._fileFonts || {}), ...extra };

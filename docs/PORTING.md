@@ -138,8 +138,8 @@ at the top.
     `io.js` registers them with the FontFace API, offers them under an "Uploaded"
     chip in every font picker, writes `@font-face` rules for them into exports, and
     packs them into `fonts/` of design files (the ones used) and brand kits (all).
-17. Brand preview. `brandOn` (IndexedDB `kv`) is off by default: the home gallery
-    shows templates in their own style. Picking a brand restyles every preview
+17. Brand preview. `brandOn` is session state, off on every visit: the home gallery
+    always opens with templates in their own style. Picking a brand restyles every preview
     through `brandify` (theme map plus pairing) with a note above the gallery, and
     templates then open already branded, as do blank designs; "No brand" starts a
     blank design from the neutral paper palette instead.
