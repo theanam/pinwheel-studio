@@ -272,6 +272,49 @@ try {
     check(await p.eval(`!document.querySelector('button[title="Choose an image for this frame"]')`), 'the pill goes away when the pointer leaves');
   }
 
+  // Page background: a pattern from the picker, recoloured, resized, then a photo over it.
+  await p.eval(`__studio.setState({ sel: [], panel: null })`); await p.wait(150);
+  await p.eval(`[...document.querySelectorAll('aside button[title]')].find(b => b.title === 'Chevrons').click()`); await p.wait(200);
+  const pat1 = await p.eval(`(() => { const pg = __studio.pg; const n = document.querySelector('[data-page-node="' + pg.id + '"] [data-pattern="tile"]'); return { id: pg.pattern && pg.pattern.id, fg: pg.pattern && pg.pattern.fg, img: !!n && n.style.backgroundImage.includes('data:image/svg+xml'), size: n ? n.style.backgroundSize : '' }; })()`);
+  check(pat1.id === 'chevron' && pat1.img, 'picking a pattern paints it over the page ' + JSON.stringify(pat1));
+  await p.eval(`[...document.querySelectorAll('aside button[title="#000000"]')].slice(-1)[0].click()`); await p.wait(150);
+  check(await p.eval(`__studio.pg.pattern.fg === '#000000'`), 'the pattern takes a new colour from the swatches');
+  await p.eval(`[...document.querySelectorAll('aside span')].find(x => x.textContent.trim() === 'Pattern size').parentElement.querySelector('button').click()`); await p.wait(100);
+  await p.type('aside input.pw-slider-edit', '2');
+  await p.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await p.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await p.wait(150);
+  check(await p.eval(`__studio.pg.pattern.scale === 2 && document.querySelector('[data-page-node] [data-pattern]').style.backgroundSize === '80px 40px'`), 'pattern size doubles the tile');
+  await p.eval(`[...document.querySelectorAll('aside span')].find(x => x.textContent.trim() === 'Pattern angle').parentElement.querySelector('button').click()`); await p.wait(100);
+  const angle0 = await p.eval(`(() => { const row = [...document.querySelectorAll('aside span')].find(x => x.textContent.trim() === 'Pattern angle').parentElement.parentElement.querySelector('input[type=range]'); return { min: +row.min, max: +row.max, val: +row.value }; })()`);
+  check(angle0.min === -180 && angle0.max === 180 && angle0.val === 0, 'the angle slider rests at 0 in the middle ' + JSON.stringify(angle0));
+  await p.type('aside input.pw-slider-edit', '-30');
+  await p.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await p.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await p.wait(150);
+  check(await p.eval(`(() => { const n = document.querySelector('[data-page-node] [data-pattern]'); const pg = document.querySelector('[data-page-node]').getBoundingClientRect(); const r = n.getBoundingClientRect(); return __studio.pg.pattern.rot === -30 && n.style.transform === 'rotate(-30deg)' && r.left < pg.left && r.right > pg.right && r.top < pg.top && r.bottom > pg.bottom; })()`), 'the pattern turns −30° and still covers the whole page');
+  await p.eval(`__studio.replaceTarget = 'bg:' + __studio.pg.id`);
+  await p.eval(feed('input[data-input="images"]', LOGO)); await p.wait(400);
+  const bgi = await p.eval(`(() => { const pg = __studio.pg; const n = document.querySelector('[data-page-node="' + pg.id + '"]'); const kids = [...n.children]; return { asset: !!pg.bgAsset, pattern: kids.findIndex(k => k.dataset.pattern), photo: kids.findIndex(k => k.dataset.bg), keepsPattern: !!pg.pattern }; })()`);
+  check(bgi.asset && bgi.pattern === 0 && bgi.photo === 1 && bgi.keepsPattern, 'a background image sits over the pattern ' + JSON.stringify(bgi));
+  await p.clickText('Remove image', 'aside button'); await p.wait(150);
+  check(await p.eval(`!__studio.pg.bgAsset`), 'the background image can be removed');
+  // A new page colour takes the pattern colour with it so the pattern stays visible.
+  await p.eval(`__studio.pg.pattern && __studio.setDoc((d, pg) => { pg.pattern.fg = '#000000'; })`); await p.wait(100);
+  await p.eval(`[...document.querySelectorAll('aside button[title="#000000"]')][0].click()`); await p.wait(200);
+  const recol = await p.eval(`(() => { const pg = __studio.pg; return { bg: pg.bg, fg: pg.pattern.fg, contrast: __studio.P.contrast(pg.bg, pg.pattern.fg) }; })()`);
+  check(recol.bg === '#000000' && recol.fg !== '#000000' && recol.contrast >= 1.6, 'a black page colour moves the pattern to a colour that reads on it ' + JSON.stringify(recol));
+  // Uploaded tiles: a black shape on transparency recolours; a multicolour tile keeps its colours.
+  const TILE = (mono) => `(async () => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); ${mono ? "x.fillStyle = '#000'; x.beginPath(); x.arc(32, 32, 18, 0, 7); x.fill();" : "x.fillStyle = '#E63946'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#457B9D'; x.fillRect(32, 32, 32, 32); x.fillStyle = '#F1FAEE'; x.fillRect(32, 0, 32, 32); x.fillStyle = '#2A9D8F'; x.fillRect(0, 32, 32, 32);"} const b = await new Promise(r => c.toBlob(r, 'image/png')); return new File([b], ${mono ? "'dot-tile.png'" : "'quilt.png'"}, { type: 'image/png' }); })()`;
+  await p.eval(feed('input[data-input="pattern"]', TILE(true))); await p.until(`__studio.state.brand.patterns.length === 1`); await p.wait(200);
+  check(await p.eval(`__studio.state.brand.patterns[0].mono === true && __studio.state.patCat === 'yours'`), 'a one-colour tile is detected as recolourable');
+  await p.eval(`[...document.querySelectorAll('aside button[title="dot-tile"]')][0].click()`); await p.wait(200);
+  check(await p.eval(`(() => { const pg = __studio.pg; const n = document.querySelector('[data-page-node="' + pg.id + '"] [data-pattern]'); return pg.pattern.id === 'custom' && pg.pattern.mono && n && n.dataset.pattern === 'mono' && getComputedStyle(n).backgroundColor !== 'rgba(0, 0, 0, 0)' && document.body.innerText.includes('Pattern colour'); })()`), 'the mono tile is drawn as a mask in the pattern colour, with the colour control');
+  await p.eval(feed('input[data-input="pattern"]', TILE(false))); await p.until(`__studio.state.brand.patterns.length === 2`); await p.wait(200);
+  check(await p.eval(`__studio.state.brand.patterns[1].mono === false`), 'a multicolour tile keeps its colours');
+  await p.eval(`[...document.querySelectorAll('aside button[title^="quilt"]')][0].click()`); await p.wait(200);
+  check(await p.eval(`(() => { const pg = __studio.pg; const n = document.querySelector('[data-page-node="' + pg.id + '"] [data-pattern]'); return pg.pattern.id === 'custom' && !pg.pattern.mono && n.dataset.pattern === 'image' && !document.body.innerText.includes('Pattern colour') && document.body.innerText.includes('keeps its own colours'); })()`), 'the colour tile is drawn as is and the colour control is off');
+  const prt = await p.eval(`(async () => { const s = __studio; const blob = await s.IO.packProject(s.state.doc, s.state.assets, null); const r = await s.IO.openProject(blob); return { has: !!r.assets[r.doc.pages[0].pattern.asset] }; })()`);
+  check(prt.has, 'a design file carries its uploaded pattern tile');
+  await p.eval(`[...document.querySelectorAll('aside button[title="None"]')][0].click()`); await p.wait(150);
+  check(await p.eval(`!__studio.pg.pattern`), 'and the pattern cleared');
+
   // Rotation: pressing the handle must not jump; a small drag turns a little.
   await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'text'); __studio.setState({ sel: [el.id] }); })()`);
   await p.wait(100);
@@ -290,9 +333,27 @@ try {
   await p.wait(100);
   const rot1 = await p.eval(`__studio.selEls()[0].rot || 0`);
   check(Math.abs(((rot1 - rot0 + 540) % 360 - 180) + 30) < 4, `a 30° sweep rotates about 30° (${rot0}° → ${rot1}°)`);
+  // A multiple selection has the handle too, and turns as a group about its centre.
+  await p.eval(`(() => { const ids = __studio.pg.els.filter(e => !e.locked).slice(0, 2).map(e => e.id); __studio.setState({ sel: ids }); })()`); await p.wait(100);
+  const g0 = await p.eval(`(() => { const els = __studio.selEls(); const B = __studio.bbox(els); return { n: els.length, handle: !!document.querySelector('[title="Rotate"]'), cx: B.x + B.w / 2, cy: B.y + B.h / 2, pos: els.map(e => [e.x, e.y, e.rot || 0]) }; })()`);
+  check(g0.n === 2 && g0.handle, 'two selected elements show the rotate handle');
+  const gh = await p.eval(`(() => { const r = document.querySelector('[title="Rotate"]').getBoundingClientRect(); const n = document.querySelector('[data-page-node="' + __studio.pg.id + '"]').getBoundingClientRect(); const z = __studio.state.zoom; return { x: r.left + r.width / 2, y: r.top + r.height / 2, cx: n.left + ${g0.cx} * z, cy: n.top + ${g0.cy} * z }; })()`);
+  const grad = Math.hypot(gh.x - gh.cx, gh.y - gh.cy), gbase = Math.atan2(gh.y - gh.cy, gh.x - gh.cx);
+  await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: gh.x, y: gh.y });
+  await p.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: gh.x, y: gh.y, button: 'left', clickCount: 1 });
+  for (let i = 1; i <= 6; i++) { const t = gbase + (Math.PI / 2) * i / 6; await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: gh.cx + Math.cos(t) * grad, y: gh.cy + Math.sin(t) * grad, button: 'left' }); }
+  await p.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: gh.x, y: gh.y, button: 'left', clickCount: 1 }); await p.wait(100);
+  const g1 = await p.eval(`(() => { const els = __studio.selEls(); const B = __studio.bbox(els); return { cx: B.x + B.w / 2, cy: B.y + B.h / 2, pos: els.map(e => [e.x, e.y, e.rot || 0]) }; })()`);
+  // Each member turns 90° and keeps its distance from the group centre it orbits.
+  const sizes = await p.eval(`__studio.selEls().map(e => [e.w, e.h])`);
+  const dist = (pos, i) => Math.hypot(pos[i][0] + sizes[i][0] / 2 - g0.cx, pos[i][1] + sizes[i][1] / 2 - g0.cy);
+  const turned = g1.pos.every((pp, i) => Math.abs(((pp[2] - g0.pos[i][2] + 540) % 360 - 180) - 90) < 4), orbit = g1.pos.every((pp, i) => Math.abs(dist(g1.pos, i) - dist(g0.pos, i)) < 3);
+  check(turned && orbit, `a 90° sweep turns both members 90° about the group centre (${JSON.stringify(g0.pos)} → ${JSON.stringify(g1.pos)})`);
+  await p.eval(`__studio.setState({ sel: [] })`);
 
   // Sliders: the value can be typed, and the range follows the value past its end.
-  await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'text'); __studio.setState({ sel: [el.id], panel: null }); __studio.patchSel(x => { x.shadow = { x: 20, y: 20, blur: 0, color: '#111111', long: true }; }); })()`);
+  await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'text'); __studio.setState({ sel: [el.id], panel: null }); })()`); await p.wait(100);
+  await p.eval(`__studio.patchSel(x => { x.shadow = { x: 20, y: 20, blur: 0, color: '#111111', long: true }; })`);
   await p.wait(150);
   const lenBtn = await p.eval(`(() => { const row = [...document.querySelectorAll('aside span')].find(s => s.textContent.trim() === 'Length'); const b = row && row.parentElement.querySelector('button'); return b ? { text: b.textContent.trim(), max: +row.parentElement.parentElement.querySelector('input[type=range]').max } : null; })()`);
   check(lenBtn && /px$/.test(lenBtn.text), 'the long-shadow Length value is clickable ' + JSON.stringify(lenBtn));

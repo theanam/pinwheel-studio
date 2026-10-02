@@ -144,6 +144,19 @@ at the top.
     templates then open already branded, as do blank designs; "No brand" starts a
     blank design from the neutral paper palette instead.
 
+18. Page backgrounds. A page may carry `bgAsset` (a photo covering it) and `pattern`
+    (`{ id, fg, alpha, scale }`, one of the tiles in `src/patterns.js`, drawn as a
+    repeating SVG data URL over the page colour). The pattern's colour is a theme
+    role in templates, so `applyThemeTo` recolours it with everything else. Four
+    layouts (Patterned Card, Pattern Band, Pattern Corner, Patterned Invitation)
+    choose a pattern per template from soft, bold or party sets. The renderer paints
+    the pattern and the photo as layers under the elements. Uploaded tiles join the
+    brand (`brand.patterns`, image in `brand.assets`); `io.analyzePattern` decides
+    on upload whether a tile is mono (one colour on transparency, or dark on light;
+    its shape becomes an alpha mask the renderer floods with the pattern colour) or
+    keeps its colours (drawn as is, colour control off). A page colour change moves
+    the pattern colour to the theme colour with the most contrast on the new page.
+
 ## Browser smoke test
 
 `npm run test:browser` (`tests/browser/smoke.mjs`) drives a local headless Chrome

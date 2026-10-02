@@ -1,6 +1,7 @@
 // Pinwheel Studio — preset system.
 // Catalog = formats × layouts × topics, each themed with a palette + type pairing.
 import { MOTIFS, SCATTER } from './motifs.js';
+import { PATTERN } from './patterns.js';
 
 let _n = 0;
 export const nid = () => 'e' + (++_n).toString(36) + Math.random().toString(36).slice(2, 6);
@@ -363,6 +364,9 @@ function makeCtx(W, H, P, F, C, rng, kind) {
   const push = e => (c.els.push(e), e);
   const base = (type, x, y, w, h, o, name) => ({ id: nid(), type, name: o.name || name, x: r1(x), y: r1(y), w: r1(w), h: r1(h), rot: o.rot || 0, opacity: o.op ?? 1 });
   c.bg = col => { c.bgc = col; };
+  // A tileable pattern over the page colour (src/patterns.js): a colour role, how
+  // strongly it shows and how large the tile is.
+  c.pattern = (id, o = {}) => { if (PATTERN[id]) c.pat = { id, fg: o.fg || P.ink, alpha: o.alpha ?? .12, scale: o.scale ?? 1, ...(o.rot ? { rot: o.rot } : {}) }; };
   c.t = (text, x, y, w, size, o = {}) => {
     const d = o.f === 'd'; const font = o.font || (d ? F.display : F.body);
     const upper = o.upper ?? (d ? F.upper : false); const ls = o.ls ?? (d ? F.track : 0); const lh = o.lh ?? (d ? F.lh : 1.35);
@@ -1754,6 +1758,66 @@ def('podcast-channel', 'Podcast Channel Art', 'b', ['banner'], c => {
   wave(c, W - m - d - u * 54, H / 2 - u * 7, u * 46, u * 14, 26, P.accent2, mix(P.bg, P.ink, .75), .5);
 }, { topics: PODCASTS, every: true, photo: true, nogarnish: true });
 
+/* patterned backgrounds */
+const PATS = { soft: ['dots', 'dots-fine', 'grid', 'plus-small', 'lattice', 'crosshatch', 'speckle', 'graph'], bold: ['stripes-diag', 'polka', 'chevron', 'waves', 'zigzag', 'checks', 'diamonds', 'scales'], party: ['confetti', 'sparkles', 'stars', 'polka', 'hearts-small', 'sprinkles', 'bubbles'] };
+const patOf = (c, set) => PATS[set][Math.floor(c.rng() * PATS[set].length)];
+
+def('pattern-card', 'Patterned Card', 'tsp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  c.bg(P.bg); c.pattern(patOf(c, 'soft'), { fg: P.accent, alpha: .3, scale: 1.2 });
+  const cw = W - 2 * m, ch = H - 2 * m, x = m + u * 6, w = cw - u * 12;
+  c.r(m, m, cw, ch, { fill: P.surface, stroke: P.accent, sw: u * .5, radius: u * 2, shadow: true, name: 'Card' });
+  const k = c.kick(x, 0, w, { align: 'center' });
+  const s = c.t(C.sub, x + w * .1, 0, w * .8, u * 3.3, { align: 'center', color: P.muted });
+  const b = c.btn(C.cta, W / 2, 0, u * 3, { anchor: 'center' });
+  const hd = c.hd(C.title, x, 0, w, u * (cls === 'wide' ? 12 : 11), 3, Math.max(u * 6, ch - u * 12 - k.h - s.h - b.h - u * 12), { align: 'center' });
+  c.els.splice(c.els.indexOf(hd), 1); c.els.splice(c.els.indexOf(s), 0, hd);
+  c.vstack([k, hd, s, b], [u * 3, u * 3, u * 5], m + u * 6, H - m - u * 6);
+}, { nogarnish: true });
+
+def('pattern-band', 'Pattern Band', 'tsp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c;
+  c.bg(P.bg); c.pattern(patOf(c, 'bold'), { fg: P.accent2, alpha: .45, scale: cls === 'wide' ? 1.6 : 1.3 });
+  const bh = Math.min(H * .5, u * 44), by = H / 2 - bh / 2;
+  c.r(0, by, W, bh, { fill: P.accent, name: 'Band' });
+  const w = W - 2 * m;
+  const hd = c.hd(C.title, m, 0, w, u * (cls === 'wide' ? 14 : 12), 2, bh - u * 8, { align: 'center', color: P.onAccent });
+  c.vstack([hd], [], by, by + bh);
+  const k = c.kick(m, by - u * 7, w, { align: 'center', color: P.ink });
+  const s = c.t(C.sub, m + w * .1, by + bh + u * 3, w * .8, u * 3.3, { align: 'center', color: P.ink });
+  c.btn(C.cta, W / 2, s.y + s.h + u * 3, u * 3, { anchor: 'center', fill: P.ink, color: P.bg });
+}, { nogarnish: true });
+
+def('pattern-corner', 'Pattern Corner', 'sdp', A3, c => {
+  const { W, H, u, m, P, C, cls } = c; const wide = cls === 'wide';
+  c.bg(P.bg); c.pattern(patOf(c, 'soft'), { fg: P.ink, alpha: .1 });
+  const pw = wide ? W * .42 : W * .55, ph = wide ? H * .62 : H * .4;
+  c.r(W - pw - u * 2, H - ph - u * 2, pw, ph, { fill: P.accent2, name: 'Backing' });
+  c.i(W - pw, H - ph, pw, ph, { label: 'Photo', border: P.surface, borderW: u * 1.2 });
+  const w = wide ? W - pw - 3 * m : W - 2 * m, top = m, bot = wide ? H - m : H - ph - m;
+  const k = c.kick(m, 0, w);
+  const s = c.t(C.sub, m, 0, Math.min(w, u * 60), u * 3.3, { color: P.muted });
+  const hd = c.hd(C.title, m, 0, w, u * 12, 3, Math.max(u * 6, bot - top - k.h - s.h - u * 9));
+  c.els.splice(c.els.indexOf(hd), 1); c.els.splice(c.els.indexOf(s), 0, hd);
+  c.vstack([k, hd, s], [u * 2.5, u * 3], top, bot, 'top');
+}, { photo: true, nogarnish: true });
+
+def('pattern-invite', 'Patterned Invitation', 'sp', ['square', 'tall'], c => {
+  const { W, H, u, m, P, C } = c;
+  c.bg(P.bg); c.pattern(patOf(c, 'party'), { fg: P.accent, alpha: .35, scale: 1.1 });
+  const ix = m, iy = m, iw = W - 2 * m, ih = H - 2 * m;
+  c.r(ix, iy, iw, ih, { fill: P.surface, radius: u * 1.5, name: 'Card' });
+  c.r(ix + u * 2.5, iy + u * 2.5, iw - u * 5, ih - u * 5, { fill: null, stroke: P.accent, sw: u * .35, radius: u, name: 'Inner frame' });
+  const x = ix + u * 8, w = iw - u * 16;
+  const k = c.kick(x, 0, w, { align: 'center' });
+  const d = c.t(C.date[2] + (C.date[3] ? '  ·  ' + C.date[3] : ''), x, 0, w, u * 3.4, { align: 'center', weight: 700 });
+  const pl = c.t(C.place, x, 0, w, u * 3, { align: 'center', color: P.muted });
+  const b = c.btn(C.cta, W / 2, 0, u * 2.8, { anchor: 'center' });
+  const hd = c.hd(C.title, x, 0, w, u * 11, 3, Math.max(u * 6, ih - u * 16 - k.h - d.h - pl.h - b.h - u * 14), { align: 'center', upper: false });
+  c.els.splice(c.els.indexOf(hd), 1); c.els.splice(c.els.indexOf(d), 0, hd);
+  c.vstack([k, hd, d, pl, b], [u * 3, u * 4, u * 1, u * 5], iy + u * 8, iy + ih - u * 8);
+}, { topics: OCCASIONS, nogarnish: true });
+
 export const LAYOUT = Object.fromEntries(LAYOUTS.map(l => [l.id, l]));
 export const PAIRING = Object.fromEntries(PAIRINGS.map(p => [p.id, p]));
 export const PALETTE = Object.fromEntries(PALETTES.map(p => [p.id, p]));
@@ -1803,7 +1867,7 @@ function runLayout(l, f, theme, pair, topic, seed, page = 0, pages = 1) {
   // Platform safe zones (YouTube channel art, for one): the layout runs inside the
   // safe box and is centred on the full page, which the background colour fills.
   if (f.safe) { const dx = (f.w - sw) / 2, dy = (f.h - sh) / 2; c.els.forEach(e => { e.x = r1(e.x + dx); e.y = r1(e.y + dy); }); }
-  return { id: nid(), bg: c.bgc, els: c.els };
+  return { id: nid(), bg: c.bgc, els: c.els, ...(c.pat ? { pattern: c.pat } : {}) };
 }
 function backOfCard(W, H, theme, pair, topic) {
   const c = makeCtx(W, H, theme, pair, topic, seeded(1), 'c'); const u = c.u;

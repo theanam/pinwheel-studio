@@ -14,7 +14,7 @@ export const bid = (p = 'b') => p + Date.now().toString(36) + (++_n).toString(36
 /** A fresh brand with every field present. `partial` overrides the defaults. */
 export function newBrand(partial = {}) {
   const now = Date.now();
-  return { id: bid(), name: 'My brand', created: now, updated: now, ...DEFAULT_BRAND, assets: {}, fonts: {}, palettes: [], textStyles: [], ...partial };
+  return { id: bid(), name: 'My brand', created: now, updated: now, ...DEFAULT_BRAND, assets: {}, fonts: {}, palettes: [], textStyles: [], patterns: [], ...partial };
 }
 
 /** Fill in whatever an older record (the v1 localStorage kit) is missing. */
@@ -24,6 +24,8 @@ export function migrateBrand(b) {
   if (!out.assets || typeof out.assets !== 'object') out.assets = {};
   if (!out.fonts || typeof out.fonts !== 'object') out.fonts = {};
   if (!Array.isArray(out.palettes)) out.palettes = [];
+  if (!Array.isArray(out.patterns)) out.patterns = [];
+  out.patterns = out.patterns.filter(p => p && out.assets[p.asset]);
   if (!Array.isArray(out.textStyles)) out.textStyles = [];
   if (out.logo && !out.assets[out.logo]) out.logo = null;
   if (!out.name) out.name = 'My brand';

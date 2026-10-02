@@ -1306,20 +1306,27 @@ export default function StudioView(v) {
                             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                               {c.hasLabel ? (
                                 <>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "13px", minHeight: "20px" }}>
-                                    <span style={{ fontWeight: "600" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", fontSize: "13px", minHeight: "20px" }}>
+                                    <span style={{ fontWeight: "600", flex: "none" }}>
                                       {c.label}
                                     </span>
                                     {c.isSlider ? (
-                                      c.editing ? (
+                                      <span style={{ display: "inline-flex", alignItems: "center", gap: "2px", minWidth: "0" }}>
+                                      {c.hasReset ? (
+                                        <button onClick={c.reset} title={c.resetTitle} style={{ width: "20px", height: "20px", border: "none", background: "transparent", color: "var(--pw-muted-2)", fontSize: "13px", cursor: "pointer", borderRadius: "4px", padding: "0", lineHeight: "1" }} className="pw-h1">
+                                          ↺
+                                        </button>
+                                      ) : null}
+                                      {c.editing ? (
                                         <input type="number" className="pw-slider-edit" value={c.editText ?? ''} step={c.step} onChange={c.onEditChange} onKeyDown={c.onEditKey} onBlur={c.commitEdit} autoFocus onFocus={c.selectAll} style={{ width: "76px", height: "22px", border: "1px solid var(--pw-accent-line)", borderRadius: "5px", padding: "0 6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", background: "var(--pw-surface)", color: "var(--pw-ink)", outline: "none", textAlign: "right" }} />
                                       ) : (
-                                        <button onClick={c.startEdit} title="Click to type a value" style={{ border: "none", background: "transparent", color: "var(--pw-muted-2)", fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", cursor: "text", padding: "1px 4px", borderRadius: "4px" }} className="pw-h1">
+                                        <button onClick={c.startEdit} title="Click to type a value" style={{ border: "none", background: "transparent", color: "var(--pw-muted-2)", fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", cursor: "text", padding: "1px 4px", borderRadius: "4px", whiteSpace: "nowrap", flex: "none" }} className="pw-h1">
                                           {c.display}
                                         </button>
-                                      )
+                                      )}
+                                      </span>
                                     ) : (
-                                      <span style={{ color: "var(--pw-muted-2)", fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px" }}>
+                                      <span title={c.display} style={{ color: "var(--pw-muted-2)", fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: "0", textAlign: "right" }}>
                                         {c.display}
                                       </span>
                                     )}
@@ -1328,7 +1335,7 @@ export default function StudioView(v) {
                               ) : null}
                               {c.isSlider ? (
                                 <>
-                                  <input type="range" min={c.min} max={c.max} step={c.step} value={c.value ?? ''} onChange={c.onChange} />
+                                  <input type="range" className="pw-range" min={c.min} max={c.max} step={c.step} value={c.value ?? ''} onChange={c.onChange} style={sty(c.fillStyle)} />
                                 </>
                               ) : null}
                               {c.isNums ? (
@@ -1365,6 +1372,36 @@ export default function StudioView(v) {
                               {c.isSelect ? (
                                 <>
                                   {c.selectNode}
+                                </>
+                              ) : null}
+                              {c.isPatterns ? (
+                                <>
+                                  <div className="pw-chips" style={{ display: "flex", gap: "2px", background: "var(--pw-track)", padding: "3px", borderRadius: "8px", overflowX: "auto" }}>
+                                    {toArray(c.chips).map((ch, $index) => (
+                                      <Fragment key={$index}>
+                                        <button onClick={ch.onClick} style={sty(ch.style)}>
+                                          {ch.label}
+                                        </button>
+                                      </Fragment>
+                                    ))}
+                                  </div>
+                                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "5px" }}>
+                                    {toArray(c.tiles).map((t, $index) => (
+                                      <Fragment key={$index}>
+                                        <div style={{ position: "relative" }}>
+                                          <button onClick={t.onClick} title={t.label} style={sty({ display: "block", width: "100%", aspectRatio: "1", borderRadius: "7px", border: t.on ? "2px solid var(--pw-accent-line)" : "1px solid var(--pw-line-2)", cursor: "pointer", padding: "0", ...t.style })} className={t.on ? undefined : "pw-h9"} />
+                                          {t.onRemove ? (
+                                            <button onClick={t.onRemove} title="Remove from brand" style={{ position: "absolute", top: "-6px", right: "-6px", width: "18px", height: "18px", borderRadius: "9px", border: "none", background: "var(--pw-ink)", color: "var(--pw-surface)", fontSize: "11px", lineHeight: "1", cursor: "pointer", padding: "0" }}>
+                                              ×
+                                            </button>
+                                          ) : null}
+                                        </div>
+                                      </Fragment>
+                                    ))}
+                                  </div>
+                                  <button onClick={c.onUpload} title={c.uploadNote} style={{ height: "32px", borderRadius: "7px", border: "1px dashed var(--pw-line-strong)", background: "var(--pw-panel)", fontWeight: "600", cursor: "pointer", color: "var(--pw-ink)", fontSize: "13px" }} className="pw-h1">
+                                    {c.uploadLabel}
+                                  </button>
                                 </>
                               ) : null}
                               {c.isSeg ? (
@@ -1445,6 +1482,7 @@ export default function StudioView(v) {
       <input type="file" data-input="logo" ref={v.setLogoInput} onChange={v.onLogoFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
       <input type="file" data-input="brand" ref={v.setBrandAssetInput} onChange={v.onBrandAssetFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
       <input type="file" data-input="font" ref={v.setFontInput} onChange={v.onFontFile} accept=".ttf,.otf,.woff,.woff2" multiple="multiple" style={{ display: "none" }} />
+      <input type="file" data-input="pattern" ref={v.setPatternInput} onChange={v.onPatternFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
       {v.hasWiz ? (
         <>
           <div onClick={v.wiz.close} style={{ position: "fixed", inset: "0", background: "rgba(36,33,29,.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "80" }}>

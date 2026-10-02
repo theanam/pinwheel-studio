@@ -15,6 +15,14 @@ a:hover { color: var(--pw-accent-line); text-decoration: underline; }
 button { font-family: inherit; }
 input, select, textarea { font-family: inherit; color: var(--pw-ink); }
 input[type=range] { accent-color: var(--pw-accent); width: 100%; }
+/* Property sliders draw their own track so the fill can run from the centre for
+   bipolar values (angle, offsets, hue); the gradient comes from the control. */
+input[type=range].pw-range { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; margin: 10px 0; outline: none; background: var(--pw-line-strong); }
+input[type=range].pw-range::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: transparent; }
+input[type=range].pw-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--pw-surface); border: 2px solid var(--pw-accent); box-shadow: 0 1px 3px rgba(0,0,0,.22); cursor: pointer; }
+input[type=range].pw-range::-moz-range-track { height: 4px; border-radius: 2px; background: transparent; }
+input[type=range].pw-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--pw-surface); border: 2px solid var(--pw-accent); box-shadow: 0 1px 3px rgba(0,0,0,.22); cursor: pointer; }
+input[type=range].pw-range:focus-visible { outline: 2px solid var(--pw-accent-line); outline-offset: 4px; }
 ::placeholder { color: var(--pw-placeholder); }
 
 /* Spec §11: every control keeps a visible focus ring for keyboard users. */
@@ -43,7 +51,8 @@ input[type=range] { accent-color: var(--pw-accent); width: 100%; }
 @media (pointer: coarse) {
   .pw-recent .pw-recent-x { opacity: .9; }
   /* Finger-sized targets for the controls that are small on a desktop. */
-  input[type=range] { height: 28px; }
+  input[type=range].pw-range::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9px; }
+  input[type=range].pw-range::-moz-range-thumb { width: 18px; height: 18px; }
   ::-webkit-scrollbar { width: 0; height: 0; }
 }
 

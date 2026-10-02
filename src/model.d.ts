@@ -94,6 +94,8 @@ export interface Brand extends BrandKit {
   updated: number;
   assets: Record<AssetId, Asset>;
   fonts: Record<string, CustomFont>;
+  /** Uploaded pattern tiles, held in `assets`; `mono` ones recolour. */
+  patterns: { asset: AssetId; name: string; mono: boolean }[];
   palettes: BrandPalette[];
   textStyles: BrandTextStyle[];
 }
@@ -243,10 +245,29 @@ export interface QRElement extends BaseElement {
 export type Element =
   | TextElement | ShapeElement | LineElement | ImageElement | ChartElement | QRElement;
 
+/** A tileable pattern over the page colour: a built-in tile from src/patterns.js by
+ *  id, or `custom` with an uploaded tile held as an asset. A mono custom tile is an
+ *  alpha mask flooded with `fg`; a colour one is drawn as is. */
+export interface PagePattern {
+  id: string | 'custom';
+  asset?: AssetId;
+  mono?: boolean;
+  /** Tile colour; a theme role in templates, so palette swaps recolour it. */
+  fg: Color;
+  /** 0–1, how strongly the tile shows. */
+  alpha: number;
+  /** Tile size multiplier, 0.25–4. */
+  scale: number;
+  /** Rotation of the whole tiling in degrees, −180 to 180, clockwise positive. */
+  rot?: number;
+}
+
 export interface Page {
   id: string;
   bg: Color;
+  /** A photo covering the page, above the pattern. */
   bgAsset?: AssetId;
+  pattern?: PagePattern;
   els: Element[];
 }
 

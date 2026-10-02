@@ -1,0 +1,173 @@
+// Pinwheel Studio — tileable page backgrounds.
+//
+// Each pattern is one small SVG tile drawn in a single colour, so it recolours with
+// the theme like everything else and costs a few hundred bytes. The renderer paints
+// it as a repeating background over the page colour; `alpha` is how strongly it
+// shows and `scale` how large the tile is. Pure: no DOM.
+
+const P = (id, cat, name, w, h, body) => ({ id, cat, name, w, h, body });
+const star = (cx, cy, r, n = 5, k = .45) => Array.from({ length: n * 2 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / n, rr = i % 2 ? r * k : r; return `${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`; }).join(' ');
+const heart = (cx, cy, s) => `M${cx} ${cy + s * .9} C${cx - s * 1.3} ${cy - s * .1} ${cx - s * .6} ${cy - s} ${cx} ${cy - s * .35} C${cx + s * .6} ${cy - s} ${cx + s * 1.3} ${cy - s * .1} ${cx} ${cy + s * .9}Z`;
+const NF = 'fill="none"';
+
+export const PATTERNS = [
+  P('dots', 'dots', 'Dots', 24, 24, '<circle cx="12" cy="12" r="3" stroke="none"/>'),
+  P('dots-fine', 'dots', 'Fine dots', 12, 12, '<circle cx="6" cy="6" r="1.3" stroke="none"/>'),
+  P('polka', 'dots', 'Polka', 40, 40, '<circle cx="10" cy="10" r="5" stroke="none"/><circle cx="30" cy="30" r="5" stroke="none"/>'),
+  P('bubbles', 'dots', 'Bubbles', 60, 60, '<circle cx="12" cy="14" r="5" stroke="none"/><circle cx="40" cy="8" r="3" stroke="none"/><circle cx="48" cy="38" r="7" stroke="none"/><circle cx="20" cy="46" r="2.5" stroke="none"/><circle cx="32" cy="28" r="1.8" stroke="none"/>'),
+  P('speckle', 'texture', 'Speckle', 80, 80, '<g stroke="none"><circle cx="7" cy="11" r="1.4"/><circle cx="31" cy="5" r="1"/><circle cx="56" cy="14" r="1.6"/><circle cx="73" cy="29" r="1.1"/><circle cx="17" cy="38" r="1"/><circle cx="43" cy="33" r="1.5"/><circle cx="64" cy="52" r="1.2"/><circle cx="9" cy="61" r="1.6"/><circle cx="36" cy="58" r="1"/><circle cx="51" cy="74" r="1.4"/><circle cx="26" cy="75" r="1.1"/><circle cx="76" cy="70" r="1"/></g>'),
+  P('rings', 'dots', 'Rings', 40, 40, `<circle cx="20" cy="20" r="13" ${NF} stroke-width="2"/>`),
+  P('circles', 'dots', 'Circles', 40, 40, `<circle cx="20" cy="20" r="18" ${NF} stroke-width="1.5"/><circle cx="20" cy="20" r="6" ${NF} stroke-width="1.5"/>`),
+  P('grid', 'lines', 'Grid', 40, 40, `<path d="M40 .5H0M.5 0V40" ${NF} stroke-width="1"/>`),
+  P('graph', 'lines', 'Graph paper', 50, 50, `<path d="M10 0V50M20 0V50M30 0V50M40 0V50M0 10H50M0 20H50M0 30H50M0 40H50" ${NF} stroke-width=".5"/><path d="M50 .5H0M.5 0V50" ${NF} stroke-width="1.2"/>`),
+  P('squares', 'geo', 'Squares', 40, 40, `<rect x="9" y="9" width="22" height="22" ${NF} stroke-width="1.5"/>`),
+  P('checks', 'geo', 'Checks', 40, 40, '<rect width="20" height="20" stroke="none"/><rect x="20" y="20" width="20" height="20" stroke="none"/>'),
+  P('plaid', 'lines', 'Plaid', 48, 48, '<rect x="18" width="12" height="48" stroke="none" opacity=".6"/><rect y="18" width="48" height="12" stroke="none" opacity=".6"/>'),
+  P('stripes-diag', 'lines', 'Diagonal stripes', 20, 20, `<path d="M-5 5L5 -5M0 20L20 0M15 25L25 15" ${NF} stroke-width="4"/>`),
+  P('stripes-thin', 'lines', 'Pinstripes', 12, 12, `<path d="M-3 3L3 -3M0 12L12 0M9 15L15 9" ${NF} stroke-width="1.2"/>`),
+  P('stripes-h', 'lines', 'Horizontal stripes', 20, 20, '<rect width="20" height="8" stroke="none"/>'),
+  P('stripes-v', 'lines', 'Vertical stripes', 20, 20, '<rect width="8" height="20" stroke="none"/>'),
+  P('lines', 'lines', 'Ruled lines', 40, 28, `<path d="M0 14H40" ${NF} stroke-width="1"/>`),
+  P('dashes', 'lines', 'Dashes', 40, 20, `<path d="M4 10H20" ${NF} stroke-width="3" stroke-linecap="round"/>`),
+  P('dotted-lines', 'lines', 'Dotted lines', 24, 24, `<path d="M0 12H24" ${NF} stroke-width="2" stroke-dasharray="2 4"/>`),
+  P('lattice', 'lines', 'Lattice', 40, 40, `<path d="M0 0L40 40M40 0L0 40" ${NF} stroke-width="1"/>`),
+  P('crosshatch', 'texture', 'Crosshatch', 16, 16, `<path d="M0 0L16 16M16 0L0 16" ${NF} stroke-width=".8"/>`),
+  P('chevron', 'geo', 'Chevrons', 40, 20, `<path d="M0 15L10 5L20 15L30 5L40 15" ${NF} stroke-width="3"/>`),
+  P('zigzag', 'geo', 'Zigzag', 40, 20, `<path d="M0 18L10 2L20 18L30 2L40 18" ${NF} stroke-width="2"/>`),
+  P('waves', 'nature', 'Waves', 40, 20, `<path d="M0 10Q10 0 20 10T40 10" ${NF} stroke-width="2"/>`),
+  P('wavy', 'nature', 'Wavy lines', 40, 14, `<path d="M0 7Q5 2 10 7T20 7T30 7T40 7" ${NF} stroke-width="1.5"/>`),
+  P('scallop', 'geo', 'Scallops', 40, 20, `<path d="M0 20A10 10 0 0 1 20 20A10 10 0 0 1 40 20" ${NF} stroke-width="1.5"/>`),
+  P('scales', 'nature', 'Scales', 40, 20, `<path d="M0 10A10 10 0 0 0 20 10A10 10 0 0 0 40 10M-10 20A10 10 0 0 0 10 20A10 10 0 0 0 30 20A10 10 0 0 0 50 20" ${NF} stroke-width="1.5"/>`),
+  P('plus', 'geo', 'Plus', 32, 32, `<path d="M16 8V24M8 16H24" ${NF} stroke-width="3"/>`),
+  P('plus-small', 'geo', 'Small plus', 20, 20, `<path d="M10 6V14M6 10H14" ${NF} stroke-width="1.5"/>`),
+  P('cross', 'geo', 'Crosses', 32, 32, `<path d="M9 9L23 23M23 9L9 23" ${NF} stroke-width="3"/>`),
+  P('ticks', 'geo', 'Ticks', 30, 30, `<path d="M8 15L13 20L22 10" ${NF} stroke-width="2.5"/>`),
+  P('diamonds', 'geo', 'Diamonds', 32, 32, '<polygon points="16,4 28,16 16,28 4,16" stroke="none"/>'),
+  P('diamond-outline', 'geo', 'Diamond outline', 32, 32, `<polygon points="16,2 30,16 16,30 2,16" ${NF} stroke-width="1.5"/>`),
+  P('argyle', 'geo', 'Argyle', 48, 72, `<polygon points="24,0 48,36 24,72 0,36" ${NF} stroke-width="1.2"/><polygon points="24,14 38,36 24,58 10,36" stroke="none" opacity=".5"/>`),
+  P('triangles', 'geo', 'Triangles', 32, 32, '<polygon points="16,6 28,26 4,26" stroke="none"/>'),
+  P('tri-outline', 'geo', 'Triangle outline', 32, 32, `<polygon points="16,4 30,28 2,28" ${NF} stroke-width="1.5"/>`),
+  P('hex', 'geo', 'Hexagons', 56, 32, `<path d="M14 2H42L56 16L42 30H14L0 16Z" ${NF} stroke-width="1.5"/>`),
+  P('honeycomb', 'geo', 'Honeycomb', 56, 97, `<path d="M28 1L54 16V48L28 64L2 48V16Z M28 64V97 M54 48L80 64 M2 48L-24 64" ${NF} stroke-width="1.5"/>`),
+  P('cubes', 'geo', 'Cubes', 52, 60, `<path d="M26 0L52 15V45L26 60L0 45V15Z M0 15L26 30L52 15 M26 30V60" ${NF} stroke-width="1.5"/>`),
+  P('bricks', 'geo', 'Bricks', 48, 24, `<path d="M0 .5H48M0 12.5H48M24 0V12M0 12V24M48 12V24" ${NF} stroke-width="1"/>`),
+  P('herringbone', 'geo', 'Herringbone', 40, 20, `<path d="M0 20L20 0M20 0L40 20M-20 20L0 0" ${NF} stroke-width="1.5"/>`),
+  P('weave', 'texture', 'Weave', 40, 40, '<rect x="2" y="2" width="16" height="7" stroke="none"/><rect x="22" y="12" width="16" height="7" stroke="none"/><rect x="2" y="22" width="16" height="7" stroke="none"/><rect x="22" y="32" width="16" height="7" stroke="none"/><rect x="31" y="2" width="7" height="7" stroke="none" opacity=".5"/><rect x="11" y="32" width="7" height="7" stroke="none" opacity=".5"/>'),
+  P('quatrefoil', 'geo', 'Quatrefoil', 40, 40, `<circle cx="20" cy="9" r="9" ${NF} stroke-width="1.5"/><circle cx="20" cy="31" r="9" ${NF} stroke-width="1.5"/><circle cx="9" cy="20" r="9" ${NF} stroke-width="1.5"/><circle cx="31" cy="20" r="9" ${NF} stroke-width="1.5"/>`),
+  P('ogee', 'geo', 'Ogee', 40, 40, `<path d="M20 0C32 10 32 30 20 40C8 30 8 10 20 0Z" ${NF} stroke-width="1.5"/><path d="M0 20C10 8 30 8 40 20C30 32 10 32 0 20Z" ${NF} stroke-width="1.5"/>`),
+  P('stars', 'party', 'Stars', 40, 40, `<polygon points="${star(20, 20, 9)}" stroke="none"/>`),
+  P('sparkles', 'party', 'Sparkles', 60, 60, `<polygon points="${star(15, 15, 8, 4, .3)}" stroke="none"/><polygon points="${star(45, 40, 5, 4, .3)}" stroke="none"/><polygon points="${star(40, 10, 3, 4, .3)}" stroke="none"/>`),
+  P('hearts', 'party', 'Hearts', 40, 40, `<path d="${heart(20, 18, 9)}" stroke="none"/>`),
+  P('hearts-small', 'party', 'Small hearts', 48, 48, `<path d="${heart(12, 10, 4)}" stroke="none"/><path d="${heart(36, 34, 4)}" stroke="none"/>`),
+  P('leaves', 'nature', 'Leaves', 48, 48, `<path d="M8 40C8 20 20 8 40 8C40 28 28 40 8 40Z" ${NF} stroke-width="1.5"/><path d="M8 40L40 8" ${NF} stroke-width="1"/>`),
+  P('confetti', 'party', 'Confetti', 60, 60, '<g stroke="none"><rect x="6" y="8" width="8" height="4" transform="rotate(20 10 10)"/><rect x="34" y="4" width="8" height="4" transform="rotate(-35 38 6)"/><rect x="48" y="30" width="8" height="4" transform="rotate(60 52 32)"/><rect x="18" y="38" width="8" height="4" transform="rotate(-15 22 40)"/><rect x="36" y="50" width="8" height="4" transform="rotate(40 40 52)"/><circle cx="52" cy="12" r="2.5"/><circle cx="8" cy="54" r="2.5"/></g>'),
+  P('sprinkles', 'party', 'Sprinkles', 60, 60, `<g ${NF} stroke-width="3" stroke-linecap="round"><path d="M6 10L16 6"/><path d="M34 8L42 14"/><path d="M50 32L46 42"/><path d="M12 36L20 44"/><path d="M30 52L40 50"/></g>`),
+  P('arrows', 'geo', 'Arrows', 40, 40, `<path d="M8 12L20 20L8 28" ${NF} stroke-width="2.5"/><path d="M24 12L36 20L24 28" ${NF} stroke-width="2.5" opacity=".5"/>`),
+  P('halfcircles', 'geo', 'Half circles', 40, 20, '<path d="M0 20A10 10 0 0 1 20 20Z" stroke="none"/><path d="M20 20A10 10 0 0 1 40 20Z" stroke="none" opacity=".45"/>'),
+  P('moons', 'nature', 'Moons', 40, 40, '<path d="M24 8A12 12 0 1 0 24 32A9 9 0 1 1 24 8Z" stroke="none"/>'),
+  P('sunrays', 'nature', 'Rays', 40, 40, `<path d="M20 0V40M0 20H40M4 4L36 36M36 4L4 36" ${NF} stroke-width="1" opacity=".7"/>`),
+  P('pebbles', 'nature', 'Pebbles', 60, 60, `<g ${NF} stroke-width="1.5"><ellipse cx="14" cy="16" rx="10" ry="7"/><ellipse cx="44" cy="12" rx="7" ry="5"/><ellipse cx="46" cy="42" rx="11" ry="8"/><ellipse cx="14" cy="46" rx="7" ry="6"/></g>`),
+  // more dots
+  P('dots-large', 'dots', 'Big dots', 48, 48, '<circle cx="24" cy="24" r="8" stroke="none"/>'),
+  P('dots-diag', 'dots', 'Staggered dots', 32, 32, '<circle cx="8" cy="8" r="2.5" stroke="none"/><circle cx="24" cy="24" r="2.5" stroke="none"/>'),
+  P('dots-mixed', 'dots', 'Mixed dots', 60, 60, '<g stroke="none"><circle cx="10" cy="12" r="4"/><circle cx="40" cy="10" r="2"/><circle cx="50" cy="40" r="6"/><circle cx="18" cy="46" r="2.5"/><circle cx="32" cy="30" r="1.5"/></g>'),
+  P('halftone', 'dots', 'Halftone', 64, 32, '<g stroke="none"><circle cx="6" cy="16" r="1.5"/><circle cx="18" cy="16" r="2.5"/><circle cx="30" cy="16" r="3.5"/><circle cx="42" cy="16" r="4.5"/><circle cx="56" cy="16" r="5.5"/></g>'),
+  P('target', 'dots', 'Targets', 48, 48, `<circle cx="24" cy="24" r="18" ${NF} stroke-width="1.5"/><circle cx="24" cy="24" r="11" ${NF} stroke-width="1.5"/><circle cx="24" cy="24" r="4" stroke="none"/>`),
+  P('ovals', 'dots', 'Ovals', 40, 40, `<ellipse cx="20" cy="20" rx="14" ry="8" ${NF} stroke-width="1.5"/>`),
+  P('dot-ring', 'dots', 'Dot rings', 48, 48, '<g stroke="none"><circle cx="24" cy="8" r="2"/><circle cx="35" cy="13" r="2"/><circle cx="40" cy="24" r="2"/><circle cx="35" cy="35" r="2"/><circle cx="24" cy="40" r="2"/><circle cx="13" cy="35" r="2"/><circle cx="8" cy="24" r="2"/><circle cx="13" cy="13" r="2"/></g>'),
+  P('dot-dash', 'lines', 'Dot dash', 40, 20, `<path d="M2 10H14" ${NF} stroke-width="3" stroke-linecap="round"/><circle cx="26" cy="10" r="2" stroke="none"/><circle cx="34" cy="10" r="2" stroke="none"/>`),
+  // more lines
+  P('lines-thick', 'lines', 'Thick rules', 40, 40, '<rect y="14" width="40" height="12" stroke="none"/>'),
+  P('lines-double', 'lines', 'Double rules', 40, 32, `<path d="M0 12H40M0 18H40" ${NF} stroke-width="1.5"/>`),
+  P('stripes-wide', 'lines', 'Wide diagonal', 40, 40, `<path d="M-10 10L10 -10M0 40L40 0M30 50L50 30" ${NF} stroke-width="12"/>`),
+  P('stripes-left', 'lines', 'Diagonal left', 20, 20, `<path d="M25 5L15 -5M20 20L0 0M5 25L-5 15" ${NF} stroke-width="4"/>`),
+  P('lines-v-fine', 'lines', 'Fine verticals', 10, 10, `<path d="M5 0V10" ${NF} stroke-width=".8"/>`),
+  P('dashes-diag', 'lines', 'Diagonal dashes', 30, 30, `<path d="M6 24L14 16M20 10L26 4" ${NF} stroke-width="2.5" stroke-linecap="round"/>`),
+  P('rails', 'lines', 'Rails', 40, 40, `<path d="M0 8H40M0 32H40" ${NF} stroke-width="1"/><path d="M10 8V32M30 8V32" ${NF} stroke-width="1" opacity=".5"/>`),
+  P('ladder', 'lines', 'Ladder', 40, 40, `<path d="M8 0V40M32 0V40M8 20H32" ${NF} stroke-width="2"/>`),
+  P('steps', 'lines', 'Steps', 40, 40, `<path d="M0 40V20H20V0H40" ${NF} stroke-width="2"/>`),
+  P('maze', 'lines', 'Maze', 40, 40, `<path d="M0 10H30V30H10V20H20 M40 0V40" ${NF} stroke-width="2"/>`),
+  P('circuit', 'lines', 'Circuit', 48, 48, `<path d="M4 24H20V8H44M20 24V44H36" ${NF} stroke-width="1.5"/><circle cx="4" cy="24" r="2.5" stroke="none"/><circle cx="44" cy="8" r="2.5" stroke="none"/><circle cx="36" cy="44" r="2.5" stroke="none"/>`),
+  P('barcode', 'lines', 'Barcode', 40, 40, '<g stroke="none"><rect x="2" width="2" height="40"/><rect x="7" width="4" height="40"/><rect x="14" width="1.5" height="40"/><rect x="19" width="3" height="40"/><rect x="26" width="1" height="40"/><rect x="30" width="5" height="40"/><rect x="37" width="1.5" height="40"/></g>'),
+  P('tartan', 'lines', 'Tartan', 60, 60, '<rect x="24" width="12" height="60" stroke="none" opacity=".5"/><rect y="24" width="60" height="12" stroke="none" opacity=".5"/><path d="M6 0V60M54 0V60M0 6H60M0 54H60" fill="none" stroke-width="1.5" opacity=".7"/>'),
+  P('ribbing', 'lines', 'Ribbing', 16, 16, `<path d="M4 0V16M12 0V16" ${NF} stroke-width="2.5"/>`),
+  // more geometry
+  P('tri-alt', 'geo', 'Alternating triangles', 40, 40, '<polygon points="10,4 20,20 0,20" stroke="none"/><polygon points="20,20 40,20 30,36" stroke="none" opacity=".5"/>'),
+  P('pyramids', 'geo', 'Pyramids', 40, 40, '<polygon points="20,4 36,36 4,36" stroke="none" opacity=".35"/><polygon points="20,4 36,36 20,36" stroke="none" opacity=".4"/>'),
+  P('sawtooth', 'geo', 'Sawtooth', 40, 20, '<polygon points="0,20 20,0 20,20" stroke="none"/><polygon points="20,20 40,0 40,20" stroke="none" opacity=".5"/>'),
+  P('octagons', 'geo', 'Octagons', 40, 40, `<path d="M12 2H28L38 12V28L28 38H12L2 28V12Z" ${NF} stroke-width="1.5"/>`),
+  P('pinwheels', 'geo', 'Pinwheels', 48, 48, '<g stroke="none"><path d="M24 24L24 6Q34 6 34 16Z"/><path d="M24 24L42 24Q42 34 32 34Z"/><path d="M24 24L24 42Q14 42 14 32Z"/><path d="M24 24L6 24Q6 14 16 14Z"/></g>'),
+  P('windmill', 'geo', 'Windmill', 40, 40, '<g stroke="none"><rect x="20" y="4" width="14" height="14"/><rect x="6" y="22" width="14" height="14"/><rect x="4" y="6" width="14" height="14" opacity=".4"/><rect x="22" y="20" width="14" height="14" opacity=".4"/></g>'),
+  P('rhombus', 'geo', 'Rhombus grid', 40, 24, `<path d="M0 12L20 0L40 12L20 24Z" ${NF} stroke-width="1.5"/>`),
+  P('hex-dots', 'geo', 'Hex dots', 40, 70, '<g stroke="none"><circle cx="20" cy="17" r="3"/><circle cx="0" cy="52" r="3"/><circle cx="40" cy="52" r="3"/></g>'),
+  P('tiles', 'geo', 'Tiles', 32, 32, '<rect x="3" y="3" width="26" height="26" rx="5" stroke="none" opacity=".6"/>'),
+  P('nested', 'geo', 'Nested squares', 40, 40, `<rect x="4" y="4" width="32" height="32" ${NF} stroke-width="1.5"/><rect x="12" y="12" width="16" height="16" ${NF} stroke-width="1.5"/>`),
+  P('cross-bold', 'geo', 'Bold crosses', 40, 40, '<path d="M15 4H25V15H36V25H25V36H15V25H4V15H15Z" stroke="none"/>'),
+  P('chainlink', 'geo', 'Chain link', 40, 40, `<path d="M0 20L20 0L40 20L20 40Z" ${NF} stroke-width="1.5"/><path d="M10 10L30 30M30 10L10 30" ${NF} stroke-width="1" opacity=".5"/>`),
+  P('trellis', 'geo', 'Trellis', 40, 40, `<path d="M0 20L20 0L40 20L20 40Z" ${NF} stroke-width="4"/>`),
+  P('basket', 'texture', 'Basketweave', 48, 48, '<g stroke="none"><rect x="2" y="2" width="20" height="9"/><rect x="2" y="13" width="20" height="9"/><rect x="26" y="2" width="9" height="20"/><rect x="37" y="2" width="9" height="20"/><rect x="26" y="26" width="20" height="9"/><rect x="26" y="37" width="20" height="9"/><rect x="2" y="26" width="9" height="20"/><rect x="13" y="26" width="9" height="20"/></g>'),
+  P('shingles', 'geo', 'Shingles', 40, 20, `<path d="M0 0V10Q10 20 20 10V0M20 0V10Q30 20 40 10V0" ${NF} stroke-width="1.5"/>`),
+  P('tri-grid', 'geo', 'Triangle grid', 40, 35, `<path d="M0 35L20 0L40 35Z M0 0L40 35 M40 0L0 35" ${NF} stroke-width="1"/>`),
+  P('semi-alt', 'geo', 'Alternating arches', 40, 40, '<path d="M0 20A10 10 0 0 1 20 20Z" stroke="none"/><path d="M20 20A10 10 0 0 0 40 20Z" stroke="none"/><path d="M0 40A10 10 0 0 0 20 40Z" stroke="none" opacity=".5"/><path d="M20 40A10 10 0 0 1 40 40Z" stroke="none" opacity=".5"/>'),
+  P('zigzag-thick', 'geo', 'Thick zigzag', 40, 24, `<path d="M0 18L10 6L20 18L30 6L40 18" ${NF} stroke-width="6"/>`),
+  P('spokes', 'geo', 'Spokes', 40, 40, `<path d="M20 20L20 0M20 20L37 10M20 20L37 30M20 20L20 40M20 20L3 30M20 20L3 10" ${NF} stroke-width="1.5"/>`),
+  P('kites', 'geo', 'Kites', 40, 48, '<polygon points="20,2 32,18 20,46 8,18" stroke="none" opacity=".6"/>'),
+  P('houndstooth', 'geo', 'Houndstooth', 40, 40, '<path d="M0 0H20V20H40V40H20V20H0Z" stroke="none" opacity=".6"/><path d="M20 0L40 20V0Z M0 20L20 40H0Z" stroke="none" opacity=".6"/>'),
+  // nature
+  P('petals', 'nature', 'Petals', 48, 48, `<g ${NF} stroke-width="1.5"><ellipse cx="24" cy="12" rx="5" ry="10"/><ellipse cx="24" cy="36" rx="5" ry="10"/><ellipse cx="12" cy="24" rx="10" ry="5"/><ellipse cx="36" cy="24" rx="10" ry="5"/></g><circle cx="24" cy="24" r="3" stroke="none"/>`),
+  P('clover', 'nature', 'Clover', 40, 40, '<g stroke="none"><circle cx="20" cy="13" r="6"/><circle cx="13" cy="24" r="6"/><circle cx="27" cy="24" r="6"/></g><path d="M20 24V34" fill="none" stroke-width="2"/>'),
+  P('raindrops', 'nature', 'Raindrops', 40, 48, '<path d="M20 6C26 16 28 20 28 26A8 8 0 0 1 12 26C12 20 14 16 20 6Z" stroke="none"/>'),
+  P('snowflakes', 'nature', 'Snowflakes', 48, 48, `<path d="M24 6V42M8 15L40 33M40 15L8 33M24 12L20 8M24 12L28 8M24 36L20 40M24 36L28 40" ${NF} stroke-width="1.5"/>`),
+  P('branches', 'nature', 'Branches', 60, 60, `<path d="M10 55L30 5M20 30L30 20M22 42L36 32M14 44L8 36" ${NF} stroke-width="1.5"/><circle cx="30" cy="20" r="2.5" stroke="none"/><circle cx="36" cy="32" r="2.5" stroke="none"/><circle cx="8" cy="36" r="2.5" stroke="none"/>`),
+  P('waves-big', 'nature', 'Rolling waves', 80, 40, `<path d="M0 20Q20 0 40 20T80 20" ${NF} stroke-width="3"/><path d="M0 32Q20 12 40 32T80 32" ${NF} stroke-width="1.5" opacity=".5"/>`),
+  P('ripples', 'nature', 'Ripples', 60, 30, `<path d="M0 15Q15 5 30 15T60 15" ${NF} stroke-width="1.2"/><path d="M-30 25Q-15 15 0 25T30 25T60 25T90 25" ${NF} stroke-width="1.2"/>`),
+  P('mountains', 'nature', 'Mountains', 60, 30, `<path d="M0 28L15 8L25 20L35 4L50 24L60 14" ${NF} stroke-width="1.5"/>`),
+  P('clouds', 'nature', 'Clouds', 60, 40, `<path d="M12 28A6 6 0 0 1 14 16A8 8 0 0 1 30 14A6 6 0 0 1 40 28Z" ${NF} stroke-width="1.5"/>`),
+  P('suns', 'nature', 'Suns', 48, 48, `<circle cx="24" cy="24" r="7" stroke="none"/><path d="M24 4V10M24 38V44M4 24H10M38 24H44M10 10L14 14M34 34L38 38M38 10L34 14M14 34L10 38" ${NF} stroke-width="2" stroke-linecap="round"/>`),
+  P('seeds', 'nature', 'Seeds', 40, 40, '<ellipse cx="12" cy="12" rx="3" ry="6" transform="rotate(-30 12 12)" stroke="none"/><ellipse cx="30" cy="30" rx="3" ry="6" transform="rotate(30 30 30)" stroke="none"/>'),
+  P('grass', 'nature', 'Grass', 40, 30, `<path d="M6 30Q8 18 4 10M14 30Q16 20 20 12M24 30Q22 18 28 8M34 30Q36 20 32 14" ${NF} stroke-width="1.5" stroke-linecap="round"/>`),
+  P('paws', 'nature', 'Paws', 48, 48, '<g stroke="none"><ellipse cx="24" cy="30" rx="8" ry="6"/><circle cx="14" cy="20" r="3.5"/><circle cx="21" cy="15" r="3.5"/><circle cx="29" cy="15" r="3.5"/><circle cx="36" cy="20" r="3.5"/></g>'),
+  P('shells', 'nature', 'Shells', 40, 40, `<path d="M20 34Q6 34 6 20A14 14 0 0 1 34 20Q34 34 20 34Z M20 34V12M20 34L10 14M20 34L30 14" ${NF} stroke-width="1.2"/>`),
+  // party
+  P('balloons', 'party', 'Balloons', 48, 64, '<ellipse cx="24" cy="22" rx="12" ry="15" stroke="none"/><path d="M24 37L22 40H26Z M24 40Q20 50 26 60" fill="none" stroke-width="1.5"/>'),
+  P('streamers', 'party', 'Streamers', 40, 40, `<path d="M-5 10Q5 0 15 10T35 10T55 10" ${NF} stroke-width="3" transform="rotate(-30 20 20)"/>`),
+  P('bunting', 'party', 'Bunting', 60, 30, `<path d="M0 4Q30 14 60 4" ${NF} stroke-width="1.5"/><polygon points="8,5 20,7 14,22" stroke="none"/><polygon points="26,8 38,8 32,24" stroke="none" opacity=".6"/><polygon points="44,7 56,5 50,21" stroke="none"/>`),
+  P('candies', 'party', 'Candies', 48, 48, '<g stroke="none"><ellipse cx="24" cy="24" rx="9" ry="6" transform="rotate(-25 24 24)"/><polygon points="12,16 16,22 10,26"/><polygon points="36,22 32,26 38,32"/></g>'),
+  P('squiggles', 'party', 'Squiggles', 40, 40, `<path d="M8 10C14 4 14 16 20 10S26 4 32 10" ${NF} stroke-width="2.5" stroke-linecap="round"/><path d="M8 30C14 24 14 36 20 30S26 24 32 30" ${NF} stroke-width="2.5" stroke-linecap="round" opacity=".5"/>`),
+  P('gifts', 'party', 'Gifts', 48, 48, `<rect x="10" y="18" width="28" height="22" ${NF} stroke-width="2"/><path d="M24 18V40M10 28H38" ${NF} stroke-width="2"/><path d="M24 18C18 18 16 12 20 10C23 9 24 14 24 18C24 14 25 9 28 10C32 12 30 18 24 18Z" ${NF} stroke-width="1.5"/>`),
+  P('party-hats', 'party', 'Party hats', 48, 48, '<polygon points="24,6 36,38 12,38" stroke="none" opacity=".7"/><circle cx="24" cy="6" r="3" stroke="none"/><path d="M14 32L34 32" fill="none" stroke-width="2" opacity=".6"/>'),
+  P('fireworks', 'party', 'Fireworks', 60, 60, `<path d="M30 30L30 8M30 30L48 14M30 30L52 32M30 30L46 48M30 30L30 54M30 30L14 48M30 30L8 32M30 30L14 14" ${NF} stroke-width="1.5" stroke-linecap="round"/><g stroke="none"><circle cx="30" cy="8" r="2"/><circle cx="48" cy="14" r="2"/><circle cx="52" cy="32" r="2"/><circle cx="46" cy="48" r="2"/><circle cx="30" cy="54" r="2"/><circle cx="14" cy="48" r="2"/><circle cx="8" cy="32" r="2"/><circle cx="14" cy="14" r="2"/></g>`),
+  P('bokeh', 'party', 'Bokeh', 80, 80, '<g stroke="none"><circle cx="16" cy="20" r="10" opacity=".35"/><circle cx="56" cy="14" r="6" opacity=".5"/><circle cx="64" cy="54" r="12" opacity=".3"/><circle cx="26" cy="60" r="7" opacity=".45"/><circle cx="44" cy="36" r="4" opacity=".6"/></g>'),
+  P('swirls', 'party', 'Swirls', 48, 48, `<path d="M24 24C24 16 36 16 36 24S24 36 16 30S12 14 24 10" ${NF} stroke-width="2" stroke-linecap="round"/>`),
+  P('music', 'party', 'Music notes', 48, 48, `<path d="M20 34V10L34 6V30" ${NF} stroke-width="2.5"/><ellipse cx="16" cy="35" rx="5" ry="3.5" stroke="none"/><ellipse cx="30" cy="31" rx="5" ry="3.5" stroke="none"/>`),
+  P('bows', 'party', 'Bows', 48, 48, '<path d="M24 24L8 14V34ZM24 24L40 14V34Z" stroke="none" opacity=".7"/><circle cx="24" cy="24" r="4" stroke="none"/>'),
+  P('crowns', 'party', 'Crowns', 48, 48, '<path d="M8 34L10 16L18 24L24 12L30 24L38 16L40 34Z" stroke="none" opacity=".75"/>'),
+  P('lightning', 'party', 'Lightning', 40, 48, '<polygon points="22,4 10,26 19,26 16,44 30,20 21,20" stroke="none"/>'),
+  // texture
+  P('stipple', 'texture', 'Stipple', 24, 24, '<g stroke="none"><circle cx="3" cy="5" r=".9"/><circle cx="14" cy="2" r=".9"/><circle cx="20" cy="9" r=".9"/><circle cx="8" cy="13" r=".9"/><circle cx="17" cy="17" r=".9"/><circle cx="4" cy="21" r=".9"/><circle cx="22" cy="21" r=".9"/><circle cx="12" cy="8" r=".6"/></g>'),
+  P('linen', 'texture', 'Linen', 8, 8, `<path d="M0 4H8M4 0V8" ${NF} stroke-width=".6"/>`),
+  P('canvas', 'texture', 'Canvas', 6, 6, `<path d="M0 3H6" ${NF} stroke-width=".8"/><path d="M3 0V6" ${NF} stroke-width=".8" opacity=".5"/>`),
+  P('woodgrain', 'texture', 'Wood grain', 60, 40, `<path d="M6 0Q10 20 6 40M18 0Q14 20 18 40M30 0Q36 20 30 40M44 0Q40 20 44 40M54 0Q58 20 54 40" ${NF} stroke-width="1"/>`),
+  P('marble', 'texture', 'Marble', 80, 80, `<path d="M0 20Q20 10 30 30T60 50T80 40M10 80Q30 60 50 70T80 60M0 60Q10 50 20 60" ${NF} stroke-width="1" opacity=".8"/>`),
+  P('scratches', 'texture', 'Scratches', 60, 60, `<path d="M4 50L22 8M30 56L40 30M46 24L56 4M12 30L16 20" ${NF} stroke-width=".8"/>`),
+  P('fibers', 'texture', 'Paper fibres', 48, 48, `<path d="M4 10Q12 8 20 12M26 30Q34 26 44 30M8 40Q16 44 22 40M30 8Q36 12 42 10M10 24Q14 20 18 24" ${NF} stroke-width=".8" opacity=".8"/>`),
+  P('grain', 'texture', 'Grain', 32, 32, `<path d="M0 32L32 0M-8 8L8 -8M24 40L40 24" ${NF} stroke-width=".5"/>`),
+  P('dapple', 'texture', 'Dapple', 60, 60, '<g stroke="none" opacity=".6"><ellipse cx="14" cy="18" rx="9" ry="6" transform="rotate(20 14 18)"/><ellipse cx="44" cy="12" rx="6" ry="4" transform="rotate(-30 44 12)"/><ellipse cx="46" cy="44" rx="10" ry="6" transform="rotate(10 46 44)"/><ellipse cx="16" cy="48" rx="6" ry="4"/></g>'),
+  P('mesh', 'texture', 'Mesh', 12, 12, `<circle cx="6" cy="6" r="4.5" ${NF} stroke-width=".8"/>`),
+  P('knit', 'texture', 'Knit', 20, 20, `<path d="M0 20Q5 10 10 20Q15 10 20 20M0 10Q5 0 10 10Q15 0 20 10" ${NF} stroke-width="1.5"/>`),
+  P('pixels', 'texture', 'Pixels', 40, 40, '<g stroke="none"><rect width="10" height="10" opacity=".7"/><rect x="20" y="10" width="10" height="10" opacity=".4"/><rect x="10" y="20" width="10" height="10" opacity=".55"/><rect x="30" y="30" width="10" height="10" opacity=".3"/></g>'),
+];
+export const PATTERN_CATS = [['all', 'All'], ['dots', 'Dots'], ['lines', 'Lines'], ['geo', 'Geometric'], ['nature', 'Nature'], ['party', 'Party'], ['texture', 'Texture']];
+export const PATTERN = Object.fromEntries(PATTERNS.map(p => [p.id, p]));
+
+/** Tile size for an uploaded pattern: big uploads are brought down to a sensible repeat. */
+export function customTile(asset, scale = 1) { const s = Math.max(.25, Math.min(4, +scale || 1)), bw = Math.min(asset.w || 240, 240); return `${Math.round(bw * s)}px ${Math.round(bw * s * ((asset.h || bw) / (asset.w || bw)))}px`; }
+
+/** The CSS that paints a page's pattern: a repeating SVG tile in `fg` at `alpha`,
+ *  sized by `scale`. Returns `{ image, size }` for background-image and -size. */
+export function patternCSS({ id, fg = '#000000', alpha = .15, scale = 1 } = {}) {
+  const p = PATTERN[id]; if (!p) return null;
+  const s = Math.max(.25, Math.min(4, +scale || 1)), a = Math.max(0, Math.min(1, +alpha));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${p.w}" height="${p.h}" viewBox="0 0 ${p.w} ${p.h}"><g fill="${fg}" stroke="${fg}" opacity="${a}">${p.body}</g></svg>`;
+  return { image: `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`, size: `${Math.round(p.w * s * 10) / 10}px ${Math.round(p.h * s * 10) / 10}px` };
+}

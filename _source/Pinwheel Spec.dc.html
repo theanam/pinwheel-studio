@@ -193,6 +193,7 @@ northwind-brand-kit.pinwheel             kind "brand"
           <li>Accent-colored text uses <i>hi</i>, which falls back to ink when the accent has less than 3:1 contrast on the background.</li>
           <li>Margins are at least 7u. Nothing important goes into platform UI zones (story top and bottom 12%).</li>
           <li>Image slots come filled with a procedural sample — a cartoon portrait, a landscape or a product, chosen from the frame's label and shape and drawn as inline SVG in the palette's own colours — so a template reads as a finished design before a photo is dropped in. No stock imagery ships: the sample is a few hundred bytes of vector, and it disappears the moment a real photo lands in the frame.</li>
+          <li>Page backgrounds: a colour, a photo, or a tileable pattern — 139 built in (one SVG tile each, drawn in a theme colour at a chosen strength and size) or an uploaded PNG tile, which recolours when it is one colour on transparency or dark on light and otherwise keeps its colours — with templates that use them.</li>
           <li>Visual QA in CI renders one template per format × layout to PNG and diffs it against approved baselines.</li>
         </ul>
         <h3 style="margin:8px 0 0; font-size:18px">Adding a layout</h3>

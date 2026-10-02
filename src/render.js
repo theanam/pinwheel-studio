@@ -1,5 +1,6 @@
 // Pinwheel Studio — renderer. Pure functions of (h = React.createElement, element model).
 import { MOTIFS } from './motifs.js';
+import { patternCSS, customTile } from './patterns.js';
 
 export const filterCSS = f => !f ? 'none' : `brightness(${f.b ?? 1}) contrast(${f.c ?? 1}) saturate(${f.s ?? 1}) blur(${f.bl || 0}px) grayscale(${f.g || 0}) sepia(${f.se || 0}) hue-rotate(${f.hu || 0}deg)`;
 
@@ -346,9 +347,29 @@ export function renderEl(h, el, o = {}) {
   return null;
 }
 
+/** The page's pattern as a layer: a built-in SVG tile, an uploaded tile with its own
+ *  colours, or an uploaded mono tile used as a mask and flooded with the colour. */
+function patternLayer(h, page, o) {
+  const p = page.pattern; if (!p) return null;
+  // A rotated pattern is a larger layer turned about the page's centre, so the tiling
+  // stays seamless and still reaches every corner.
+  const rot = +p.rot || 0;
+  const base = rot ? { position: 'absolute', left: '-100%', top: '-100%', width: '300%', height: '300%', transform: `rotate(${rot}deg)`, transformOrigin: 'center', pointerEvents: 'none' } : { position: 'absolute', inset: 0, pointerEvents: 'none' };
+  if (p.id === 'custom') {
+    const a = p.asset && o.assets && o.assets[p.asset]; if (!a) return null;
+    const size = customTile(a, p.scale), url = `url("${a.src}")`;
+    if (p.mono) return h('div', { key: '__pattern', 'data-pattern': 'mono', style: { ...base, backgroundColor: p.fg || '#000', opacity: p.alpha ?? .2, WebkitMaskImage: url, maskImage: url, WebkitMaskRepeat: 'repeat', maskRepeat: 'repeat', WebkitMaskSize: size, maskSize: size } });
+    return h('div', { key: '__pattern', 'data-pattern': 'image', style: { ...base, opacity: p.alpha ?? 1, backgroundImage: url, backgroundRepeat: 'repeat', backgroundSize: size } });
+  }
+  const css = patternCSS(p); if (!css) return null;
+  return h('div', { key: '__pattern', 'data-pattern': 'tile', style: { ...base, backgroundImage: css.image, backgroundRepeat: 'repeat', backgroundSize: css.size } });
+}
 export function renderPage(h, page, doc, o = {}) {
   const bgImg = page.bgAsset && o.assets && o.assets[page.bgAsset];
-  return h('div', { 'data-page-node': page.id, onPointerDown: o.onPageDown, style: { position: 'relative', width: doc.w, height: doc.h, backgroundColor: page.bg || '#FFFFFF', backgroundImage: bgImg ? `url(${bgImg.src})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden', pointerEvents: o.interactive ? 'auto' : 'none', userSelect: 'none', WebkitUserSelect: 'none' } },
+  // Bottom to top: page colour, pattern, background photo, then the elements.
+  return h('div', { 'data-page-node': page.id, onPointerDown: o.onPageDown, style: { position: 'relative', width: doc.w, height: doc.h, backgroundColor: page.bg || '#FFFFFF', overflow: 'hidden', pointerEvents: o.interactive ? 'auto' : 'none', userSelect: 'none', WebkitUserSelect: 'none' } },
+    patternLayer(h, page, o),
+    bgImg ? h('div', { key: '__bg', 'data-bg': 1, style: { position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: `url("${bgImg.src}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } }) : null,
     page.els.map(el => renderEl(h, el, o)));
 }
 

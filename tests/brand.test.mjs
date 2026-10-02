@@ -4,6 +4,7 @@ import { newBrand, migrateBrand, brandForFile, brandForKit, brandFromKit, palett
 import { dominantColors, kitsFromColors, kitsFromPixels, ensureContrast, hsl } from '../src/palette.js';
 import { beyond, RECENTS_MAX } from '../src/store.js';
 import { contrast, makeTheme, catalog, build, textByKey, editedText, carryText, descFor } from '../src/presets.js';
+import { PATTERNS, PATTERN, patternCSS } from '../src/patterns.js';
 
 /* ---------- brands ---------- */
 const b = newBrand({ name: 'Northwind' });
@@ -122,5 +123,28 @@ const pod = build(cat.find(t => t.topic === 'podcast'));
 carryText(pod, edits);
 assert.ok(pod.pages[0].els.some(e => e.key === 'title' && e.text === 'My Shop Sale'));
 assert.equal(descFor({ tpl: 'nope~x~y~0', theme: {} }), null);
+
+/* ---------- page patterns ---------- */
+assert.ok(PATTERNS.length >= 100, `plenty of patterns (${PATTERNS.length})`);
+import('../src/patterns.js').then(({ PATTERN_CATS }) => { const cats = new Set(PATTERN_CATS.map(c => c[0])); for (const p of PATTERNS) assert.ok(cats.has(p.cat), p.id + ' has a known category'); });
+assert.equal(new Set(PATTERNS.map(p => p.id)).size, PATTERNS.length, 'pattern ids are unique');
+for (const p of PATTERNS) {
+  const css = patternCSS({ id: p.id, fg: '#AB12CD', alpha: .4, scale: 2 });
+  assert.ok(css.image.startsWith('url("data:image/svg+xml;utf8,'), p.id + ' is an SVG data URL');
+  const svg = decodeURIComponent(css.image.slice(28, -2));
+  assert.ok(svg.includes('fill="#AB12CD"') && svg.includes('opacity="0.4"'), p.id + ' takes the colour and strength');
+  assert.equal(css.size, `${p.w * 2}px ${p.h * 2}px`, p.id + ' scales its tile');
+  assert.ok(p.w > 0 && p.h > 0 && p.name);
+}
+assert.equal(patternCSS({ id: 'nope' }), null);
+assert.equal(patternCSS({ id: 'dots', scale: 99 }).size, '96px 96px', 'scale is clamped');
+// The pattern layouts give their page a pattern in a theme colour, so a palette swap recolours it.
+for (const L of ['pattern-card', 'pattern-band', 'pattern-corner', 'pattern-invite']) {
+  const t = cat.find(x => x.layout === L); assert.ok(t, L + ' is in the catalogue');
+  const b = build(t); const pg = b.pages[0];
+  assert.ok(pg.pattern && PATTERN[pg.pattern.id], L + ' has a known pattern');
+  assert.ok([b.theme.ink, b.theme.accent, b.theme.accent2].includes(pg.pattern.fg), L + ' colours its pattern from the theme');
+  assert.ok(pg.pattern.alpha > 0 && pg.pattern.alpha <= 1 && pg.pattern.scale > 0);
+}
 
 console.log('brand: ok');

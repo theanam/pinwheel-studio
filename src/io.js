@@ -208,7 +208,7 @@ const manifestBase = (kind, name) => ({ format: 'pinwheel', kind, version: FORMA
 /** Build the .pinwheel blob for a design. */
 export async function packProject(doc, assets, thumbNode, fonts = {}) {
   const JSZip = await lib('jszip'); const z = new JSZip();
-  const used = new Set(); doc.pages.forEach(p => { if (p.bgAsset) used.add(p.bgAsset); p.els.forEach(e => { if (e.asset) used.add(e.asset); if (e.origAsset) used.add(e.origAsset); }); });
+  const used = new Set(); doc.pages.forEach(p => { if (p.bgAsset) used.add(p.bgAsset); if (p.pattern && p.pattern.asset) used.add(p.pattern.asset); p.els.forEach(e => { if (e.asset) used.add(e.asset); if (e.origAsset) used.add(e.origAsset); }); });
   if (doc.brand && doc.brand.logo) used.add(doc.brand.logo);
   const manifest = { ...manifestBase('design', doc.name), created: doc.created || new Date().toISOString(), size: { w: doc.w, h: doc.h, unit: 'px' }, pages: doc.pages.length, assets: {} };
   manifest.assets = await packAssets(z, used, assets);
@@ -250,6 +250,39 @@ export async function openProject(file) {
   return { kind, doc: migrate(doc, man.version), assets: await unpackAssets(z, man.assets), fonts: await unpackFonts(z, man.fonts), manifest: man };
 }
 function migrate(doc, v) { return doc; }
+
+/* ---------- uploaded patterns ---------- */
+/**
+ * Decide whether a tile can be recoloured. A tile drawn in one colour, either on
+ * transparency or dark on light, is "mono": its shape becomes an alpha mask that the
+ * renderer floods with any colour. A tile with several colours keeps them.
+ * Returns `{ mono, src, w, h }` where `src` is the mask (mono) or the image as is.
+ */
+export async function analyzePattern(src) {
+  const img = await loadImage(src); const max = 512, s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * s)), h = Math.max(1, Math.round(img.naturalHeight * s));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h).data, n = w * h; let transparent = 0; const lum = new Float32Array(n), sat = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], a = d[i * 4 + 3]; if (a < 20) transparent++; lum[i] = (.2126 * r + .7152 * g + .0722 * b) / 255; sat[i] = (Math.max(r, g, b) - Math.min(r, g, b)) / 255; }
+  const hasAlpha = transparent > n * .02;
+  const out = x.createImageData(w, h); let mono = false;
+  if (hasAlpha) {
+    // Shape on transparency: mono if the opaque pixels are close to one colour.
+    let sr = 0, sg = 0, sb = 0, k = 0; for (let i = 0; i < n; i++) if (d[i * 4 + 3] >= 20) { sr += d[i * 4]; sg += d[i * 4 + 1]; sb += d[i * 4 + 2]; k++; }
+    const mr = sr / k, mg = sg / k, mb = sb / k; let near = 0; for (let i = 0; i < n; i++) if (d[i * 4 + 3] >= 20 && Math.hypot(d[i * 4] - mr, d[i * 4 + 1] - mg, d[i * 4 + 2] - mb) < 64) near++;
+    mono = near >= k * .9;
+    for (let i = 0; i < n; i++) { out.data[i * 4 + 3] = d[i * 4 + 3]; }
+  } else {
+    // Opaque: mono if nearly everything is unsaturated; the dark parts are the pattern.
+    let gray = 0, lo = 1, hi = 0; for (let i = 0; i < n; i++) { if (sat[i] < .18) gray++; if (lum[i] < lo) lo = lum[i]; if (lum[i] > hi) hi = lum[i]; }
+    mono = gray >= n * .95 && hi - lo > .25;
+    const span = Math.max(.05, hi - lo);
+    for (let i = 0; i < n; i++) { const a = Math.max(0, Math.min(1, (hi - lum[i]) / span)); out.data[i * 4 + 3] = Math.round(a * 255); }
+  }
+  if (!mono) return { mono: false, src, w: img.naturalWidth, h: img.naturalHeight };
+  const m = document.createElement('canvas'); m.width = w; m.height = h; m.getContext('2d').putImageData(out, 0, 0);
+  return { mono: true, src: m.toDataURL('image/png'), w, h };
+}
 
 /* ---------- uploaded fonts ---------- */
 /** Read a font file (TTF, OTF, WOFF, WOFF2) as a data URL with its MIME type. */

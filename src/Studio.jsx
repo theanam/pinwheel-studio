@@ -21,7 +21,7 @@ export default class Studio extends React.Component {
     // brandOn: templates and new designs take the active brand's colours and fonts.
     // Off on every visit, so the gallery always opens with templates in their own
     // style; the choice lasts for the session only.
-    brandOn: false, fonts: {},
+    brandOn: false, fonts: {}, patCat: 'all',
     customW: 1080, customH: 1080, fmtsAll: false,
     helpOpen: false, layerDrag: null, layerOver: null, fontQ: '', fontCat: 'all', fontAnchor: null,
     vw: typeof window !== 'undefined' ? window.innerWidth : 1280,
@@ -73,6 +73,7 @@ export default class Studio extends React.Component {
   setLogoInput = n => { this.logoInput = n; };
   setBrandAssetInput = n => { this.brandAssetInput = n; };
   setFontInput = n => { this.fontInput = n; };
+  setPatternInput = n => { this.patternInput = n; };
 
   // 'system' follows prefers-color-scheme; 'light' / 'dark' pin it via data-theme.
   applyTheme(t) { const r = document.documentElement; if (t === 'system') delete r.dataset.theme; else r.dataset.theme = t; }
@@ -93,8 +94,8 @@ export default class Studio extends React.Component {
     if ('launchQueue' in window && 'LaunchParams' in window && 'files' in window.LaunchParams.prototype) {
       window.launchQueue.setConsumer(async ({ files }) => { if (files && files.length) this.openProjectFile(await files[0].getFile(), files[0]); });
     }
-    Promise.all([import('./presets.js'), import('./render.js'), import('./io.js'), import('./suggest.js'), import('./store.js'), import('./brand.js'), import('./palette.js')]).then(async ([P, R, IO, S, DB, B, PAL]) => {
-      this.P = P; this.R = R; this.IO = IO; this.S = S; this.DB = DB; this.B = B; this.PAL = PAL;
+    Promise.all([import('./presets.js'), import('./render.js'), import('./io.js'), import('./suggest.js'), import('./store.js'), import('./brand.js'), import('./palette.js'), import('./patterns.js')]).then(async ([P, R, IO, S, DB, B, PAL, PT]) => {
+      this.P = P; this.R = R; this.IO = IO; this.S = S; this.DB = DB; this.B = B; this.PAL = PAL; this.PT = PT;
       this.profile = S.loadProfile(); this._pv = 0; this._rankCache = new Map();
       // The renderer reads window.qrcode synchronously; pull it in now and repaint.
       IO.lib('qr').then(() => this.forceUpdate()).catch(() => { });
@@ -177,6 +178,36 @@ export default class Studio extends React.Component {
     this.setState({ busy: null });
   };
   uploadFont = () => this.fontInput && this.fontInput.click();
+  // An uploaded tile joins the brand. The analysis decides whether it can be
+  // recoloured (a mask) or keeps its own colours (an image).
+  onPatternFile = async e => {
+    const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+    this.setState({ busy: 'Reading pattern…' });
+    try {
+      let b = this.state.brand; const added = [];
+      for (const f of files) {
+        const r = await this.IO.readImageFile(f); const a = await this.IO.analyzePattern(r.src); const id = 'a' + this.P.nid();
+        const asset = { src: a.src, w: a.w, h: a.h, name: f.name, alpha: true };
+        this.setState(s => ({ assets: { ...s.assets, [id]: asset } }));
+        b = { ...b, assets: { ...b.assets, [id]: asset }, patterns: [...b.patterns, { asset: id, name: f.name.replace(/\.[a-z0-9]+$/i, ''), mono: a.mono }] }; added.push(a.mono);
+      }
+      this.setBrand({ assets: b.assets, patterns: b.patterns }); this.setState({ patCat: 'yours' });
+      this.toast(added.length === 1 ? (added[0] ? 'Pattern added — it takes any colour' : 'Pattern added — it keeps its own colours') : `Added ${added.length} patterns`);
+    } catch (err) { console.error(err); this.toast(err.message || 'Could not read that image'); }
+    this.setState({ busy: null });
+  };
+  uploadPattern = () => this.patternInput && this.patternInput.click();
+  async removeBrandPattern(assetId) {
+    if (!(await this.ask({ title: 'Remove this pattern from the brand?', body: 'Designs already using it keep their copy.', confirmLabel: 'Remove', danger: true }))) return;
+    const b = this.state.brand; const assets = { ...b.assets }; delete assets[assetId]; this.setBrand({ assets, patterns: b.patterns.filter(p => p.asset !== assetId) });
+  }
+  /** A pattern colour that reads on a page colour: the theme colour with the most
+   *  contrast, or a shade of the page colour itself when nothing in the theme does. */
+  patternFgFor(bg) {
+    const t = this.state.doc.theme, P = this.P; const cands = [t.accent, t.accent2, t.ink, t.muted].filter(Boolean);
+    const best = cands.map(c => [c, P.contrast(c, bg)]).sort((a, b) => b[1] - a[1])[0];
+    return best && best[1] >= 1.6 ? best[0] : P.mix(bg, P.contrast(bg, '#FFFFFF') > P.contrast(bg, '#000000') ? '#FFFFFF' : '#000000', .35);
+  }
   async removeBrandFont(id) {
     const b = this.state.brand, f = b.fonts[id]; if (!f) return;
     if (!(await this.ask({ title: `Remove “${f.family}”?`, body: 'Designs already using it fall back to a standard font on this device.', confirmLabel: 'Remove', danger: true }))) return;
@@ -249,9 +280,9 @@ export default class Studio extends React.Component {
     return this._lr.get(key);
   }
   async writeRecent(doc, assets) {
-    const used = {}; doc.pages.forEach(p => { if (p.bgAsset && assets[p.bgAsset]) used[p.bgAsset] = assets[p.bgAsset]; p.els.forEach(e => { if (e.asset && assets[e.asset]) used[e.asset] = assets[e.asset]; if (e.origAsset && assets[e.origAsset]) used[e.origAsset] = assets[e.origAsset]; }); });
+    const used = {}; doc.pages.forEach(p => { if (p.bgAsset && assets[p.bgAsset]) used[p.bgAsset] = assets[p.bgAsset]; if (p.pattern && p.pattern.asset && assets[p.pattern.asset]) used[p.pattern.asset] = assets[p.pattern.asset]; p.els.forEach(e => { if (e.asset && assets[e.asset]) used[e.asset] = assets[e.asset]; if (e.origAsset && assets[e.origAsset]) used[e.origAsset] = assets[e.origAsset]; }); });
     const p1 = doc.pages[0], thumbs = {};
-    for (const id of Object.keys(used)) { if (p1.bgAsset === id || p1.els.some(e => e.asset === id)) thumbs[id] = { ...used[id], src: await this.lowResFor(id, used[id]) }; }
+    for (const id of Object.keys(used)) { if (p1.bgAsset === id || (p1.pattern && p1.pattern.asset === id) || p1.els.some(e => e.asset === id)) thumbs[id] = { ...used[id], src: await this.lowResFor(id, used[id]) }; }
     const meta = { id: doc.id, name: doc.name, fmt: doc.fmt, w: doc.w, h: doc.h, pages: doc.pages.length, created: doc.created, updated: Date.now(), tpl: doc.tpl || null, preview: { page: p1, assets: thumbs } };
     await this.DB.putRecent(meta, { id: doc.id, doc, assets: used });
     return meta;
@@ -393,7 +424,7 @@ export default class Studio extends React.Component {
     const old = doc.theme, map = {};
     this.P.THEME_KEYS.forEach(k => { if (old[k] && nt[k]) { const key = String(old[k]).toUpperCase(); if (!(key in map)) map[key] = nt[k]; } });
     const sw = c => (c && map[String(c).toUpperCase()]) || c;
-    doc.pages.forEach(p => { p.bg = sw(p.bg); p.els.forEach(e => { ['color', 'fill', 'stroke', 'bg', 'outline', 'fg', 'qbg', 'ink', 'tint', 'hole', 'border'].forEach(k => { if (e[k]) e[k] = sw(e[k]); }); if (e.colors) e.colors = e.colors.map(sw); }); });
+    doc.pages.forEach(p => { p.bg = sw(p.bg); if (p.pattern && p.pattern.fg) p.pattern = { ...p.pattern, fg: sw(p.pattern.fg) }; p.els.forEach(e => { ['color', 'fill', 'stroke', 'bg', 'outline', 'fg', 'qbg', 'ink', 'tint', 'hole', 'border'].forEach(k => { if (e[k]) e[k] = sw(e[k]); }); if (e.colors) e.colors = e.colors.map(sw); }); });
     doc.theme = { ...nt, display: old.display, body: old.body, pairId: old.pairId };
   }
   applyPalette(pal) { const t = this.P.makeTheme(pal); this.setDoc(d => this.applyThemeTo(d, t)); }
@@ -603,14 +634,25 @@ export default class Studio extends React.Component {
     }
   }
   startRotate = e => {
-    e.stopPropagation(); e.preventDefault(); const el = this.selEls()[0]; if (!el) return;
+    e.stopPropagation(); e.preventDefault(); const els = this.selEls().filter(x => !x.locked); if (!els.length) return;
     const n = document.querySelector(`[data-page-node="${this.pg.id}"]`).getBoundingClientRect(), z = this.state.zoom;
-    const cx = n.left + (el.x + el.w / 2) * z, cy = n.top + (el.y + el.h / 2) * z; this.pushHist(); this._dragging = true;
+    // One element turns about its own centre; a group turns about the centre of its
+    // box, each member orbiting it and turning by the same amount.
+    const one = els.length === 1, B = one ? { x: els[0].x, y: els[0].y, w: els[0].w, h: els[0].h } : this.bbox(els);
+    const bcx = B.x + B.w / 2, bcy = B.y + B.h / 2, cx = n.left + bcx * z, cy = n.top + bcy * z; this.pushHist(); this._dragging = true;
     // Rotation is relative to where the drag began: the handle hangs below the
-    // element, so an absolute angle would read 180° before the pointer had moved.
+    // selection, so an absolute angle would read 180° before the pointer had moved.
     const ang = ev => Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
-    const a0 = ang(e), r0 = el.rot || 0;
-    this.drag(ev => { let a = r0 + ang(ev) - a0; if (ev.shiftKey) a = Math.round(a / 15) * 15; else { const r = Math.round(a / 45) * 45; if (Math.abs(a - r) < 3) a = r; } a = ((Math.round(a) % 360) + 540) % 360 - 180; this.setDoc((d, p) => { p.els.find(q => q.id === el.id).rot = a; }, false); this.setState({ dragInfo: a + '°' }); }, () => { this._dragging = false; this.setState({ dragInfo: null }); }, e);
+    const a0 = ang(e), starts = els.map(x => ({ id: x.id, x: x.x, y: x.y, w: x.w, h: x.h, rot: x.rot || 0 }));
+    const norm = a => ((Math.round(a) % 360) + 540) % 360 - 180;
+    this.drag(ev => {
+      let delta = ang(ev) - a0;
+      if (one) { let a = starts[0].rot + delta; if (ev.shiftKey) a = Math.round(a / 15) * 15; else { const r = Math.round(a / 45) * 45; if (Math.abs(a - r) < 3) a = r; } delta = a - starts[0].rot; }
+      else if (ev.shiftKey) delta = Math.round(delta / 15) * 15; else { const r = Math.round(delta / 45) * 45; if (Math.abs(delta - r) < 3) delta = r; }
+      const rad = delta * Math.PI / 180, cos = Math.cos(rad), sin = Math.sin(rad);
+      this.setDoc((d, p) => starts.forEach(st => { const x = p.els.find(q => q.id === st.id); if (!x) return; x.rot = norm(st.rot + delta); if (!one) { const ex = st.x + st.w / 2 - bcx, ey = st.y + st.h / 2 - bcy; x.x = Math.round(bcx + ex * cos - ey * sin - st.w / 2); x.y = Math.round(bcy + ex * sin + ey * cos - st.h / 2); } }), false);
+      this.setState({ dragInfo: (one ? norm(starts[0].rot + delta) : norm(delta)) + '°' });
+    }, () => { this._dragging = false; this.setState({ dragInfo: null }); }, e);
   };
   onPageDown(e, i) {
     if (e.button !== 0) return; e.stopPropagation();
@@ -643,7 +685,7 @@ export default class Studio extends React.Component {
   onImageFile = async e => {
     const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
     this.setState({ busy: 'Importing images…' });
-    try { for (const f of files) { const id = await this.ingest(f); if (this.replaceTarget) { const t = this.replaceTarget; this.replaceTarget = null; this.setDoc(d => d.pages.forEach(p => p.els.forEach(x => { if (x.id === t) { x.asset = id; x.cx = 50; x.cy = 50; x.zoom = 1; delete x.origAsset; } }))); } else if (this.state.screen === 'editor') this.addImageAsset(id); } }
+    try { for (const f of files) { const id = await this.ingest(f); if (this.replaceTarget) { const t = this.replaceTarget; this.replaceTarget = null; if (t.startsWith('bg:')) { const pid = t.slice(3); this.setDoc(d => d.pages.forEach(p => { if (p.id === pid) p.bgAsset = id; })); } else this.setDoc(d => d.pages.forEach(p => p.els.forEach(x => { if (x.id === t) { x.asset = id; x.cx = 50; x.cy = 50; x.zoom = 1; delete x.origAsset; } }))); } else if (this.state.screen === 'editor') this.addImageAsset(id); } }
     catch (err) { this.toast('Could not read that image'); }
     this.setState({ busy: null });
   };
@@ -855,14 +897,19 @@ export default class Studio extends React.Component {
   sliderExtras(c) {
     const st = this.state, key = c.label, ed = st.sliderEdit && st.sliderEdit.key === key ? st.sliderEdit : null;
     const commit = () => { const e = this.state.sliderEdit; if (!e || e.key !== key) return; this.setState({ sliderEdit: null }); const v = parseFloat(e.text); if (Number.isFinite(v) && v !== c.value) c.onChange({ target: { value: String(v) } }); };
-    return { min: Math.min(c.min, c.value), max: Math.max(c.max, c.value), editing: !!ed, editText: ed ? ed.text : '',
+    const min = Math.min(c.min, c.value), max = Math.max(c.max, c.value), span = max - min || 1;
+    // The track fills from the left, or from the centre value for a bipolar control.
+    const pct = v => Math.max(0, Math.min(100, (v - min) / span * 100)); const vp = pct(c.value), T = 'var(--pw-line-strong)', A = 'var(--pw-accent)';
+    let fill; if (c.center != null) { const cp = pct(c.center); const [a, b] = vp >= cp ? [cp, vp] : [vp, cp]; fill = `linear-gradient(to right, ${T} 0% ${a}%, ${A} ${a}% ${b}%, ${T} ${b}% 100%)`; } else fill = `linear-gradient(to right, ${A} 0% ${vp}%, ${T} ${vp}% 100%)`;
+    const hasReset = c.def !== undefined && Math.abs(c.value - c.def) > 1e-9;
+    return { min, max, fillStyle: { background: fill }, hasReset, reset: () => c.onChange({ target: { value: String(c.def) } }), resetTitle: `Reset to ${c.def}`, editing: !!ed, editText: ed ? ed.text : '',
       startEdit: () => this.setState({ sliderEdit: { key, text: String(Math.round(c.value * 1000) / 1000) } }),
       onEditChange: e => this.setState({ sliderEdit: { key, text: e.target.value } }),
       onEditKey: e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } else if (e.key === 'Escape') { e.preventDefault(); this.setState({ sliderEdit: null }); } },
       commitEdit: commit, selectAll: e => e.target.select() };
   }
   ctl(c) {
-    const k = c.k; if (k === 'slider') c = { ...c, ...this.sliderExtras(c) }; return { label: '', display: '', ...c, hasLabel: !!c.label && k !== 'btns', isSlider: k === 'slider', isNums: k === 'nums', isColor: k === 'color', isSelect: k === 'select', isSeg: k === 'seg', isText: k === 'text', isArea: k === 'area', isBtns: k === 'btns', isNote: k === 'note', gridStyle: { display: 'grid', gridTemplateColumns: `repeat(${c.cols || 2}, minmax(0, 1fr))`, gap: 6 }, selectNode: k === 'select' ? (c.selFont ? this.fontPickerEl('font:el', c.value, c.onPick) : this.selectEl(c.value, c.options, c.onChange, { height: 34, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 8px', fontSize: 13, background: 'var(--pw-surface)', width: '100%' })) : null };
+    const k = c.k; if (k === 'slider') c = { ...c, ...this.sliderExtras(c) }; return { label: '', display: '', ...c, hasLabel: !!c.label && k !== 'btns', isSlider: k === 'slider', isPatterns: k === 'patterns', isNums: k === 'nums', isColor: k === 'color', isSelect: k === 'select', isSeg: k === 'seg', isText: k === 'text', isArea: k === 'area', isBtns: k === 'btns', isNote: k === 'note', gridStyle: { display: 'grid', gridTemplateColumns: `repeat(${c.cols || 2}, minmax(0, 1fr))`, gap: 6 }, selectNode: k === 'select' ? (c.selFont ? this.fontPickerEl('font:el', c.value, c.onPick) : this.selectEl(c.value, c.options, c.onChange, { height: 34, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 8px', fontSize: 13, background: 'var(--pw-surface)', width: '100%' })) : null };
   }
   selectEl(value, options, onChange, style) {
     const h = React.createElement;
@@ -900,14 +947,39 @@ export default class Studio extends React.Component {
   buildProps() {
     const d = this.state.doc, P = this.P; const els = this.selEls(); const S = [];
     const pp = (patch, key) => this.patchSel(patch, key || true);
-    const slider = (label, value, min, max, step, fn, disp) => ({ k: 'slider', label, value, min, max, step, display: disp != null ? disp : String(Math.round(value * 100) / 100), onChange: e => fn(+e.target.value) });
+    const slider = (label, value, min, max, step, fn, disp, o = {}) => ({ k: 'slider', label, value, min, max, step, display: disp != null ? disp : String(Math.round(value * 100) / 100), onChange: e => fn(+e.target.value), def: o.def, center: o.center });
     const color = (label, cur, fn, none) => ({ k: 'color', label, display: cur ? cur.toUpperCase() : 'None', hex: cur && /^#[0-9a-f]{6}$/i.test(cur) ? cur : '#000000', swatches: this.swatches(cur, fn, none), onPick: e => fn(e.target.value.toUpperCase()) });
     const seg = (label, opts) => ({ k: 'seg', label, opts: opts.map(([l, on, fn, title]) => ({ label: l, title: title || l, style: this.segStyle(on), onClick: fn })) });
     const btns = items => ({ k: 'btns', items: items.map(([label, fn, kind, title]) => ({ label, onClick: fn, title: title || label, style: this.btnStyle(kind) })) });
     const note = text => ({ k: 'note', text });
     if (!els.length) {
-      const pg = this.pg;
-      S.push({ title: 'Background', controls: [color('Page color', pg.bg, c => this.setDoc((dd, p) => { p.bg = c || '#FFFFFF'; }, 'pagebg'))] });
+      const st = this.state, pg = this.pg, pat = pg.pattern, t = d.theme, ink = this.cssVar('--pw-ink'), b = st.brand, cat = st.patCat;
+      const setPat = (v, key) => this.setDoc((dd, p) => { if (v) p.pattern = v; else delete p.pattern; }, key || true);
+      const fg0 = pat ? pat.fg : this.patternFgFor(pg.bg), a0 = pat ? pat.alpha : .2, s0 = pat ? pat.scale : 1;
+      // Every tile is drawn in the UI ink so the picker reads in both themes; the
+      // page's own pattern takes its colour from the controls below.
+      const none = { label: 'None', on: !pat, onClick: () => setPat(null), style: { background: 'var(--pw-surface)', backgroundImage: 'linear-gradient(135deg, transparent 46%, #D94B3A 46%, #D94B3A 54%, transparent 54%)' } };
+      const yours = b.patterns.filter(cp => st.assets[cp.asset]).map(cp => { const a = st.assets[cp.asset], url = `url("${a.src}")`, size = this.PT.customTile(a, .4); return { label: cp.name + (cp.mono ? '' : ' · keeps its colours'), on: !!pat && pat.id === 'custom' && pat.asset === cp.asset, onClick: () => setPat({ id: 'custom', asset: cp.asset, mono: cp.mono, fg: fg0, alpha: cp.mono ? a0 : (pat && pat.id === 'custom' ? pat.alpha : 1), scale: s0 }), onRemove: e => { e.stopPropagation(); this.removeBrandPattern(cp.asset); },
+        style: cp.mono ? { background: ink, WebkitMaskImage: url, maskImage: url, WebkitMaskSize: size, maskSize: size, WebkitMaskRepeat: 'repeat', maskRepeat: 'repeat', opacity: .7 } : { background: 'var(--pw-surface)', backgroundImage: url, backgroundSize: size, backgroundRepeat: 'repeat' } }; });
+      const builtin = this.PT.PATTERNS.filter(p => cat === 'all' || p.cat === cat).map(p => { const css = this.PT.patternCSS({ id: p.id, fg: ink, alpha: .55, scale: .55 }); return { label: p.name, on: !!pat && pat.id === p.id, onClick: () => setPat({ id: p.id, fg: fg0, alpha: a0, scale: s0 }), style: { background: 'var(--pw-surface)', backgroundImage: css.image, backgroundSize: css.size } }; });
+      const tiles = cat === 'yours' ? [none, ...yours] : cat === 'all' ? [none, ...yours, ...builtin] : [none, ...builtin];
+      const chips = [...this.PT.PATTERN_CATS, ['yours', 'Yours']].map(([id, label]) => ({ label, onClick: () => this.setState({ patCat: id }), style: { ...this.segStyle(cat === id, false), height: 24, fontSize: 12, padding: '0 8px' } }));
+      const keepsColours = !!pat && pat.id === 'custom' && !pat.mono;
+      const patName = pat ? (pat.id === 'custom' ? ((b.patterns.find(cp => cp.asset === pat.asset) || {}).name || 'Uploaded') : this.PT.PATTERN[pat.id] ? this.PT.PATTERN[pat.id].name : 'Pattern') : 'None';
+      // A new page colour takes the pattern colour with it, so the pattern never
+      // vanishes into a background of the same colour. The colour stays editable.
+      const setBg = c => this.setDoc((dd, p) => { p.bg = c || '#FFFFFF'; if (p.pattern && p.pattern.id !== 'custom' || (p.pattern && p.pattern.mono)) p.pattern = { ...p.pattern, fg: this.patternFgFor(p.bg) }; }, 'pagebg');
+      S.push({ title: 'Background', controls: [
+        color('Page color', pg.bg, setBg),
+        btns([[pg.bgAsset ? 'Replace image' : 'Background image…', () => { this.replaceTarget = 'bg:' + pg.id; this.imgInput && this.imgInput.click(); }], ...(pg.bgAsset ? [['Remove image', () => this.setDoc((dd, p) => { delete p.bgAsset; }), 'danger']] : [])]),
+        { k: 'patterns', label: 'Pattern', display: patName, chips, tiles, uploadLabel: 'Upload pattern…', onUpload: this.uploadPattern, uploadNote: 'A PNG tile. One colour on transparency, or dark on light, becomes recolourable; a multicolour tile keeps its colours.' },
+        ...(pat ? [
+          ...(keepsColours ? [note('This pattern keeps its own colours.')] : [color('Pattern colour', pat.fg, c => setPat({ ...pat, fg: c || '#000000' }, 'patfg'))]),
+          slider('Pattern strength', Math.round(pat.alpha * 100), 2, 100, 1, v => setPat({ ...pat, alpha: v / 100 }, 'pata'), Math.round(pat.alpha * 100) + '%', { def: 20 }),
+          slider('Pattern size', pat.scale, .25, 4, .05, v => setPat({ ...pat, scale: v }, 'pats'), pat.scale.toFixed(2) + '×', { def: 1 }),
+          slider('Pattern angle', pat.rot || 0, -180, 180, 1, v => setPat({ ...pat, rot: Math.max(-180, Math.min(180, Math.round(v))) }, 'patr'), (pat.rot || 0) + '°', { def: 0, center: 0 })
+        ] : [])
+      ] });
       S.push({ title: 'Pages', controls: [btns([['Add page', () => this.addPage()], ['Duplicate', () => this.dupPage(this.state.page)], ['Delete', () => this.delPage(this.state.page), 'danger']])] });
       S.push({ title: 'Size', controls: [note(`${d.w} × ${d.h} px${P.FORMAT[d.fmt] ? ' · ' + P.FORMAT[d.fmt].name : ''}`), { k: 'select', label: 'Resize to', value: d.fmt, options: [{ value: 'custom', label: 'Choose a format…' }, ...P.FORMATS.map(f => ({ value: f.id, label: `${f.name} · ${f.w}×${f.h}` }))], onChange: e => this.resizeDoc(e.target.value) }] });
       S.push({ title: 'Shortcuts', controls: [note('Double-click text to edit · Drag photos onto frames · Shift-click or drag a box to multi-select · ⌘G group · ⌘D duplicate · ⌘Z undo · Arrows nudge · ⌘S save · T adds a heading')] });
@@ -921,7 +993,7 @@ export default class Studio extends React.Component {
         seg('Style', [['Bold', el.weight >= 600, () => pp(x => { x.weight = x.weight >= 600 ? 400 : (this.ONEW.includes(x.font) ? 400 : 700); })], ['Italic', el.italic, () => pp(x => { x.italic = !x.italic; })], ['Caps', el.upper, () => pp(x => { x.upper = !x.upper; })]]),
         seg('Align', [['Left', el.align === 'left', () => pp({ align: 'left' })], ['Center', el.align === 'center', () => pp({ align: 'center' })], ['Right', el.align === 'right', () => pp({ align: 'right' })]]),
         slider('Line height', el.lh, .7, 2.4, .01, v => pp({ lh: v }, 'lh')),
-        slider('Letter spacing', el.ls, -.1, .5, .005, v => pp({ ls: v }, 'ls')),
+        slider('Letter spacing', el.ls, -.1, .5, .005, v => pp({ ls: v }, 'ls'), null, { def: 0, center: 0 }),
         color('Color', el.color, c => pp({ color: c || '#000000' }, 'tcolor')),
         color('Highlight', el.bg, c => pp({ bg: c }, 'thl'), true),
         btns([['Edit text', () => this.setState({ editingId: el.id })]])
@@ -947,8 +1019,8 @@ export default class Studio extends React.Component {
         ]),
         ...(sh && !long ? [
           color('Shadow colour', /^#/.test(sh.color) ? sh.color : null, c => setShadow({ color: c || 'rgba(0,0,0,.35)' }, 'shc'), true),
-          slider('Offset X', sh.x, -maxOff, maxOff, 1, v => setShadow({ x: v }, 'shx')),
-          slider('Offset Y', sh.y, -maxOff, maxOff, 1, v => setShadow({ y: v }, 'shy')),
+          slider('Offset X', sh.x, -maxOff, maxOff, 1, v => setShadow({ x: v }, 'shx'), null, { center: 0 }),
+          slider('Offset Y', sh.y, -maxOff, maxOff, 1, v => setShadow({ y: v }, 'shy'), null, { center: 0 }),
           slider('Blur', sh.blur, 0, 80, 1, v => setShadow({ blur: v }, 'shb')),
         ] : []),
         ...(long ? [
@@ -987,20 +1059,20 @@ export default class Studio extends React.Component {
       c.push(btns([[el.asset ? 'Replace' : 'Choose image', () => { this.replaceTarget = el.id; this.imgInput && this.imgInput.click(); }, el.asset ? undefined : 'primary'], ...(el.asset ? [['Crop', () => this.setState(s => ({ cropMode: !s.cropMode })), this.state.cropMode ? 'on' : undefined], ['Flip', () => pp(x => { x.flip = !x.flip; })]] : [])]));
       if (el.asset) c.push(btns([el.origAsset ? ['Restore original', () => pp(x => { x.asset = x.origAsset; delete x.origAsset; delete x.feather; })] : ['Remove background', this.removeBg, 'primary', 'Runs U²-Netp on this device — nothing is uploaded']]));
       if (el.asset && el.origAsset) c.push(slider('Feather edge', el.feather ?? 0, 0, 40, 1, v => this.setFeather(el, v), (el.feather ?? 0) + 'px'));
-      if (this.state.cropMode && el.asset) { c.push(note('Drag the image on the canvas to reposition. Esc when done.')); c.push(slider('Zoom', el.zoom || 1, 1, 4, .01, v => pp({ zoom: v }, 'zoom'), (el.zoom || 1).toFixed(2) + '×')); c.push(slider('Focus X', el.cx ?? 50, 0, 100, 1, v => pp({ cx: v }, 'cx'), Math.round(el.cx ?? 50) + '%')); c.push(slider('Focus Y', el.cy ?? 50, 0, 100, 1, v => pp({ cy: v }, 'cy'), Math.round(el.cy ?? 50) + '%')); }
+      if (this.state.cropMode && el.asset) { c.push(note('Drag the image on the canvas to reposition. Esc when done.')); c.push(slider('Zoom', el.zoom || 1, 1, 4, .01, v => pp({ zoom: v }, 'zoom'), (el.zoom || 1).toFixed(2) + '×', { def: 1 })); c.push(slider('Focus X', el.cx ?? 50, 0, 100, 1, v => pp({ cx: v }, 'cx'), Math.round(el.cx ?? 50) + '%', { def: 50, center: 50 })); c.push(slider('Focus Y', el.cy ?? 50, 0, 100, 1, v => pp({ cy: v }, 'cy'), Math.round(el.cy ?? 50) + '%', { def: 50, center: 50 })); }
       c.push(seg('Mask', [['Rect', !el.mask || el.mask === 'none', () => pp({ mask: 'none' })], ['Rounded', el.mask === 'rounded', () => pp({ mask: 'rounded' })], ['Circle', el.mask === 'circle', () => pp({ mask: 'circle' })], ['Arch', el.mask === 'arch', () => pp({ mask: 'arch' })]]));
       if (!el.mask || el.mask === 'none') c.push(slider('Corner radius', el.radius || 0, 0, Math.round(Math.min(el.w, el.h) / 2), 1, v => pp({ radius: v }, 'irad'), String(Math.round(el.radius || 0))));
       S.push({ title: 'Image', controls: c });
       if (el.asset) S.push({ title: 'Adjust', controls: [
         seg('Filter', Object.entries(presets).map(([n, v]) => [n, JSON.stringify(f) === JSON.stringify(v), () => pp({ filters: { ...v } })])),
-        slider('Brightness', f.b ?? 1, .3, 1.8, .01, v => setF('b', v)), slider('Contrast', f.c ?? 1, .3, 1.8, .01, v => setF('c', v)), slider('Saturation', f.s ?? 1, 0, 2, .01, v => setF('s', v)),
-        slider('Warmth', f.se || 0, 0, 1, .01, v => setF('se', v)), slider('Hue', f.hu || 0, -180, 180, 1, v => setF('hu', v), (f.hu || 0) + '°'), slider('Blur', f.bl || 0, 0, 20, .5, v => setF('bl', v), (f.bl || 0) + 'px'),
+        slider('Brightness', f.b ?? 1, .3, 1.8, .01, v => setF('b', v), null, { def: 1, center: 1 }), slider('Contrast', f.c ?? 1, .3, 1.8, .01, v => setF('c', v), null, { def: 1, center: 1 }), slider('Saturation', f.s ?? 1, 0, 2, .01, v => setF('s', v), null, { def: 1, center: 1 }),
+        slider('Warmth', f.se || 0, 0, 1, .01, v => setF('se', v), null, { def: 0 }), slider('Hue', f.hu || 0, -180, 180, 1, v => setF('hu', v), (f.hu || 0) + '°', { def: 0, center: 0 }), slider('Blur', f.bl || 0, 0, 20, .5, v => setF('bl', v), (f.bl || 0) + 'px', { def: 0 }),
         color('Border', el.border, v => pp(x => { x.border = v; if (v && !x.borderW) x.borderW = Math.round(this.u() * 1); }, 'ib'), true),
         slider('Border width', el.borderW || 0, 0, Math.round(Math.min(el.w, el.h) / 8), 1, v => pp({ borderW: v }, 'ibw'), String(Math.round(el.borderW || 0))),
         seg('Shadow', [['None', !el.shadow, () => pp({ shadow: null })], ['Soft', el.shadow === true, () => pp({ shadow: true })], ['Custom', !!ish, () => pp(x => { if (typeof x.shadow !== 'object' || !x.shadow) x.shadow = { x: Math.round(this.u() * .8), y: Math.round(this.u() * .8), blur: 0, color: 'rgba(0,0,0,.35)' }; }, 'ish')]]),
         ...(ish ? [
           color('Shadow colour', /^#/.test(ish.color) ? ish.color : null, c => setIsh({ color: c || 'rgba(0,0,0,.35)' }, 'ishc'), true),
-          slider('Offset X', ish.x || 0, -maxO, maxO, 1, v => setIsh({ x: v }, 'ishx')), slider('Offset Y', ish.y || 0, -maxO, maxO, 1, v => setIsh({ y: v }, 'ishy')), slider('Blur', ish.blur || 0, 0, 120, 1, v => setIsh({ blur: v }, 'ishb'))
+          slider('Offset X', ish.x || 0, -maxO, maxO, 1, v => setIsh({ x: v }, 'ishx'), null, { center: 0 }), slider('Offset Y', ish.y || 0, -maxO, maxO, 1, v => setIsh({ y: v }, 'ishy'), null, { center: 0 }), slider('Blur', ish.blur || 0, 0, 120, 1, v => setIsh({ blur: v }, 'ishb'))
         ] : []),
         // A cutout or transparent PNG: the border and shadow can hug the subject.
         ...(alpha && (!el.mask || el.mask === 'none') ? [seg('Border & shadow', [['Around subject', edge === 'subject', () => pp({ edge: 'subject' }), 'Follow the silhouette of the picture'], ['Around frame', edge === 'frame', () => pp({ edge: 'frame' }), 'Draw around the rectangular frame']])] : []),
@@ -1021,7 +1093,7 @@ export default class Studio extends React.Component {
     const locked = els.every(x => x.locked), grouped = els.some(x => x.groupId);
     S.push({ title: one ? 'Arrange' : `${els.length} selected`, controls: [
       ...(one ? [{ k: 'nums', cols: 2, items: [['X', 'x'], ['Y', 'y'], ['W', 'w'], ['H', 'h']].map(([l, k]) => ({ label: l, value: Math.round(el[k]), step: 1, onChange: e => { const v = +e.target.value; pp(x => { if (k === 'w' && x.type === 'qr') { x.w = x.h = Math.max(8, v); } else x[k] = k === 'w' || k === 'h' ? Math.max(4, v) : v; }, 'pos' + k); } })).concat([{ label: '∠', value: el.rot || 0, step: 1, onChange: e => pp({ rot: +e.target.value || 0 }, 'rot') }]) }] : []),
-      slider('Opacity', Math.round((el.opacity ?? 1) * 100), 0, 100, 1, v => pp({ opacity: v / 100 }, 'op'), Math.round((el.opacity ?? 1) * 100) + '%'),
+      slider('Opacity', Math.round((el.opacity ?? 1) * 100), 0, 100, 1, v => pp({ opacity: v / 100 }, 'op'), Math.round((el.opacity ?? 1) * 100) + '%', { def: 100 }),
       seg(one ? 'Align to page' : 'Align', [['⇤', false, () => this.align('left'), 'Left'], ['↔', false, () => this.align('center'), 'Center'], ['⇥', false, () => this.align('right'), 'Right'], ['⤒', false, () => this.align('top'), 'Top'], ['↕', false, () => this.align('middle'), 'Middle'], ['⤓', false, () => this.align('bottom'), 'Bottom']]),
       seg('Layer', [['Forward', false, () => this.arrange('forward')], ['Back', false, () => this.arrange('backward')], ['Front', false, () => this.arrange('front')], ['Bottom', false, () => this.arrange('back')]]),
       btns([['Duplicate', () => this.dup()], ...(els.length > 1 && !grouped ? [['Group', () => this.group()]] : []), ...(grouped ? [['Ungroup', () => this.ungroup()]] : []), [locked ? 'Unlock' : 'Lock', () => pp(x => { x.locked = !locked; })], ['Delete', () => this.del(), 'danger']])
@@ -1057,7 +1129,7 @@ export default class Studio extends React.Component {
         const cur = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' };
         const big = this.coarse ? 1.6 : 1;
         out.handles = dirs.map(d => { const [fx, fy] = pos[d]; const side = d.length === 1; const hw = (side ? (d === 'e' || d === 'w' ? 6 : 18) : 11) * big, hh = (side ? (d === 'e' || d === 'w' ? 18 : 6) : 11) * big; return { onDown: e => this.startResize(e, d), style: { position: 'absolute', left: `calc(${fx * 100}% - ${hw / 2}px)`, top: `calc(${fy * 100}% - ${hh / 2}px)`, width: hw, height: hh, background: 'var(--pw-surface)', border: `1.5px solid ${C}`, borderRadius: side ? 4 : '50%', pointerEvents: 'auto', cursor: cur[d], boxShadow: '0 1px 3px rgba(0,0,0,.18)' } }; });
-        out.showRot = one && e0.type !== 'line' ? true : one; out.onRot = this.startRotate;
+        out.showRot = true; out.onRot = this.startRotate;
       }
       if (!one) out.multi = els.map(e => ({ position: 'absolute', left: e.x * z, top: e.y * z, width: e.w * z, height: e.h * z, transform: `rotate(${e.rot || 0}deg)`, outline: `1px dashed ${C}`, pointerEvents: 'none', zIndex: 2 }));
       out.info = this.state.dragInfo || ''; out.showInfo = !!this.state.dragInfo;
@@ -1113,7 +1185,7 @@ export default class Studio extends React.Component {
       repoURL: 'https://github.com/theanam/pinwheel-studio', hasHelp: st.helpOpen, toggleHelp: this.toggleHelp, stopClick: this.stopClick, helpVersion: 'Pinwheel Studio ' + (import.meta.env.VITE_APP_VERSION || '1.0'),
       toggleTheme: this.toggleTheme, themeGlyph: this.isDark() ? '☀' : '☾', themeTitle: this.isDark() ? 'Switch to light mode' : 'Switch to dark mode',
       phone, tablet, desktop: layout === 'desktop',
-      setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, setBrandAssetInput: this.setBrandAssetInput, setFontInput: this.setFontInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, onBrandAssetFile: this.onBrandAssetFile, onFontFile: this.onFontFile, openFile: this.openFile,
+      setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, setBrandAssetInput: this.setBrandAssetInput, setFontInput: this.setFontInput, setPatternInput: this.setPatternInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, onBrandAssetFile: this.onBrandAssetFile, onFontFile: this.onFontFile, onPatternFile: this.onPatternFile, openFile: this.openFile,
       hasWiz: !!st.wiz, wiz: st.ready ? this.wizVals() : null, wizCardStyle: phone ? { position: 'fixed', inset: 0, borderRadius: 0, width: '100%', maxHeight: '100%', padding: '16px 16px calc(16px + env(safe-area-inset-bottom))' } : { width: 'min(720px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 40px)', borderRadius: 16, padding: 24 },
       menuOpen: !!st.menu, closeMenus: () => this.setState({ menu: null }) };
     if (!st.ready) return base;
