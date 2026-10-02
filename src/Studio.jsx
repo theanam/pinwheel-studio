@@ -107,11 +107,13 @@ export default class Studio extends React.Component {
       this.setState({ ready: true, brands, brand, fonts, recents, assets: { ...this.state.assets, ...brand.assets } }, () => {
         if (this._pendingFile) { const [f, h] = this._pendingFile; this._pendingFile = null; this.openProjectFile(f, h); }
         else if (this.props.startScreen === 'editor') this.newDoc('ig-post');
+        else this.restoreSession();
       });
     }).catch(err => { console.error(err); this.setState({ loadError: String(err) }); });
   }
   componentWillUnmount() { this._mq.removeEventListener('change', this._mqFn); window.removeEventListener('keydown', this._key); window.removeEventListener('paste', this._paste); window.removeEventListener('resize', this._rs); window.removeEventListener('pagehide', this._bu); }
   componentDidUpdate(pp, ps) {
+    if (this.state.screen === 'editor' && (this.state.doc !== ps.doc || this.state.page !== ps.page || this.state.panel !== ps.panel)) this.rememberSession();
     // Editing ended by some route other than blur: commit what was typed.
     if (ps.editingId && ps.editingId !== this.state.editingId) { const e = this._edit; this._edit = null; if (e && e.id === ps.editingId) this.onTextCommit(e.id, e.text); }
     if (this.state.doc && this.state.doc !== ps.doc) { this.scheduleMeasure(); this.scheduleAutosave(); }
@@ -224,6 +226,18 @@ export default class Studio extends React.Component {
     const n = this.state.brand.textStyles.length + 1; this.setBrand({ textStyles: [...this.state.brand.textStyles, this.B.textStyleFrom(el, this.state.doc.theme, 'Style ' + n)] }); this.toast('Text style saved to brand');
   };
 
+  /* ---------- session: what was open ---------- */
+  // A reload lands back in the design that was open, with its page and panel. The
+  // tab's session storage remembers which recent it was; the recents store has it.
+  rememberSession() { try { const { doc, page, panel } = this.state; if (doc && doc.id) sessionStorage.setItem('pinwheel.open', JSON.stringify({ id: doc.id, page, panel })); else sessionStorage.removeItem('pinwheel.open'); } catch (e) { } }
+  forgetSession() { try { sessionStorage.removeItem('pinwheel.open'); } catch (e) { } }
+  async restoreSession() {
+    let open = null; try { open = JSON.parse(sessionStorage.getItem('pinwheel.open') || 'null'); } catch (e) { }
+    if (!open || !open.id) return;
+    try { const r = await this.DB.getRecentDoc(open.id); if (!r) return this.forgetSession(); this.openDoc(r.doc, r.assets || {}); this.setState({ page: Math.min(open.page || 0, r.doc.pages.length - 1), panel: open.panel === undefined ? 'templates' : open.panel }); }
+    catch (e) { this.forgetSession(); }
+  }
+
   /* ---------- storage: recents ---------- */
   // Every design the user touches is kept, saved or not, up to the last hundred.
   // The list record carries page 1 with low-res copies of its images so the home
@@ -329,7 +343,7 @@ export default class Studio extends React.Component {
     const brandIds = new Set(Object.keys(this.state.brand.assets || {}));
     this.setState(s => ({ screen: 'editor', doc, assets: { ...s.assets, ...assets }, uploads: [...new Set([...s.uploads, ...Object.keys(assets).filter(id => !brandIds.has(id))])], sel: [], page: 0, editingId: null, cropMode: false, menu: null, phoneMenu: null, propsOpen: false, tplSame: true, tplLimit: 24 }), () => { setTimeout(() => this.fitZoom(), 40); this.ensureAlpha(assets); this.scheduleAutosave(); });
   }
-  goHome = () => { this.flushAutosave().then(() => this.loadRecents()); this.setState({ screen: 'home', sel: [], editingId: null, menu: null, phoneMenu: null, propsOpen: false, wiz: null }); };
+  goHome = () => { this.flushAutosave().then(() => this.loadRecents()); this.forgetSession(); this.setState({ screen: 'home', sel: [], editingId: null, menu: null, phoneMenu: null, propsOpen: false, wiz: null }); };
   // Assets restored from an autosave written before alpha detection existed.
   ensureAlpha(assets) { Object.entries(assets).forEach(([id, a]) => { if (!a || a.alpha !== undefined || !a.src) return; this.IO.hasAlpha(a.src).then(v => this.setState(s => s.assets[id] ? { assets: { ...s.assets, [id]: { ...s.assets[id], alpha: v } } } : null)); }); }
   fromTemplate(desc) {
@@ -635,10 +649,10 @@ export default class Studio extends React.Component {
   };
   onPaste(e) { if (this.state.screen !== 'editor' || this.state.editingId) return; const t = e.target; if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName)) return; const f = [...(e.clipboardData && e.clipboardData.files || [])].find(f => f.type.startsWith('image/')); if (f) { e.preventDefault(); this._pastedImage = Date.now(); this.ingest(f).then(id => this.addImageAsset(id)); } }
   onLogoFile = async e => {
-    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
     try {
-      const r = await this.IO.readImageFile(f); const id = 'a' + this.P.nid();
-      if (this._logoFor === 'wiz') return this.wizLogo(id, r);
+      if (this._logoFor === 'wiz') { for (const f of files) { const r = await this.IO.readImageFile(f); this.wizLogo('a' + this.P.nid(), r); } return; }
+      const r = await this.IO.readImageFile(files[0]); const id = 'a' + this.P.nid();
       this.setState(s => ({ assets: { ...s.assets, [id]: r } })); this.setBrand({ assets: { ...this.state.brand.assets, [id]: r }, logo: id });
     } catch (err) { this.toast('Could not read that image'); }
   };
@@ -744,14 +758,29 @@ export default class Studio extends React.Component {
   startWizard = (edit = null, step = 1) => {
     const b = edit ? this.state.brands.find(x => x.id === edit) : null; const P = this.P;
     const curated = P.PALETTES.slice(0, 8).map(p => ({ id: p.id, name: p.name, note: 'Curated palette', bg: p.bg, ink: p.ink, accent: p.accent, accent2: p.accent2 }));
-    const wiz = { step, editId: b ? b.id : null, name: b ? b.name : '', logo: null, logoId: b ? b.logo : null, kits: curated, fromLogo: false, kit: 0, bg: b ? b.bg : curated[0].bg, ink: b ? b.ink : curated[0].ink, accent: b ? b.accent : curated[0].accent, accent2: b ? b.accent2 : curated[0].accent2, heading: b ? b.heading : 'DM Serif Display', body: b ? b.body : 'DM Sans', busy: false };
-    if (b && b.logo && b.assets[b.logo]) { wiz.logo = b.assets[b.logo]; this.setState({ wiz, menu: null, phoneMenu: null }, () => this.wizKits(b.assets[b.logo].src)); return; }
+    const wiz = { step, editId: b ? b.id : null, name: b ? b.name : '', logos: [], primary: 0, kits: curated, fromLogo: false, kit: 0, bg: b ? b.bg : curated[0].bg, ink: b ? b.ink : curated[0].ink, accent: b ? b.accent : curated[0].accent, accent2: b ? b.accent2 : curated[0].accent2, heading: b ? b.heading : 'DM Serif Display', body: b ? b.body : 'DM Sans', busy: false, pickRole: 'accent', hover: null };
+    if (b && b.logo && b.assets[b.logo]) { wiz.logos = [{ id: b.logo, asset: b.assets[b.logo], existing: true }]; this.setState({ wiz, menu: null, phoneMenu: null }, () => this.wizKits(b.assets[b.logo].src)); return; }
     this.setState({ wiz, menu: null, phoneMenu: null });
   };
   wizSet = patch => this.setState(s => s.wiz ? { wiz: { ...s.wiz, ...patch } } : null);
   closeWizard = () => this.setState({ wiz: null });
   pickWizLogo = () => { this._logoFor = 'wiz'; this.logoInput && this.logoInput.click(); };
-  wizLogo(id, asset) { this._logoFor = null; this.wizSet({ logo: asset, logoId: id, newLogo: true }); this.wizKits(asset.src); }
+  // Several logo files can be added; the primary one is what the colour kits and the
+  // eyedropper read from, and what the brand records as its logo.
+  wizLogo(id, asset) { const w = this.state.wiz; if (!w) return; const first = !w.logos.length; this.wizSet({ logos: [...w.logos, { id, asset }], primary: first ? 0 : w.primary }); if (first) this.wizKits(asset.src); }
+  wizPrimary = i => { const w = this.state.wiz; if (!w || !w.logos[i]) return; this.wizSet({ primary: i }); this.wizKits(w.logos[i].asset.src); };
+  wizRemoveLogo = i => { const w = this.state.wiz; if (!w) return; const logos = w.logos.filter((_, k) => k !== i); const primary = Math.max(0, Math.min(w.primary >= i ? w.primary - 1 : w.primary, logos.length - 1)); this.wizSet({ logos, primary, ...(logos.length ? {} : { fromLogo: false, kits: this.P.PALETTES.slice(0, 8).map(p => ({ id: p.id, name: p.name, note: 'Curated palette', bg: p.bg, ink: p.ink, accent: p.accent, accent2: p.accent2 })) }) }); if (logos.length && w.primary === i) this.wizKits(logos[primary].asset.src); };
+  /** The colour under a point of the primary logo, read from a canvas copy. */
+  wizSampleAt(img, clientX, clientY) {
+    const src = img.getAttribute('src'); if (!this._pickCv || this._pickCv.src !== src) { const cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight; cv.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0); this._pickCv = { src, cv }; }
+    const r = img.getBoundingClientRect(); const x = Math.max(0, Math.min(img.naturalWidth - 1, Math.floor((clientX - r.left) / r.width * img.naturalWidth))), y = Math.max(0, Math.min(img.naturalHeight - 1, Math.floor((clientY - r.top) / r.height * img.naturalHeight)));
+    const d = this._pickCv.cv.getContext('2d').getImageData(x, y, 1, 1).data; if (d[3] < 40) return null;
+    return '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
+  wizPickFromLogo = e => { const hex = this.wizSampleAt(e.currentTarget, e.clientX, e.clientY); const w = this.state.wiz; if (!hex || !w) return; this.wizSet({ [w.pickRole]: hex, kit: -1 }); };
+  wizHoverLogo = e => { const hex = this.wizSampleAt(e.currentTarget, e.clientX, e.clientY); if (hex !== (this.state.wiz && this.state.wiz.hover)) this.wizSet({ hover: hex }); };
+  // The browser's own eyedropper (Chromium) can sample anything on screen.
+  wizPickFromScreen = async () => { try { const r = await new window.EyeDropper().open(); const w = this.state.wiz; if (r && r.sRGBHex && w) this.wizSet({ [w.pickRole]: r.sRGBHex.toUpperCase(), kit: -1 }); } catch (e) { } };
   async wizKits(src) {
     this.wizSet({ busy: true });
     try { const px = await this.IO.imagePixels(src, 48); const kits = this.PAL.kitsFromPixels(px); if (kits.length) { const k = kits[0]; this.wizSet({ kits, fromLogo: true, kit: 0, bg: k.bg, ink: k.ink, accent: k.accent, accent2: k.accent2, busy: false }); return; } }
@@ -762,14 +791,14 @@ export default class Studio extends React.Component {
   wizFinish = () => {
     const w = this.state.wiz; if (!w) return; const name = w.name.trim() || 'My brand';
     const vals = { name, bg: w.bg, ink: w.ink, accent: w.accent, accent2: w.accent2, heading: w.heading, body: w.body };
-    const logoAssets = w.logo && w.logoId && w.newLogo ? { [w.logoId]: w.logo } : {};
+    const logoAssets = Object.fromEntries(w.logos.filter(l => !l.existing).map(l => [l.id, l.asset])), logo = w.logos[w.primary] ? w.logos[w.primary].id : null;
     if (w.editId) {
       const b = this.state.brands.find(x => x.id === w.editId); if (!b) return this.closeWizard();
-      const nb = { ...b, ...vals, assets: { ...b.assets, ...logoAssets }, logo: w.logoId || b.logo, updated: Date.now() };
+      const nb = { ...b, ...vals, assets: { ...b.assets, ...logoAssets }, logo: logo || b.logo, updated: Date.now() };
       this.setState(s => ({ brands: s.brands.map(x => x.id === nb.id ? nb : x), brand: nb, assets: { ...s.assets, ...logoAssets }, wiz: null }), () => this.saveBrandSoon());
       this.toast('Brand updated');
     } else {
-      this.createBrand({ ...vals, assets: logoAssets, logo: w.logoId && w.logo ? w.logoId : null });
+      this.createBrand({ ...vals, assets: logoAssets, logo });
       this.setState({ wiz: null }); this.toast('Brand “' + name + '” is ready');
     }
   };
@@ -1049,12 +1078,17 @@ export default class Studio extends React.Component {
       steps: steps.map((l, i) => ({ label: l, style: { flex: 1, height: 4, borderRadius: 2, background: i < w.step ? C : 'var(--pw-line-strong)' } })),
       isName: w.step === 1, isColors: w.step === 2, isFonts: w.step === 3, isLast: w.step === 3, isFirst: w.step === 1,
       name: w.name, onName: e => this.wizSet({ name: e.target.value }), namePh: 'e.g. Northwind Coffee',
-      hasLogo: !!w.logo, logoStyle: { width: '100%', height: '100%', backgroundImage: w.logo ? `url("${w.logo.src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' },
-      pickLogo: this.pickWizLogo, logoLabel: w.logo ? 'Replace logo' : 'Upload a logo', busy: w.busy,
-      logoNote: w.logo ? (w.fromLogo ? 'Colour kits on the next step were drawn from this logo.' : 'Reading the colours in this logo…') : 'Optional. With a logo, the next step offers colour kits taken from it.',
+      hasLogo: !!w.logos.length, logoStyle: { width: '100%', height: '100%', backgroundImage: w.logos[w.primary] ? `url("${w.logos[w.primary].asset.src}")` : 'none', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' },
+      logos: w.logos.map((l, i) => ({ on: i === w.primary, onClick: () => this.wizPrimary(i), onRemove: e => { e.stopPropagation(); this.wizRemoveLogo(i); }, title: i === w.primary ? 'Primary logo' : 'Make this the primary logo', style: { width: 64, height: 64, borderRadius: 10, border: '2px solid ' + (i === w.primary ? C : 'var(--pw-line-soft)'), background: 'var(--pw-panel)', backgroundImage: `url("${l.asset.src}")`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundOrigin: 'content-box', padding: 6, cursor: 'pointer', position: 'relative', flex: 'none' } })),
+      pickLogo: this.pickWizLogo, logoLabel: w.logos.length ? 'Add more logos' : 'Upload logos', busy: w.busy,
+      logoNote: w.logos.length ? (w.fromLogo ? 'Colour kits on the next step are drawn from the primary logo; click a logo to make it primary.' : 'Reading the colours in the logo…') : 'Optional. Add one or more logo files (icon, wordmark, dark and light versions). The first becomes the primary logo, and the next step offers colour kits taken from it.',
+      // Eyedropper: click the logo to set the armed colour role; hover shows what is under the pointer.
+      picker: w.logos[w.primary] ? { src: w.logos[w.primary].asset.src, onClick: this.wizPickFromLogo, onMove: this.wizHoverLogo, onLeave: () => this.wizSet({ hover: null }), hover: w.hover, hoverStyle: { width: 18, height: 18, borderRadius: 5, border: '1px solid var(--pw-line-strong)', background: w.hover || 'transparent', flex: 'none' },
+        roleLabel: { bg: 'Background', ink: 'Text', accent: 'Primary', accent2: 'Secondary' }[w.pickRole], hint: `Click the logo to set the ${({ bg: 'background', ink: 'text', accent: 'primary', accent2: 'secondary' })[w.pickRole]} colour.`,
+        screen: typeof window !== 'undefined' && 'EyeDropper' in window ? this.wizPickFromScreen : null } : null,
       kitsTitle: w.fromLogo ? 'Kits from your logo' : 'Curated kits',
       kits: w.kits.map((k, i) => ({ name: k.name, note: k.note, sw: sw(k), on: w.kit === i, onClick: () => this.wizPickKit(i), sampleStyle: sample(k), hStyle: { fontFamily: `'${w.heading}'`, fontSize: 18, lineHeight: 1.1, fontWeight: this.ONEW.includes(w.heading) ? 400 : 700, color: k.ink }, aStyle: { display: 'inline-block', padding: '2px 8px', borderRadius: 10, background: k.accent, color: k.ink === k.accent ? k.bg : (P.contrast(k.accent, k.ink) >= 3 ? k.ink : k.bg), fontSize: 11, fontWeight: 700, alignSelf: 'flex-start' }, style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 8, border: '2px solid ' + (w.kit === i ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 10, cursor: 'pointer', textAlign: 'left', color: 'var(--pw-ink)', minWidth: 0 } })),
-      colors: [['bg', 'Background'], ['ink', 'Text'], ['accent', 'Primary'], ['accent2', 'Secondary']].map(([k, l]) => ({ label: l, value: w[k], onChange: e => this.wizSet({ [k]: e.target.value.toUpperCase(), kit: -1 }) })),
+      colors: [['bg', 'Background'], ['ink', 'Text'], ['accent', 'Primary'], ['accent2', 'Secondary']].map(([k, l]) => ({ label: l, value: w[k], onChange: e => this.wizSet({ [k]: e.target.value.toUpperCase(), kit: -1 }), picking: w.pickRole === k, onArm: e => { e.preventDefault(); this.wizSet({ pickRole: k }); }, armStyle: { width: 26, height: 26, borderRadius: 7, border: '1px solid ' + (w.pickRole === k ? C : 'var(--pw-line-2)'), background: w.pickRole === k ? 'var(--pw-accent-tint)' : 'var(--pw-surface)', color: w.pickRole === k ? 'var(--pw-accent-deep)' : 'var(--pw-muted)', cursor: 'pointer', fontSize: 13, padding: 0, flex: 'none' }, cardStyle: { display: 'flex', alignItems: 'center', gap: 8, padding: 8, border: '1px solid ' + (w.pickRole === k ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 8, cursor: 'pointer' } })),
       pairs: P.PAIRINGS.slice(0, 10).map(p => ({ display: p.name, body: `${p.display} + ${p.body}`, on: w.heading === p.display && w.body === p.body, onClick: () => this.wizSet({ heading: p.display, body: p.body }), dStyle: { fontFamily: `'${p.display}'`, fontWeight: p.dw, fontSize: 20, lineHeight: 1.1, textTransform: p.upper ? 'uppercase' : 'none', letterSpacing: p.track + 'em', color: 'var(--pw-ink)' }, bStyle: { fontFamily: `'${p.body}'`, fontSize: 12, color: 'var(--pw-muted)' }, style: { display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start', padding: '10px 12px', border: '1px solid ' + (w.heading === p.display && w.body === p.body ? C : 'var(--pw-line-soft)'), background: 'var(--pw-surface)', borderRadius: 9, cursor: 'pointer', textAlign: 'left' } })),
       fonts: [['heading', 'Headings'], ['body', 'Body']].map(([k, l]) => ({ label: l, selectNode: this.fontPickerEl('font:wiz:' + k, w[k], val => this.wizSet({ [k]: val }), true) })),
       previewStyle: { background: w.bg, color: w.ink, borderRadius: 10, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--pw-line-soft)' },

@@ -12,6 +12,7 @@ const check = (ok, msg) => { console.log((ok ? '  ok   ' : '  FAIL ') + msg); if
 // A logo as a File: a navy/orange mark drawn on a canvas inside the page.
 const LOGO = `(async () => { const c = document.createElement('canvas'); c.width = c.height = 200; const x = c.getContext('2d'); x.fillStyle = '#142878'; x.beginPath(); x.arc(100, 100, 90, 0, 7); x.fill(); x.fillStyle = '#FF7814'; x.fillRect(60, 60, 80, 80); x.fillStyle = '#FFFFFF'; x.fillRect(85, 85, 30, 30); const b = await new Promise(r => c.toBlob(r, 'image/png')); return new File([b], 'logo.png', { type: 'image/png' }); })()`;
 const feed = (inputSel, fileExpr) => `(async () => { const f = await ${fileExpr}; const n = document.querySelector(${JSON.stringify(inputSel)}); const dt = new DataTransfer(); dt.items.add(f); n.files = dt.files; n.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`;
+const LOGO_INPUT = 'input[data-input="logo"]';
 
 try {
   const p = await page();
@@ -28,14 +29,31 @@ try {
   await p.clickText('Create a brand');
   await p.until(`document.body.innerText.includes('Step 1 of 3')`);
   await p.type('input[placeholder="e.g. Northwind Coffee"]', 'Northwind');
-  await p.clickText('Upload a logo', '.pw-wiz button');
-  await p.eval(feed('input[type=file][accept="image/*"]:not([multiple])', LOGO));
-  try { await p.until(`document.body.innerText.includes('Colour kits on the next step were drawn from this logo')`); }
+  await p.clickText('Upload logos', '.pw-wiz button');
+  await p.eval(feed(LOGO_INPUT, LOGO));
+  try { await p.until(`document.body.innerText.includes('Colour kits on the next step are drawn from the primary logo')`); }
   catch (e) { console.log('wiz state:', JSON.stringify(await p.eval(`(() => { const w = __studio.state.wiz; return w && { step: w.step, logo: !!w.logo, fromLogo: w.fromLogo, busy: w.busy, kits: w.kits.length }; })()`))); throw e; }
+  // A second logo file: both are listed, the first stays primary until clicked.
+  await p.eval(feed(LOGO_INPUT, LOGO.replace("'#142878'", "'#2A6F4E'")));
+  await p.until(`__studio.state.wiz && __studio.state.wiz.logos.length === 2`);
+  check(await p.eval(`__studio.state.wiz.primary === 0 && document.querySelectorAll('.pw-wiz [title="Make this the primary logo"]').length === 1`), 'two logos listed, the first is primary');
+  await p.eval(`__studio.wizPrimary(1)`); await p.wait(400);
+  check(await p.eval(`__studio.state.wiz.primary === 1 && __studio.state.wiz.kits[0].accent === '#2A6F4E'`), 'making the second logo primary rebuilds the kits from it');
+  await p.eval(`__studio.wizPrimary(0)`); await p.wait(400);
   await p.shot('02-wizard-logo');
   await p.clickText('Next', '.pw-wiz button');
   await p.until(`document.body.innerText.includes('Kits from your logo')`);
   await p.wait(300);
+  // Eyedropper: arm the secondary colour, click the orange square of the logo.
+  await p.click('.pw-wiz button[title="Pick the secondary colour from the logo"]');
+  const lg = await p.eval(`(() => { const i = document.querySelector('.pw-wiz img[draggable="false"]'); const r = i.getBoundingClientRect(); return { x: r.left + r.width * .35, y: r.top + r.height * .35, nx: r.left + r.width * .5, ny: r.top + r.height * .12 }; })()`);
+  await p.mouse(lg.x, lg.y); await p.wait(150);
+  check(await p.eval(`__studio.state.wiz.accent2 === '#FF7814' && __studio.state.wiz.pickRole === 'accent2'`), 'clicking the logo sets the armed colour from the pixel under the pointer');
+  await p.click('.pw-wiz button[title="Pick the primary colour from the logo"]');
+  await p.mouse(lg.nx, lg.ny); await p.wait(150);
+  check(await p.eval(`__studio.state.wiz.accent === '#142878'`), 'and the primary colour from another spot');
+  await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: lg.x, y: lg.y }); await p.wait(150);
+  check(await p.eval(`__studio.state.wiz.hover === '#FF7814'`), 'hovering shows the colour under the pointer');
   await p.shot('03-wizard-kits');
   const kitNames = await p.eval(`[...document.querySelectorAll('button')].map(b => b.textContent).filter(t => /Logo colours|Bold|Dark|Soft|Minimal|Secondary lead|High contrast/.test(t)).length`);
   check(kitNames >= 5, `wizard offers several kits from the logo (${kitNames})`);
@@ -104,7 +122,7 @@ try {
   const fontPath = process.env.PINWHEEL_TEST_FONT || '/System/Library/Fonts/Supplemental/Arial Bold.ttf';
   if (fs.existsSync(fontPath)) {
     const b64 = fs.readFileSync(fontPath).toString('base64');
-    await p.eval(feed('input[type=file][accept=".ttf,.otf,.woff,.woff2"]', `(async () => { const r = await fetch('data:font/ttf;base64,${b64}'); return new File([await r.blob()], 'Arial Bold.ttf', { type: 'font/ttf' }); })()`));
+    await p.eval(feed('input[data-input="font"]', `(async () => { const r = await fetch('data:font/ttf;base64,${b64}'); return new File([await r.blob()], 'Arial Bold.ttf', { type: 'font/ttf' }); })()`));
     await p.until(`Object.keys(__studio.state.brand.fonts).length === 1`);
     await p.wait(200);
     const fam = await p.eval(`Object.values(__studio.state.brand.fonts)[0].family`);
@@ -123,7 +141,7 @@ try {
   check(await p.eval(`document.body.innerText.includes('Style 1 ◆')`), 'brand text style listed first in the Text panel');
   // brand kit round trip through the .pinwheel format
   const rt = await p.eval(`(async () => { const s = __studio; const blob = await s.IO.packBrandKit(s.state.brand, s.B.brandForKit(s.state.brand)); const r = await s.IO.openProject(blob); return { kind: r.kind, name: r.brand.name, assets: Object.keys(r.assets).length, pals: r.brand.palettes.length, styles: r.brand.textStyles.length, size: blob.size, type: blob.type }; })()`);
-  check(rt.kind === 'brand' && rt.name === 'Northwind' && rt.assets === 1 && rt.pals === 1 && rt.styles === 1, 'brand kit .pinwheel round trip ' + JSON.stringify(rt));
+  check(rt.kind === 'brand' && rt.name === 'Northwind' && rt.assets === 2 && rt.pals === 1 && rt.styles === 1, 'brand kit .pinwheel round trip ' + JSON.stringify(rt));
   const drt = await p.eval(`(async () => { const s = __studio; const blob = await s.IO.packProject({ ...s.state.doc, brand: s.B.brandForFile(s.state.brand) }, s.state.assets, null); const r = await s.IO.openProject(blob); return { kind: r.kind, name: r.doc.name, id: r.doc.id === s.state.doc.id, brand: r.doc.brand && r.doc.brand.name, hasAssetBytes: JSON.stringify(r.doc).includes('data:image') }; })()`);
   check(drt.kind === 'design' && drt.id && drt.brand === 'Northwind' && !drt.hasAssetBytes, 'design .pinwheel round trip ' + JSON.stringify(drt));
   // importing a kit with the same id replaces (confirm stubbed)
@@ -203,6 +221,17 @@ try {
   await p.click('.pw-recent');
   await p.until(`__studio.state.screen === 'editor'`);
   check(await p.eval(`__studio.state.doc.name === ${JSON.stringify(rec.name)}`), 'reopened from recents');
+  // A reload lands back in the open design, on the same page and panel.
+  await p.eval(`__studio.setState({ panel: 'layers' })`); await p.wait(100);
+  await p.eval(`__studio.flushAutosave()`); await p.wait(300);
+  const openId = await p.eval(`__studio.state.doc.id`);
+  await p.goto(URL); await p.until(`__studio && __studio.state.ready`); await p.wait(800);
+  check(await p.eval(`__studio.state.screen === 'editor' && __studio.state.doc.id === ${JSON.stringify(openId)} && __studio.state.panel === 'layers'`), 'a reload reopens the design that was open');
+  await p.clickText('Pinwheel'); await p.until(`__studio.state.screen === 'home'`); await p.wait(200);
+  await p.goto(URL); await p.until(`__studio && __studio.state.ready`); await p.wait(500);
+  check(await p.eval(`__studio.state.screen === 'home'`), 'after going home, a reload stays on the home page');
+  await p.click('.pw-recent'); await p.until(`__studio.state.screen === 'editor'`);
+
   // 100 cap
   const cap = await p.eval(`(async () => { const DB = await import('/src/store.js'); for (let i = 0; i < 105; i++) await DB.putRecent({ id: 'x' + i, name: 'x' + i, updated: 1000 + i, w: 100, h: 100, pages: 1, preview: { page: { id: 'p', bg: '#fff', els: [] }, assets: {} } }, { id: 'x' + i, doc: {}, assets: {} }); const l = await DB.listRecents(); const cleared = await DB.clearRecents(); return l.length; })()`);
   check(cap === 100, 'recents capped at 100 (' + cap + ')');
@@ -285,6 +314,7 @@ try {
   await p.clickText('Elements');
 
   // ---- phone ----
+  await p.eval(`__studio.goHome()`); await p.wait(200);
   await p.size(390, 844, true);
   await p.goto(URL);
   await p.until(`document.body.innerText.includes('What are you making today?')`);

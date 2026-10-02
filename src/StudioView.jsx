@@ -1440,11 +1440,11 @@ export default function StudioView(v) {
           </div>
         </>
       ) : null}
-      <input type="file" ref={v.setImgInput} onChange={v.onImageFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
-      <input type="file" ref={v.setFileInput} onChange={v.onProjectFile} accept=".pinwheel,.zip" style={{ display: "none" }} />
-      <input type="file" ref={v.setLogoInput} onChange={v.onLogoFile} accept="image/*" style={{ display: "none" }} />
-      <input type="file" ref={v.setBrandAssetInput} onChange={v.onBrandAssetFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
-      <input type="file" ref={v.setFontInput} onChange={v.onFontFile} accept=".ttf,.otf,.woff,.woff2" multiple="multiple" style={{ display: "none" }} />
+      <input type="file" data-input="images" ref={v.setImgInput} onChange={v.onImageFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
+      <input type="file" data-input="project" ref={v.setFileInput} onChange={v.onProjectFile} accept=".pinwheel,.zip" style={{ display: "none" }} />
+      <input type="file" data-input="logo" ref={v.setLogoInput} onChange={v.onLogoFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
+      <input type="file" data-input="brand" ref={v.setBrandAssetInput} onChange={v.onBrandAssetFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
+      <input type="file" data-input="font" ref={v.setFontInput} onChange={v.onFontFile} accept=".ttf,.otf,.woff,.woff2" multiple="multiple" style={{ display: "none" }} />
       {v.hasWiz ? (
         <>
           <div onClick={v.wiz.close} style={{ position: "fixed", inset: "0", background: "rgba(36,33,29,.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "80" }}>
@@ -1479,10 +1479,10 @@ export default function StudioView(v) {
                     <input value={v.wiz.name ?? ''} onChange={v.wiz.onName} placeholder={v.wiz.namePh} autoFocus style={{ height: "40px", border: "1px solid var(--pw-line-2)", borderRadius: "9px", padding: "0 12px", fontSize: "16px", outline: "none", background: "var(--pw-surface)" }} />
                   </label>
                   <div style={{ fontWeight: "600", fontSize: "13px" }}>
-                    Logo
+                    Logos
                   </div>
                   <div style={{ display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap" }}>
-                    <button onClick={v.wiz.pickLogo} title="Choose a logo" style={{ width: "120px", height: "120px", border: "1.5px dashed var(--pw-line-strong)", background: "var(--pw-panel)", borderRadius: "12px", padding: "10px", cursor: "pointer", color: "var(--pw-muted-2)", fontSize: "13px", flex: "none" }} className="pw-h3">
+                    <button onClick={v.wiz.pickLogo} title="Choose logo files" style={{ width: "120px", height: "120px", border: "1.5px dashed var(--pw-line-strong)", background: "var(--pw-panel)", borderRadius: "12px", padding: "10px", cursor: "pointer", color: "var(--pw-muted-2)", fontSize: "13px", flex: "none" }} className="pw-h3">
                       {v.wiz.hasLogo ? (
                         <div style={sty(v.wiz.logoStyle)} />
                       ) : (
@@ -1491,6 +1491,19 @@ export default function StudioView(v) {
                         </span>
                       )}
                     </button>
+                    {v.wiz.hasLogo ? (
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                        {toArray(v.wiz.logos).map((l, $index) => (
+                          <Fragment key={$index}>
+                            <div onClick={l.onClick} title={l.title} style={sty(l.style)}>
+                              <button onClick={l.onRemove} title="Remove this logo" style={{ position: "absolute", top: "-7px", right: "-7px", width: "20px", height: "20px", borderRadius: "10px", border: "none", background: "var(--pw-ink)", color: "var(--pw-surface)", fontSize: "12px", lineHeight: "1", cursor: "pointer", padding: "0" }}>
+                                ×
+                              </button>
+                            </div>
+                          </Fragment>
+                        ))}
+                      </div>
+                    ) : null}
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: "1", minWidth: "200px" }}>
                       <button onClick={v.wiz.pickLogo} style={{ alignSelf: "flex-start", height: "36px", padding: "0 14px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", fontWeight: "600", cursor: "pointer", color: "var(--pw-ink)" }} className="pw-h1">
                         {v.wiz.logoLabel}
@@ -1539,12 +1552,12 @@ export default function StudioView(v) {
                   <div style={{ fontWeight: "600", fontSize: "13px" }}>
                     Fine-tune
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "8px" }}>
                     {toArray(v.wiz.colors).map((b, $index) => (
                       <Fragment key={$index}>
-                        <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px", border: "1px solid var(--pw-line-soft)", background: "var(--pw-surface)", borderRadius: "8px", cursor: "pointer" }}>
-                          <input type="color" value={b.value ?? ''} onChange={b.onChange} style={{ width: "30px", height: "30px", border: "none", padding: "0", background: "none", cursor: "pointer" }} />
-                          <span style={{ display: "flex", flexDirection: "column" }}>
+                        <label style={sty(b.cardStyle)}>
+                          <input type="color" value={b.value ?? ''} onChange={b.onChange} style={{ width: "30px", height: "30px", border: "none", padding: "0", background: "none", cursor: "pointer", flex: "none" }} />
+                          <span style={{ display: "flex", flexDirection: "column", flex: "1", minWidth: "0" }}>
                             <span style={{ fontSize: "13px", fontWeight: "600" }}>
                               {b.label}
                             </span>
@@ -1552,10 +1565,39 @@ export default function StudioView(v) {
                               {b.value}
                             </span>
                           </span>
+                          <button onClick={b.onArm} title={"Pick the " + b.label.toLowerCase() + " colour from the logo"} style={sty(b.armStyle)} className="pw-h1">
+                            ⦿
+                          </button>
                         </label>
                       </Fragment>
                     ))}
                   </div>
+                  {v.wiz.picker ? (
+                    <>
+                      <div style={{ display: "flex", gap: "14px", alignItems: "flex-start", flexWrap: "wrap", padding: "12px", border: "1px solid var(--pw-line-soft)", borderRadius: "10px", background: "var(--pw-panel)" }}>
+                        <div style={{ background: "repeating-conic-gradient(var(--pw-line-soft) 0% 25%, var(--pw-surface) 0% 50%) 0 0 / 16px 16px", borderRadius: "8px", padding: "6px", flex: "none" }}>
+                          <img src={v.wiz.picker.src} alt="" draggable="false" onClick={v.wiz.picker.onClick} onMouseMove={v.wiz.picker.onMove} onMouseLeave={v.wiz.picker.onLeave} style={{ display: "block", maxWidth: "min(320px, 70vw)", maxHeight: "200px", cursor: "crosshair", userSelect: "none" }} />
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: "1", minWidth: "180px" }}>
+                          <div style={{ fontWeight: "600", fontSize: "13px" }}>
+                            Eyedropper · {v.wiz.picker.roleLabel}
+                          </div>
+                          <div style={{ fontSize: "13px", color: "var(--pw-muted)", lineHeight: "1.45" }}>
+                            {v.wiz.picker.hint} Use the ⦿ button on a colour to change which one you are setting.
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace", color: "var(--pw-muted-2)", minHeight: "20px" }}>
+                            <span style={sty(v.wiz.picker.hoverStyle)} />
+                            {v.wiz.picker.hover || ''}
+                          </div>
+                          {v.wiz.picker.screen ? (
+                            <button onClick={v.wiz.picker.screen} style={{ alignSelf: "flex-start", height: "32px", padding: "0 12px", borderRadius: "8px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", fontWeight: "600", cursor: "pointer", color: "var(--pw-ink)", fontSize: "13px" }} className="pw-h1">
+                              Pick from anywhere on screen
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
                 </>
               ) : null}
               {v.wiz.isFonts ? (
