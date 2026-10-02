@@ -157,6 +157,19 @@ at the top.
     keeps its colours (drawn as is, colour control off). A page colour change moves
     the pattern colour to the theme colour with the most contrast on the new page.
 
+19. Text metrics. Each type pairing carries widths measured in a browser from
+    rendered text (`wf`/`wfu` lowercase and capital letters of the display face,
+    `sp` its space; `bwf`/`bwfu`/`bwfb` and `bsp` for the body face). The estimator
+    in presets.js (`charEm`, `wordEm`, `estLines`, `fitSize`) buckets letters by
+    shape (an "m" is three times an "i", a "W" twice an "I"), sizes digits and
+    symbols from the lowercase width, adds tracking per character, treats the box as
+    95% of its width and gives the longest word 8% slack. It replaced a single
+    average per face, which sized title-case headings a line too large and let
+    everything stacked below them collide. Scenery and portrait sample art widen
+    their view box for wide frames and objects fit whole, so a frame never shows
+    half an illustration. Re-measure with `scripts`-style probes if a pairing
+    changes face.
+
 ## Browser smoke test
 
 `npm run test:browser` (`tests/browser/smoke.mjs`) drives a local headless Chrome

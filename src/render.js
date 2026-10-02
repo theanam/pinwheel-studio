@@ -125,14 +125,16 @@ function chartNode(h, el) {
    frame like a photo would — preserveAspectRatio "slice" is object-fit: cover. */
 const SKIN = ['#F1C9A5', '#D9A47C', '#B77A55', '#8D5A3C'];
 const HAIR = ['#2B2118', '#B8742E', '#1B1B1B', '#6B3E2E'];
-function sampleArt(h, s) {
+function sampleArt(h, s, ar = 1) {
   const { kind, v, c } = s, k = [];
   if (kind === 'portrait') {
     const skin = SKIN[v % 4], hair = HAIR[(v + 1) % 4];
     // Features are always dark: the palette's ink can be cream on a dark theme, and
     // cream eyes without pupils are the stuff of nightmares.
     const ink = '#2B2118', white = '#FFFFFF';
-    if (c.bg !== 'none') { k.push(h('rect', { key: 'bg', width: 100, height: 130, fill: c.bg })); k.push(h('circle', { key: 'halo', cx: 50, cy: 66, r: 44, fill: c.halo })); }
+    // The tint runs well past the 100×130 figure so a wide frame shows the whole
+    // person on more tint at the sides instead of a slice of the face.
+    if (c.bg !== 'none') { k.push(h('rect', { key: 'bg', x: -600, y: -100, width: 1300, height: 330, fill: c.bg })); k.push(h('circle', { key: 'halo', cx: 50, cy: 66, r: 44, fill: c.halo })); }
     if (v === 1) k.push(h('path', { key: 'hairL', d: 'M24 60 C22 24 78 24 76 60 L80 96 L20 96 Z', fill: hair }));
     if (v === 3) { k.push(h('ellipse', { key: 'afro', cx: 50, cy: 40, rx: 31, ry: 24, fill: hair })); [[22, 50], [24, 32], [36, 20], [50, 15], [64, 20], [76, 32], [78, 50]].forEach(([x, y], i) => k.push(h('circle', { key: 'puff' + i, cx: x, cy: y, r: 10, fill: hair }))); }
     k.push(h('path', { key: 'body', d: 'M8 130 C8 102 30 94 50 94 C70 94 92 102 92 130 Z', fill: c.shirt }));
@@ -152,7 +154,8 @@ function sampleArt(h, s) {
     k.push(h('path', { key: 'smile', d: 'M44.5 70 Q50 75 55.5 70', stroke: ink, strokeWidth: 1.8, fill: 'none', strokeLinecap: 'round' }));
     k.push(h('circle', { key: 'chL', cx: 35, cy: 66, r: 3.5, fill: '#E8674A', opacity: .22 })); k.push(h('circle', { key: 'chR', cx: 65, cy: 66, r: 3.5, fill: '#E8674A', opacity: .22 }));
     prop(h, k, s.prop, { hair, skin, shirt: c.shirt, ink, white });
-    return { vb: '0 0 100 130', k };
+    const pw = ar > 100 / 130 ? 130 * ar : 100;
+    return { vb: `${(100 - pw) / 2} 0 ${pw} 130`, k };
   }
   if (kind === 'object') {
     k.push(h('rect', { key: 'bg', width: 100, height: 130, fill: c.bg }));
@@ -161,9 +164,11 @@ function sampleArt(h, s) {
     object(h, k, s.obj, v, c);
     return { vb: '0 0 100 130', k };
   }
-  // landscape
+  // landscape: drawn in a 160×100 scene. A wider frame sees more sky and ground at
+  // the sides instead of losing the top and bottom, so the view box widens with it.
   const night = s.scene === 'night', winter = s.scene === 'winter';
-  k.push(h('rect', { key: 'sky', width: 160, height: 100, fill: c.sky }));
+  k.push(h('rect', { key: 'sky', x: -600, y: -100, width: 1360, height: 300, fill: c.sky }));
+  k.push(h('rect', { key: 'ground', x: -600, y: v === 2 ? 58 : 80, width: 1360, height: 200, fill: c.near }));
   k.push(h('circle', { key: 'sun', cx: v === 2 ? 40 : 120, cy: 28, r: 14, fill: c.sun }));
   if (night) { k.push(h('circle', { key: 'moonbite', cx: (v === 2 ? 40 : 120) + 7, cy: 24, r: 12, fill: c.sky })); [[20, 14], [48, 30], [70, 10], [88, 22], [140, 12], [150, 40], [30, 44]].forEach(([x, y], i) => k.push(h('circle', { key: 'st' + i, cx: x + v * 2, cy: y, r: i % 3 ? 1.2 : 1.8, fill: c.cloud, opacity: .9 }))); }
   else [[24, 30], [96, 20]].forEach(([x, y], i) => { k.push(h('ellipse', { key: 'cl' + i, cx: x + v * 6, cy: y, rx: 16, ry: 6, fill: c.cloud, opacity: .85 })); k.push(h('ellipse', { key: 'cl2' + i, cx: x + 8 + v * 6, cy: y - 4, rx: 10, ry: 6, fill: c.cloud, opacity: .85 })); });
@@ -173,7 +178,8 @@ function sampleArt(h, s) {
   if (v !== 2) [[22, 84], [44, 88], [128, 82]].forEach(([x, y], i) => { k.push(h('polygon', { key: 't' + i, points: `${x},${y - 22} ${x - 8},${y} ${x + 8},${y}`, fill: c.tree })); k.push(h('rect', { key: 'tr' + i, x: x - 1.5, y, width: 3, height: 6, fill: c.tree })); });
   if (v === 3 && !night && !winter) k.push(h('path', { key: 'birds', d: 'M60 30 q4 -4 8 0 M70 24 q4 -4 8 0 M52 22 q4 -4 8 0', stroke: c.tree, strokeWidth: 1.2, fill: 'none' }));
   if (winter) { [[12, 22], [38, 48], [58, 16], [84, 40], [104, 12], [126, 50], [146, 26], [70, 62], [20, 70]].forEach(([x, y], i) => k.push(h('circle', { key: 'sn' + i, cx: x + v * 3, cy: y, r: i % 2 ? 1.6 : 2.4, fill: '#FFFFFF', opacity: .9 }))); if (v !== 2) [[22, 84], [44, 88], [128, 82]].forEach(([x, y], i) => k.push(h('polygon', { key: 'snowcap' + i, points: `${x},${y - 22} ${x - 3},${y - 14} ${x + 3},${y - 14}`, fill: '#FFFFFF', opacity: .85 }))); }
-  return { vb: '0 0 160 100', k };
+  const vw = ar > 1.6 ? 100 * ar : 160;
+  return { vb: `${(160 - vw) / 2} 0 ${vw} 100`, k };
 }
 /* What the person in a portrait holds or wears — drawn after the face. */
 const RED = '#C8102E';
@@ -236,8 +242,11 @@ function object(h, k, id, v, c) {
 }
 
 function sampleNode(h, el) {
-  const { vb, k } = sampleArt(h, el.sample);
-  return h('svg', { 'data-sample': el.sample.kind, viewBox: vb, preserveAspectRatio: 'xMidYMid slice', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', transform: `scale(${el.zoom || 1})${el.flip ? ' scaleX(-1)' : ''}`, transformOrigin: `${el.cx ?? 50}% ${el.cy ?? 50}%`, filter: filterCSS(el.filters), pointerEvents: 'none' } }, k);
+  const ar = (el.w || 1) / (el.h || 1), { vb, k } = sampleArt(h, el.sample, ar);
+  // An object in a frame wider than its box is shown whole on its own tint rather
+  // than cropped to its middle; everything else fills the frame.
+  const whole = el.sample.kind === 'object' && ar > .9;
+  return h('svg', { 'data-sample': el.sample.kind, viewBox: vb, preserveAspectRatio: whole ? 'xMidYMid meet' : 'xMidYMid slice', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', background: whole ? el.sample.c.bg : undefined, transform: `scale(${el.zoom || 1})${el.flip ? ' scaleX(-1)' : ''}`, transformOrigin: `${el.cx ?? 50}% ${el.cy ?? 50}%`, filter: filterCSS(el.filters), pointerEvents: 'none' } }, k);
 }
 
 function placeholder(h, el) {

@@ -86,37 +86,41 @@ export function makeTheme(p) {
 }
 
 /* ---------- type pairings ---------- */
-// wf = average glyph width (em) of display face; lh = display line-height
+// Measured in a browser from rendered text, all in em: wf / wfu = average letter
+// width of the display face in lower and upper case and sp its space; bwf / bwfu /
+// bwfb the body face in regular, upper and bold, bsp its space; lh = display
+// line-height. The layouts size, wrap and stack text from these, so they have to
+// be close to what the browser will draw.
 export const PAIRINGS = [
-  { id: 'impact', name: 'Impact', display: 'Anton', body: 'Work Sans', dw: 400, wf: .46, bwf: .52, upper: true, track: .01, lh: 1.02 },
-  { id: 'poster', name: 'Poster', display: 'Bebas Neue', body: 'Karla', dw: 400, wf: .40, bwf: .5, upper: true, track: .02, lh: .95 },
-  { id: 'editorial', name: 'Editorial', display: 'Playfair Display', body: 'Source Sans 3', dw: 700, wf: .53, bwf: .48, upper: false, track: -.01, lh: 1.08 },
-  { id: 'modern-serif', name: 'Modern Serif', display: 'DM Serif Display', body: 'DM Sans', dw: 400, wf: .5, bwf: .52, upper: false, track: -.01, lh: 1.05 },
-  { id: 'heavy', name: 'Heavy', display: 'Archivo Black', body: 'Archivo', dw: 400, wf: .64, bwf: .52, upper: true, track: -.02, lh: 1.0 },
-  { id: 'grotesk', name: 'Grotesk', display: 'Space Grotesk', body: 'Space Grotesk', dw: 700, wf: .56, bwf: .54, upper: false, track: -.03, lh: 1.02 },
-  { id: 'art', name: 'Art School', display: 'Syne', body: 'Manrope', dw: 800, wf: .62, bwf: .52, upper: false, track: -.02, lh: 1.02 },
-  { id: 'luxe', name: 'Luxe', display: 'Cormorant Garamond', body: 'Montserrat', dw: 700, wf: .44, bwf: .56, upper: false, track: 0, lh: 1.0 },
-  { id: 'fatface', name: 'Fat Face', display: 'Abril Fatface', body: 'Lato', dw: 400, wf: .55, bwf: .5, upper: false, track: 0, lh: 1.05 },
-  { id: 'condensed', name: 'Condensed', display: 'Oswald', body: 'Nunito Sans', dw: 700, wf: .45, bwf: .52, upper: true, track: .01, lh: 1.02 },
-  { id: 'round', name: 'Wide Round', display: 'Unbounded', body: 'Outfit', dw: 700, wf: .7, bwf: .5, upper: false, track: -.02, lh: 1.05 },
-  { id: 'classic', name: 'Classic', display: 'Libre Caslon Text', body: 'Libre Franklin', dw: 400, wf: .53, bwf: .52, upper: false, track: -.01, lh: 1.1 },
-  { id: 'script', name: 'Script', display: 'Pacifico', body: 'Quicksand', dw: 400, wf: .58, bwf: .52, upper: false, track: 0, lh: 1.25 },
-  { id: 'instrument', name: 'Instrument', display: 'Instrument Serif', body: 'Instrument Sans', dw: 400, wf: .42, bwf: .5, upper: false, track: -.02, lh: 1.0 },
-  { id: 'sports', name: 'Sports', display: 'Big Shoulders Display', body: 'Poppins', dw: 900, wf: .42, bwf: .56, upper: true, track: .01, lh: .92 },
-  { id: 'marker', name: 'Marker', display: 'Permanent Marker', body: 'Poppins', dw: 400, wf: .6, bwf: .56, upper: false, track: 0, lh: 1.1 },
-  { id: 'geo', name: 'Geometric', display: 'Poppins', body: 'Poppins', dw: 900, wf: .62, bwf: .56, upper: false, track: -.03, lh: 1.02 },
-  { id: 'rubik', name: 'Chunky', display: 'Rubik', body: 'Rubik', dw: 900, wf: .6, bwf: .54, upper: false, track: -.02, lh: 1.0 },
-  { id: 'bookish', name: 'Bookish', display: 'Lora', body: 'Lato', dw: 700, wf: .52, bwf: .5, upper: false, track: -.01, lh: 1.1 },
-  { id: 'fraunces', name: 'Soft Serif', display: 'Fraunces', body: 'Inter', dw: 700, wf: .52, bwf: .5, upper: false, track: -.01, lh: 1.05 },
-  { id: 'slab', name: 'Slab', display: 'Alfa Slab One', body: 'Nunito', dw: 400, wf: .6, bwf: .5, upper: false, track: 0, lh: 1.05 },
-  { id: 'roman', name: 'Roman', display: 'Cinzel', body: 'Raleway', dw: 700, wf: .62, bwf: .52, upper: true, track: .08, lh: 1.1 },
-  { id: 'hand', name: 'Handwritten', display: 'Caveat', body: 'Nunito', dw: 700, wf: .42, bwf: .5, upper: false, track: 0, lh: 1.1 },
-  { id: 'retro', name: 'Retro', display: 'Righteous', body: 'Josefin Sans', dw: 400, wf: .56, bwf: .48, upper: true, track: .04, lh: 1 },
-  { id: 'diner', name: 'Diner', display: 'Lobster', body: 'Merriweather', dw: 400, wf: .5, bwf: .55, upper: false, track: 0, lh: 1.15 },
-  { id: 'barlow', name: 'Barlow', display: 'Barlow Condensed', body: 'Inter', dw: 800, wf: .42, bwf: .5, upper: true, track: .02, lh: .98 },
-  { id: 'zilla', name: 'Zilla', display: 'Zilla Slab', body: 'Comfortaa', dw: 700, wf: .5, bwf: .56, upper: false, track: -.01, lh: 1.08 },
-  { id: 'dancing', name: 'Dancing', display: 'Dancing Script', body: 'Raleway', dw: 700, wf: .44, bwf: .52, upper: false, track: 0, lh: 1.15 },
-  { id: 'bricolage', name: 'Bricolage', display: 'Bricolage Grotesque', body: 'Inter', dw: 800, wf: .55, bwf: .5, upper: false, track: -.03, lh: 1 }
+  { id: 'impact', name: 'Impact', display: 'Anton', body: 'Work Sans', dw: 400, wf: 0.436, wfu: 0.444, sp: 0.234, bwf: 0.534, bwfu: 0.63, bwfb: 0.554, bsp: 0.318, upper: true, track: .01, lh: 1.02 },
+  { id: 'poster', name: 'Poster', display: 'Bebas Neue', body: 'Karla', dw: 400, wf: 0.372, wfu: 0.372, sp: 0.155, bwf: 0.504, bwfu: 0.568, bwfb: 0.528, bsp: 0.237, upper: true, track: .02, lh: .95 },
+  { id: 'editorial', name: 'Editorial', display: 'Playfair Display', body: 'Source Sans 3', dw: 700, wf: 0.521, wfu: 0.65, sp: 0.229, bwf: 0.465, bwfu: 0.541, bwfb: 0.493, bsp: 0.2, upper: false, track: -.01, lh: 1.08 },
+  { id: 'modern-serif', name: 'Modern Serif', display: 'DM Serif Display', body: 'DM Sans', dw: 400, wf: 0.492, wfu: 0.575, sp: 0.218, bwf: 0.509, bwfu: 0.594, bwfb: 0.546, bsp: 0.266, upper: false, track: -.01, lh: 1.05 },
+  { id: 'heavy', name: 'Heavy', display: 'Archivo Black', body: 'Archivo', dw: 400, wf: 0.608, wfu: 0.728, sp: 0.333, bwf: 0.499, bwfu: 0.648, bwfb: 0.537, bsp: 0.209, upper: true, track: -.02, lh: 1.0 },
+  { id: 'grotesk', name: 'Grotesk', display: 'Space Grotesk', body: 'Space Grotesk', dw: 700, wf: 0.535, wfu: 0.591, sp: 0.254, bwf: 0.533, bwfu: 0.587, bwfb: 0.535, bsp: 0.257, upper: false, track: -.03, lh: 1.02 },
+  { id: 'art', name: 'Art School', display: 'Syne', body: 'Manrope', dw: 800, wf: 0.896, wfu: 1.112, sp: 0.31, bwf: 0.511, bwfu: 0.592, bwfb: 0.541, bsp: 0.2, upper: false, track: -.02, lh: 1.02 },
+  { id: 'luxe', name: 'Luxe', display: 'Cormorant Garamond', body: 'Montserrat', dw: 700, wf: 0.447, wfu: 0.618, sp: 0.234, bwf: 0.558, bwfu: 0.675, bwfb: 0.585, bsp: 0.263, upper: false, track: 0, lh: 1.0 },
+  { id: 'fatface', name: 'Fat Face', display: 'Abril Fatface', body: 'Lato', dw: 400, wf: 0.525, wfu: 0.636, sp: 0.18, bwf: 0.493, bwfu: 0.623, bwfb: 0.505, bsp: 0.193, upper: false, track: 0, lh: 1.05 },
+  { id: 'condensed', name: 'Condensed', display: 'Oswald', body: 'Nunito Sans', dw: 700, wf: 0.446, wfu: 0.509, sp: 0.256, bwf: 0.502, bwfu: 0.629, bwfb: 0.52, bsp: 0.257, upper: true, track: .01, lh: 1.02 },
+  { id: 'round', name: 'Wide Round', display: 'Unbounded', body: 'Outfit', dw: 700, wf: 0.708, wfu: 0.828, sp: 0.252, bwf: 0.498, bwfu: 0.615, bwfb: 0.52, bsp: 0.207, upper: false, track: -.02, lh: 1.05 },
+  { id: 'classic', name: 'Classic', display: 'Libre Caslon Text', body: 'Libre Franklin', dw: 400, wf: 0.532, wfu: 0.703, sp: 0.259, bwf: 0.523, bwfu: 0.648, bwfb: 0.543, bsp: 0.215, upper: false, track: -.01, lh: 1.1 },
+  { id: 'script', name: 'Script', display: 'Pacifico', body: 'Quicksand', dw: 400, wf: 0.485, wfu: 0.76, sp: 0.253, bwf: 0.511, bwfu: 0.608, bwfb: 0.537, bsp: 0.263, upper: false, track: 0, lh: 1.25 },
+  { id: 'instrument', name: 'Instrument', display: 'Instrument Serif', body: 'Instrument Sans', dw: 400, wf: 0.38, wfu: 0.456, sp: 0.17, bwf: 0.514, bwfu: 0.639, bwfb: 0.535, bsp: 0.204, upper: false, track: -.02, lh: 1.0 },
+  { id: 'sports', name: 'Sports', display: 'Big Shoulders Display', body: 'Poppins', dw: 900, wf: 0.432, wfu: 0.451, sp: 0.22, bwf: 0.55, bwfu: 0.597, bwfb: 0.579, bsp: 0.267, upper: true, track: .01, lh: .92 },
+  { id: 'marker', name: 'Marker', display: 'Permanent Marker', body: 'Poppins', dw: 400, wf: 0.543, wfu: 0.638, sp: 0.37, bwf: 0.55, bwfu: 0.597, bwfb: 0.579, bsp: 0.267, upper: false, track: 0, lh: 1.1 },
+  { id: 'geo', name: 'Geometric', display: 'Poppins', body: 'Poppins', dw: 900, wf: 0.597, wfu: 0.659, sp: 0.17, bwf: 0.55, bwfu: 0.597, bwfb: 0.579, bsp: 0.267, upper: false, track: -.03, lh: 1.02 },
+  { id: 'rubik', name: 'Chunky', display: 'Rubik', body: 'Rubik', dw: 900, wf: 0.598, wfu: 0.679, sp: 0.186, bwf: 0.518, bwfu: 0.61, bwfb: 0.561, bsp: 0.244, upper: false, track: -.02, lh: 1.0 },
+  { id: 'bookish', name: 'Bookish', display: 'Lora', body: 'Lato', dw: 700, wf: 0.533, wfu: 0.655, sp: 0.263, bwf: 0.493, bwfu: 0.623, bwfb: 0.505, bsp: 0.193, upper: false, track: -.01, lh: 1.1 },
+  { id: 'fraunces', name: 'Soft Serif', display: 'Fraunces', body: 'Inter', dw: 700, wf: 0.571, wfu: 0.71, sp: 0.211, bwf: 0.524, bwfu: 0.638, bwfb: 0.548, bsp: 0.281, upper: false, track: -.01, lh: 1.05 },
+  { id: 'slab', name: 'Slab', display: 'Alfa Slab One', body: 'Nunito', dw: 400, wf: 0.6, wfu: 0.739, sp: 0.3, bwf: 0.502, bwfu: 0.629, bwfb: 0.521, bsp: 0.258, upper: false, track: 0, lh: 1.05 },
+  { id: 'roman', name: 'Roman', display: 'Cinzel', body: 'Raleway', dw: 700, wf: 0.627, wfu: 0.686, sp: 0.25, bwf: 0.513, bwfu: 0.628, bwfb: 0.535, bsp: 0.255, upper: true, track: .08, lh: 1.1 },
+  { id: 'hand', name: 'Handwritten', display: 'Caveat', body: 'Nunito', dw: 700, wf: 0.377, wfu: 0.496, sp: 0.242, bwf: 0.502, bwfu: 0.629, bwfb: 0.521, bsp: 0.258, upper: false, track: 0, lh: 1.1 },
+  { id: 'retro', name: 'Retro', display: 'Righteous', body: 'Josefin Sans', dw: 400, wf: 0.516, wfu: 0.609, sp: 0.28, bwf: 0.5, bwfu: 0.653, bwfb: 0.529, bsp: 0.316, upper: true, track: .04, lh: 1 },
+  { id: 'diner', name: 'Diner', display: 'Lobster', body: 'Merriweather', dw: 400, wf: 0.438, wfu: 0.565, sp: 0.158, bwf: 0.538, bwfu: 0.658, bwfb: 0.554, bsp: 0.228, upper: false, track: 0, lh: 1.15 },
+  { id: 'barlow', name: 'Barlow', display: 'Barlow Condensed', body: 'Inter', dw: 800, wf: 0.408, wfu: 0.454, sp: 0.2, bwf: 0.524, bwfu: 0.638, bwfb: 0.548, bsp: 0.281, upper: true, track: .02, lh: .98 },
+  { id: 'zilla', name: 'Zilla', display: 'Zilla Slab', body: 'Comfortaa', dw: 700, wf: 0.502, wfu: 0.623, sp: 0.187, bwf: 0.574, bwfu: 0.676, bwfb: 0.58, bsp: 0.293, upper: false, track: -.01, lh: 1.08 },
+  { id: 'dancing', name: 'Dancing', display: 'Dancing Script', body: 'Raleway', dw: 700, wf: 0.417, wfu: 0.6, sp: 0.26, bwf: 0.513, bwfu: 0.628, bwfb: 0.535, bsp: 0.255, upper: false, track: 0, lh: 1.15 },
+  { id: 'bricolage', name: 'Bricolage', display: 'Bricolage Grotesque', body: 'Inter', dw: 800, wf: 0.553, wfu: 0.639, sp: 0.225, bwf: 0.524, bwfu: 0.638, bwfb: 0.548, bsp: 0.281, upper: false, track: -.03, lh: 1 }
 ];
 
 /* ---------- formats ---------- */
@@ -272,18 +276,45 @@ const FESTIVE = OCCASIONS.filter(id => id !== 'memorial');
 export { TOPICS };
 
 /* ---------- text metrics ---------- */
-function estLines(text, size, w, wf) {
-  const cw = size * wf; let n = 0;
+// Text metrics for a face: the measured average em widths of a lowercase letter
+// and a capital, the space, and tracking. Letters are then bucketed by shape, since
+// an "m" is three times an "i" and a "W" is twice an "I"; the bucket factors are
+// chosen so a run of ordinary English still averages out to the measured mean.
+const metrics = (lo, up, sp, ls = 0, k = 1) => ({ lo: lo * k, up: up * k, sp, ls });
+// Script faces vary far more letter to letter than the average suggests.
+const faceK = name => { const f = FONTS.find(x => x.name === name); return f && f.cat === 'script' ? 1.08 : 1; };
+export const textEm = (text, m) => String(text).split(/\s+/).reduce((a, wd, i) => a + wordEm(wd, m) + (i ? m.sp + m.ls : 0), 0);
+export { metrics as textMetrics };
+const NARROW_LO = /[iljtfr'’!|.,:;]/, WIDE_LO = /[mw]/, NARROW_UP = /[IJL]/, WIDE_UP = /[MW]/, ROUND_UP = /[OQGCD]/;
+function charEm(ch, m) {
+  if (ch >= 'A' && ch <= 'Z') return m.up * (WIDE_UP.test(ch) ? 1.38 : NARROW_UP.test(ch) ? .62 : ROUND_UP.test(ch) ? 1.2 : 1.05);
+  if (ch >= '0' && ch <= '9') return m.lo * 1.18;
+  if (/[a-z]/.test(ch)) return m.lo * (WIDE_LO.test(ch) ? 1.55 : NARROW_LO.test(ch) ? .55 : 1.12);
+  if (/[\u00C0-\u024F]/.test(ch)) return ch === ch.toUpperCase() ? m.up * 1.07 : m.lo * 1.12;
+  if (/[%&@#]/.test(ch)) return m.lo * 1.7;
+  if (/[+=<>~$£€]/.test(ch)) return m.lo * 1.2;
+  if (/[-–—_()\[\]{}\/\\?]/.test(ch)) return m.lo * .75;
+  return m.lo * .5;
+}
+/** The width of a word in em, letter by letter. */
+function wordEm(wd, m) { let em = 0; for (const ch of wd) em += charEm(ch, m) + m.ls; return em; }
+// How many lines a text wraps to at a size. The box is treated as a touch narrower
+// than it is, so a line the estimate thinks just fits does not wrap in the browser
+// and push everything below it down.
+function estLines(text, size, w, m, padEm = 0) {
+  let n = 0; w = w * .95 - padEm * size;
   for (const para of String(text).split('\n')) {
     const words = para.split(/\s+/).filter(Boolean); n++;
     let cur = -1;
-    for (const wd of words) { const L = wd.length * cw; if (cur < 0) cur = L; else if (cur + cw * .9 + L <= w) cur += cw * .9 + L; else { n++; cur = L; } }
+    for (const wd of words) { const L = wordEm(wd, m) * size, sw = (m.sp + m.ls) * size; if (cur < 0) cur = L; else if (cur + sw + L <= w) cur += sw + L; else { n++; cur = L; } }
   }
   return Math.max(1, n);
 }
-function fitSize(text, w, max, maxLines, maxH, wf, lh) {
-  let s = max; const longest = Math.max(1, ...String(text).split(/\s+/).map(x => x.length));
-  for (let i = 0; i < 90; i++) { const n = estLines(text, s, w, wf); if (n <= maxLines && n * s * lh <= maxH && longest * s * wf <= w) break; s *= .95; }
+// The largest size at which the text fits its box. `padEm` is horizontal padding
+// the renderer adds (a highlight), in em.
+function fitSize(text, w, max, maxLines, maxH, m, lh, padEm = 0) {
+  let s = max; const longest = Math.max(.1, ...String(text).split(/\s+/).map(x => wordEm(x, m)));
+  for (let i = 0; i < 90; i++) { const n = estLines(text, s, w, m, padEm); if (n <= maxLines && n * s * lh <= maxH && (longest + padEm) * s * 1.08 <= w) break; s *= .95; }
   return s;
 }
 function splitLines(text, n) {
@@ -370,16 +401,21 @@ function makeCtx(W, H, P, F, C, rng, kind) {
   c.t = (text, x, y, w, size, o = {}) => {
     const d = o.f === 'd'; const font = o.font || (d ? F.display : F.body);
     const upper = o.upper ?? (d ? F.upper : false); const ls = o.ls ?? (d ? F.track : 0); const lh = o.lh ?? (d ? F.lh : 1.35);
-    const wf = (font === F.display ? F.wf : F.bwf) * (upper ? 1.2 : 1) * 1.05 + ls;
-    const e = push({ ...base('text', x, y, w, 0, o, d ? 'Heading' : 'Text'), text: String(text), font, size: r1(size), weight: o.weight ?? (d ? F.dw : 400), italic: !!o.italic, color: o.color || P.ink, align: o.align || 'left', lh, ls, upper, bg: o.bg || null, outline: o.outline || null });
-    e.h = r1(estLines(e.text, size, w, wf) * size * lh + (o.bg ? size * .3 : 0));
+    const weight = o.weight ?? (d ? F.dw : 400), isD = font === F.display;
+    const m = isD ? metrics(F.wf * 1.03, F.wfu * 1.03, F.sp, ls, faceK(font)) : metrics((weight >= 600 ? F.bwfb : F.bwf) * 1.03, F.bwfu * 1.03, F.bsp, ls, faceK(font));
+    const e = push({ ...base('text', x, y, w, 0, o, d ? 'Heading' : 'Text'), text: String(text), font, size: r1(size), weight, italic: !!o.italic, color: o.color || P.ink, align: o.align || 'left', lh, ls, upper, bg: o.bg || null, outline: o.outline || null });
+    e.h = r1(estLines(upper ? e.text.toUpperCase() : e.text, size, w, m, o.bg ? .5 : 0) * size * lh + (o.bg ? size * .3 : 0));
     const key = keyFor(C, text); if (key) e.key = key;
     return e;
   };
+  // Shrink a one-line text's box to what its glyphs need, so neighbours placed
+  // beside it can sit close without their boxes crossing.
+  c.shrink = (e, pad = 0) => { const isD = e.font === F.display; const m = isD ? metrics(F.wf * 1.03, F.wfu * 1.03, F.sp, e.ls || 0) : metrics((e.weight >= 600 ? F.bwfb : F.bwf) * 1.03, F.bwfu * 1.03, F.bsp, e.ls || 0); const t = e.upper ? String(e.text).toUpperCase() : String(e.text); e.w = r1(Math.min(e.w, textEm(t, m) * e.size * 1.04 + pad)); return e; };
   c.hd = (text, x, y, w, max, lines, maxH, o = {}) => {
     const upper = o.upper ?? F.upper, ls = o.ls ?? F.track, lh = o.lh ?? F.lh;
-    const wf = (o.font && o.font !== F.display ? F.bwf : F.wf) * (upper ? 1.2 : 1) * 1.05 + ls;
-    return c.t(text, x, y, w, fitSize(text, w, max, lines, maxH ?? 1e9, wf, lh), { f: 'd', ...o });
+    const body = o.font && o.font !== F.display;
+    const m = body ? metrics(F.bwf * 1.03, F.bwfu * 1.03, F.bsp, ls, faceK(o.font)) : metrics(F.wf * 1.03, F.wfu * 1.03, F.sp, ls, faceK(F.display));
+    return c.t(text, x, y, w, fitSize(upper ? String(text).toUpperCase() : text, w, max, lines, maxH ?? 1e9, m, lh, o.bg ? .5 : 0), { f: 'd', ...o });
   };
   c.s = (shape, x, y, w, h, o = {}) => push({ ...base('shape', x, y, w, h, o, shape[0].toUpperCase() + shape.slice(1)), shape, fill: o.fill === undefined ? P.accent : o.fill, stroke: o.stroke || null, sw: o.sw || 0, radius: o.radius || 0, points: o.points || 5, inner: o.inner || .5, sides: o.sides || 6, pts: o.pts || null, dash: !!o.dash, shadow: !!o.shadow });
   c.r = (x, y, w, h, o) => c.s('rect', x, y, w, h, o);
@@ -390,7 +426,7 @@ function makeCtx(W, H, P, F, C, rng, kind) {
   c.ch = (x, y, w, h, o = {}) => push({ ...base('chart', x, y, w, h, o, 'Chart'), chart: o.chart || 'bar', data: (o.data || C.chart).map(([l, v]) => ({ l, v })), colors: o.colors || [P.accent, P.accent2, P.ink, P.muted], ink: o.ink || P.ink, font: F.body, labels: true });
   c.btn = (text, x, y, size, o = {}) => {
     const g = nid(), padX = size * 1.3, padY = size * .72, upper = !!o.upper;
-    const tw = text.length * size * (F.bwf * (upper ? 1.2 : 1) * 1.08 + .02);
+    const tw = size * textEm(upper ? text.toUpperCase() : text, metrics(F.bwfb * 1.04, F.bwfu * 1.04, F.bsp, .02));
     const w = tw + padX * 2, h = size * 1.3 + padY * 2;
     const bx = o.anchor === 'center' ? x - w / 2 : o.anchor === 'right' ? x - w : x;
     const rect = c.r(bx, y, w, h, { fill: o.fill || P.accent, radius: o.square ? size * .3 : h / 2, stroke: o.stroke, sw: o.sw, name: 'Button' });
@@ -708,9 +744,10 @@ def('event-date', 'Event Date', 'sp', A3, c => {
     const hd = c.hd(C.title, x, 0, w, u * 14, 3, H - 2 * m - k.h - t2.h - b.h - u * 14);
     c.vstack([k, hd, t2, b], [u * 3, u * 4, u * 5], m, H - m);
   } else {
-    const dn = c.hd(C.date[0], m - u, m, W * .55, u * 42, 1, H * .3, { color: P.hi, upper: false, lh: .9 });
-    c.t(C.date[1], m + W * .5, m + dn.h * .2, W * .45 - m * 2, u * 9, { f: 'd', upper: true });
-    c.t(C.date[3], m + W * .5, m + dn.h * .2 + u * 11, W * .45 - m * 2, u * 3.4, { weight: 600, color: P.muted });
+    const dn = c.shrink(c.hd(C.date[0], m - u, m, W * .55, u * 42, 1, H * .3, { color: P.hi, upper: false, lh: .9 }), u * 2);
+    const mx = Math.max(m + W * .5, dn.x + dn.w + u * 4);
+    c.t(C.date[1], mx, m + dn.h * .2, W - m - mx, u * 9, { f: 'd', upper: true });
+    c.t(C.date[3], mx, m + dn.h * .2 + u * 11, W - m - mx, u * 3.4, { weight: 600, color: P.muted });
     c.l(m, dn.y + dn.h + u * 4, W - 2 * m, { sw: u * .35, stroke: P.ink });
     const top = dn.y + dn.h + u * 9;
     const k = c.kick(m, 0, W - 2 * m); const pl = c.t(C.place, m, 0, W - 2 * m, u * 3.6, { weight: 600 }); const b = c.btn(C.cta, m, 0, u * 3.2);
@@ -790,8 +827,8 @@ def('minimal-corner', 'Minimal', 'sdp', A3, c => {
   const d = Math.min(W, H) * .9;
   c.o(W - d * .6, -d * .4, d, d, { fill: P.accent, name: 'Sun' });
   c.kick(m, m, W * .45, { color: P.ink });
-  c.t(C.date[2], m, H - m - u * 3, W / 2, u * 2.8, { weight: 700, upper: true, ls: .1 });
-  c.t(C.url, W / 2, H - m - u * 3, W / 2 - m, u * 2.8, { align: 'right', color: P.muted });
+  c.t(C.date[2], m, H - m - u * 3, W / 2 - m - u, u * 2.8, { weight: 700, upper: true, ls: .1 });
+  c.t(C.url, W / 2 + u, H - m - u * 3, W / 2 - m - u, u * 2.8, { align: 'right', color: P.muted });
   const s = c.t(C.sub, m, 0, Math.min(W * .6, u * 70), u * 3.2, { color: P.muted });
   const hd = c.hd(C.title, m, 0, W * .74, u * 12, 3, H * .36, {});
   c.vstack([hd, s], [u * 3], 0, H - m - u * 9, 'bottom');
@@ -824,11 +861,12 @@ def('ribbon', 'Ribbons', 'tsp', A3, c => {
   [[H * .47, -7, P.accent, P.onAccent, C.short], [H * .47 + rh * 1.15, 5, P.accent2, P.onAccent2, C.word]].forEach(([cy, rot, fill, col, txt]) => {
     const g = nid();
     const r = c.r(-W * .15, cy - rh / 2, W * 1.3, rh, { fill, rot, name: 'Ribbon' });
-    const t = c.hd(`${txt}  ·  ${txt}  ·  ${txt}`, -W * .1, 0, W * 1.2, rh * .55, 1, rh * .7, { color: col, align: 'center', rot, upper: true });
+    // The box is far wider than the ribbon so the run never wraps; it is centred and clipped by the page.
+    const t = c.hd(`${txt}  ·  ${txt}  ·  ${txt}`, -W * .5, 0, W * 2, rh * .55, 1, rh * .7, { color: col, align: 'center', rot, upper: true });
     t.y = r1(cy - t.h / 2); r.groupId = t.groupId = g;
   });
-  const s = c.t(C.sub, m, 0, W * .6, u * 3.2, { color: P.muted });
   const b = c.btn(C.cta, W - m, 0, u * 3, { anchor: 'right' });
+  const s = c.t(C.sub, m, 0, Math.min(W * .6, W - 2 * m - b.w - u * 4), u * 3.2, { color: P.muted });
   s.y = r1(H - m - s.h); b.y = H - m - b.h;
 });
 
@@ -887,7 +925,7 @@ def('reaction', 'Reaction', 'ts', ['wide', 'square'], c => {
   c.i(W - H * .78, H * .1, H * .72, H * .9, { label: 'Cutout — try Remove BG', tint: mix(P.accent, P.bg, .3) });
   const lines = splitLines(C.short.toUpperCase(), 2);
   const w = W * .56;
-  const size = Math.min(...lines.map(l => fitSize(l, w, u * 20, 1, u * 22, c.F.wf * 1.26 + c.F.track, c.F.lh)));
+  const size = Math.min(...lines.map(l => fitSize(l, w, u * 20, 1, u * 22, metrics(c.F.wf * 1.03, c.F.wfu * 1.03, c.F.sp, c.F.track, faceK(c.F.display)), c.F.lh, .5)));
   const els = lines.map((l, i) => c.t(l, m, 0, w, size, { f: 'd', upper: true, bg: i % 2 ? P.accent : P.bg, color: i % 2 ? P.onAccent : P.ink, rot: -3, lh: 1.1 }));
   c.vstack(els, els.map(() => u * 1), m, H - m - u * 12);
   c.s('arrow', W * .48, H * .68, u * 16, u * 10, { fill: P.bg, rot: -18, name: 'Arrow' });
@@ -1008,8 +1046,8 @@ def('highlight', 'Highlighter', 'tsp', A3, c => {
   const { W, H, u, m, P, C, F } = c;
   const w = W - 2 * m;
   const lines = splitLines(C.title, c.cls === 'wide' ? 3 : 3);
-  const wf = F.wf * (F.upper ? 1.26 : 1.05) + F.track;
-  const size = Math.min(...lines.map(l => fitSize(l, w * .92, u * 14, 1, u * 16, wf, F.lh)));
+  const mt = metrics(F.wf * 1.03, F.wfu * 1.03, F.sp, F.track, faceK(F.display));
+  const size = Math.min(...lines.map(l => fitSize(F.upper ? l.toUpperCase() : l, w * .92, u * 14, 1, u * 16, mt, F.lh, .5)));
   const k = c.kick(m, 0, w);
   const els = lines.map(l => c.t(l, m, 0, w, size, { f: 'd', bg: P.accent, color: P.onAccent, lh: 1.12 }));
   const s = c.t(C.sub, m, 0, Math.min(w, u * 75), u * 3.4, { color: P.muted });
@@ -1167,7 +1205,7 @@ def('card-split', 'Card Split', 'c', ['wide'], c => {
   const nm = c.hd(C.person, x, 0, w, u * 9, 1, u * 11);
   const jb = c.t(C.job, x, 0, w, u * 4, { color: P.muted });
   const ln = c.r(x, 0, u * 10, u * .6, { fill: P.accent });
-  const ls = [C.phone, C.email, C.url].map(t => c.t(t, x, 0, w, u * 4, {}));
+  const ls = [C.phone, C.email, C.url].map(t => c.hd(t, x, 0, w, u * 4, 1, u * 6, { font: c.F.body, weight: 400, upper: false, ls: 0, lh: 1.35 }));
   c.vstack([nm, jb, ln, ...ls], [u * 1, u * 5, u * 5, u * 1.5, u * 1.5], mm, H - mm);
 });
 def('card-qr', 'Card QR', 'c', ['wide'], c => {
@@ -1180,7 +1218,8 @@ def('card-qr', 'Card QR', 'c', ['wide'], c => {
   const k = c.kick(mm, 0, w, { text: C.brand });
   const nm = c.hd(C.person, mm, 0, w, u * 10, 2, u * 22);
   const jb = c.t(C.job, mm, 0, w, u * 4, { color: P.muted });
-  const em = c.t(C.email, mm, 0, w, u * 4, { weight: 600 });
+  // A long address shrinks to its column rather than running off the card.
+  const em = c.hd(C.email, mm, 0, w, u * 4, 1, u * 6, { font: c.F.body, weight: 600, upper: false, ls: 0, lh: 1.35 });
   c.vstack([k, nm, jb, em], [u * 3, u * 1, u * 8], mm, H - mm);
 });
 
@@ -1283,7 +1322,7 @@ def('carousel-point', 'Carousel Point', 'sd', A3, c => {
   const num = c.hd(String(n).padStart(2, '0'), m, 0, W - 2 * m, u * (cls === 'wide' ? 30 : 26), 1, H * .3, { color: P.hi, upper: false });
   const hd = c.hd(nthItem(c), m, 0, cls === 'wide' ? W * .7 : W - 2 * m, u * (cls === 'wide' ? 12 : 11), 3, H * .3);
   const s = c.t(C.sub, m, 0, Math.min(W - 2 * m, u * 64), u * 3.4, { color: P.muted });
-  c.vstack([num, hd, s], [u * 1, u * 4], m + u * 6, H - m - u * 10);
+  c.vstack([num, hd, s], [u * 1, u * 4], m + u * 6, H - m - u * 10, 'top');
   if (c.pages > 1) { const d = u * 1.6, gap = u * 1.2; for (let i = 0; i < c.pages; i++) c.o(m + i * (d + gap), H - m - d - u * .6, d, d, { fill: i === c.page ? P.accent : P.line, name: 'Progress' }); }
   c.t(C.handle, W / 2, H - m - u * 3.2, W / 2 - m, u * 3, { align: 'right', weight: 700 });
 });
@@ -1572,7 +1611,7 @@ def('photo-list', 'Photo & List', 'sdp', A3, c => {
   c.i(0, 0, pw, ph, { label: 'Photo' });
   const x = wide ? pw + m : m, w = wide ? W - pw - 2 * m : W - 2 * m, top = wide ? m : ph + m * .8;
   const k = c.kick(x, top, w); const hd = c.hd(C.title, x, k.y + k.h + u * 2, w, u * 9, 2, u * 20);
-  numberedRows(c, C.items.slice(0, wide ? 4 : 3), x, w, hd.y + hd.h + u * 6, H - m);
+  numberedRows(c, C.items.slice(0, wide ? 4 : 3), x, w, hd.y + hd.h + u * 7, H - m);
 }, { photo: true });
 
 def('banner-hero', 'Banner Hero', 'b', ['banner'], c => {
