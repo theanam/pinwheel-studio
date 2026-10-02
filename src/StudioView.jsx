@@ -1213,8 +1213,8 @@ export default function StudioView(v) {
                           {p.hoverHint ? (
                             <>
                               <div style={sty(p.hoverTintStyle)}>
-                                <button onPointerDown={p.onHoverReplace} onPointerEnter={p.onHoverKeep} onPointerLeave={p.onHoverLeave} title="Choose an image for this frame" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "none", borderRadius: "16px", background: "rgba(255,255,255,.94)", color: "var(--pw-ink)", fontSize: "12px", fontWeight: "600", boxShadow: "0 2px 8px rgba(0,0,0,.18)", whiteSpace: "nowrap", cursor: "pointer", pointerEvents: "auto" }} className="pw-h6">
-                                  <span style={{ width: "10px", height: "8px", border: "1.5px solid var(--pw-ink)", borderRadius: "2px" }} />
+                                <button onPointerDown={p.onHoverReplace} onPointerEnter={p.onHoverKeep} onPointerLeave={p.onHoverLeave} title="Choose an image for this frame" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "none", borderRadius: "16px", background: "rgba(255,255,255,.94)", color: "#24211D", fontSize: "12px", fontWeight: "600", boxShadow: "0 2px 8px rgba(0,0,0,.18)", whiteSpace: "nowrap", cursor: "pointer", pointerEvents: "auto" }}>
+                                  <span style={{ width: "10px", height: "8px", border: "1.5px solid #24211D", borderRadius: "2px" }} />
                                   {p.hoverHint}
                                 </button>
                               </div>
