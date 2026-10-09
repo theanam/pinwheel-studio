@@ -230,6 +230,46 @@ export default function StudioView(v) {
                   ) : null}
                 </div>
               </section>
+              {v.hasComing ? (
+                <>
+                  <section style={{ display: "flex", flexDirection: "column", gap: "14px", padding: "18px 20px 20px", borderRadius: "16px", background: "var(--pw-accent-tint)", border: "1px solid var(--pw-accent-tint-line)" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap" }}>
+                      <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--pw-accent)", alignSelf: "center" }} />
+                      <h2 style={{ margin: "0", fontSize: "18px", fontWeight: "700", color: "var(--pw-accent-deep)" }}>
+                        {v.comingTitle}
+                      </h2>
+                      <span style={{ color: "var(--pw-muted)", fontSize: "14px" }}>
+                        {v.comingSub}
+                      </span>
+                      <div style={{ flex: "1" }} />
+                      {toArray(v.comingChips).map((c, $index) => (
+                        <Fragment key={$index}>
+                          <button onClick={c.onClick} style={sty(c.style)} className="pw-h1">
+                            {c.label}
+                          </button>
+                        </Fragment>
+                      ))}
+                    </div>
+                    <div style={sty(v.comingRowStyle)}>
+                      {toArray(v.comingItems).map((g, $index) => (
+                        <Fragment key={$index}>
+                          <button onClick={g.onClick} title={g.title} style={sty(g.cardStyle)}>
+                            <div style={sty(g.boxStyle)}>
+                              {g.thumb}
+                            </div>
+                            <div style={{ fontSize: "13px", fontWeight: "600", color: "var(--pw-ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {g.name}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "var(--pw-muted-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {g.meta}
+                            </div>
+                          </button>
+                        </Fragment>
+                      ))}
+                    </div>
+                  </section>
+                </>
+              ) : null}
               <section style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap" }}>
                   <h2 style={{ margin: "0", fontSize: "18px", fontWeight: "700" }}>

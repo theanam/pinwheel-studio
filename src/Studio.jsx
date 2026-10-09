@@ -309,9 +309,13 @@ export default class Studio extends React.Component {
   /* ---------- infra ---------- */
   // Suggestions: what the gallery shows before anyone asks, and in what order. See
   // suggest.js for the rules. Ranking is memoized per (hide, profile version, day).
+  // `today` can be overridden in development (window.__studio.today) to preview a
+  // festival window; the browser tests use it.
+  get today() { return this._today || new Date(); }
+  set today(d) { this._today = d; this._rankCache && this._rankCache.clear(); this.forceUpdate(); }
   ranked(hide) {
-    const key = `${hide}|${this._pv}|${new Date().toDateString()}`;
-    if (!this._rankCache.has(key)) { this._rankCache.clear(); this._rankCache.set(key, this.S.rank(this.P.catalog(), { profile: this.profile, hide })); }
+    const key = `${hide}|${this._pv}|${this.today.toDateString()}`;
+    if (!this._rankCache.has(key)) { this._rankCache.clear(); this._rankCache.set(key, this.S.rank(this.P.catalog(), { profile: this.profile, hide, today: this.today })); }
     return this._rankCache.get(key);
   }
   note(kind, id, weight = 1) { if (!this.S || !id) return; this.S.record(this.profile, kind, id, weight); this.S.saveProfile(this.profile); this._pv++; }
@@ -1194,7 +1198,10 @@ export default class Studio extends React.Component {
       const q = st.galQ.trim().toLowerCase();
       const explicit = !!q || !!st.galOcc;
       const list = this.ranked(!explicit).filter(t => (st.galCat === 'All' || t.cat === st.galCat) && (!st.galOcc || t.topic === st.galOcc) && (!q || q.split(/\s+/).every(w => t.search.includes(w))));
-      const soon = this.S.upcoming(Object.keys(this.S.SENSITIVE)).map(x => ({ ...x, name: P.TOPIC[x.id].name }));
+      const soon = this.S.upcoming(Object.keys(this.S.SENSITIVE), this.today).map(x => ({ ...x, name: P.TOPIC[x.id].name }));
+      // Coming up: its own row, filtered like the gallery, never mixed into the feed's top.
+      const coming = !explicit && soon.length ? this.ranked(true).coming.filter(t => st.galCat === 'All' || t.cat === st.galCat) : [];
+      const comingH = phone ? 120 : 150, comingMax = phone ? 10 : 14;
       const rowH = this.props.galleryRowHeight ?? (phone ? 136 : 190);
       const cats = ['All', ...new Set(P.FORMATS.map(f => f.cat))];
       const recH = phone ? 110 : 140, recMax = phone ? 8 : 12;
@@ -1208,7 +1215,15 @@ export default class Studio extends React.Component {
         openLabel: phone ? 'Open' : 'Open .pinwheel file',
         statLine: `${cat.length.toLocaleString()} templates across ${P.FORMATS.length} formats · ${P.LAYOUTS.length} layouts, ${P.PALETTES.length} palettes and ${P.PAIRINGS.length} type pairings — every one fully editable.`,
         galQ: st.galQ, onGalQ: e => { this.noteQuery(e.target.value); this.setState({ galQ: e.target.value, galLimit: 48 }); },
-        galHint: !explicit && soon.length ? 'Coming up: ' + soon.map(x => x.days === 0 ? `${x.name} today` : `${x.name} in ${x.days} day${x.days === 1 ? '' : 's'}`).join(' · ') : '',
+        galHint: '',
+        hasComing: coming.length > 0,
+        comingTitle: soon.length === 1 ? (soon[0].days === 0 ? `${soon[0].name} is today` : `${soon[0].name} is ${soon[0].days === 1 ? 'tomorrow' : 'in ' + soon[0].days + ' days'}`) : 'Coming up',
+        comingSub: soon.map(x => x.days === 0 ? `${x.name} today` : `${x.name} in ${x.days} day${x.days === 1 ? '' : 's'}`).join(' · '),
+        comingChips: soon.map(x => ({ label: 'All ' + x.name + ' templates', onClick: () => { this.note('topic', x.id, 1); this.setState({ galOcc: x.id, galLimit: 48 }); }, style: { height: 28, padding: '0 12px', borderRadius: 14, border: '1px solid var(--pw-accent-tint-line)', background: 'var(--pw-surface)', color: 'var(--pw-accent-deep)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', flex: 'none' } })),
+        comingRowStyle: phone ? { display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 6, scrollSnapType: 'x proximity' } : { display: 'flex', flexWrap: 'wrap', gap: '18px 14px', alignItems: 'flex-start' },
+        comingItems: coming.slice(0, comingMax).map(t => { const ar = t.w / t.h; const w = Math.round(Math.max(comingH * .6, Math.min(comingH * ar, comingH * 2.2))); return { name: t.name, title: `${t.name} — ${t.layoutName}`, meta: `${P.TOPIC[t.topic].name} · ${t.fmtName}`, onClick: () => this.fromTemplate(t), thumb: this.thumbFor(t, w, comingH),
+          cardStyle: { width: w, display: 'flex', flexDirection: 'column', gap: 5, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', flex: 'none', scrollSnapAlign: 'start' },
+          boxStyle: { width: w, height: comingH, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--pw-canvas)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 2px rgba(36,33,29,.08), 0 4px 14px rgba(36,33,29,.06)' } }; }),
         // Recents: every design touched on this device, newest first, drawn live from
         // its first page. Nothing here was necessarily saved as a file.
         hasRecents: st.recents.length > 0, recentsCount: `${st.recents.length} on this device`, clearRecents: this.clearRecents,

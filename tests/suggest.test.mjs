@@ -21,8 +21,13 @@ assert.ok(seen.has('birthday') && seen.has('wedding') && seen.has('sale'), 'neut
 assert.equal(daysUntil('diwali', at('2026-10-27')), 10);
 const ranked = rank(cat, { profile: fresh(), today: at('2026-10-27') });
 assert.ok(topicsOf(ranked).has('diwali'), 'Diwali within 10 days is shown');
-// Halloween (4 days out) is closer, so it leads; the two upcoming occasions alternate at the top.
-assert.deepEqual(ranked.slice(0, 4).map(t => t.topic), ['halloween', 'diwali', 'halloween', 'diwali']);
+// Upcoming occasions get their own row (nearest first, alternating), and the main
+// feed keeps its ordinary mix rather than leading with them.
+assert.deepEqual(ranked.coming.slice(0, 4).map(t => t.topic), ['halloween', 'diwali', 'halloween', 'diwali']);
+assert.ok(ranked.coming.every(t => ['halloween', 'diwali'].includes(t.topic)), 'the row holds only the upcoming occasions');
+const top = ranked.slice(0, 48).map(t => t.topic);
+assert.ok(top.filter(t => t === 'halloween' || t === 'diwali').length < 24, 'the feed is not mostly festival templates: ' + top.filter(t => t === 'halloween' || t === 'diwali').length + ' of 48');
+assert.ok(new Set(top).size >= 8, 'the first page of the feed spans many topics');
 assert.ok(!topicsOf(ranked).has('christmas'), 'Christmas is still 48 days out');
 
 // Christmas: hidden on Dec 1, shown on Dec 15, shown on the day, gone on Dec 27.

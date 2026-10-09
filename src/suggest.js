@@ -131,9 +131,15 @@ export function rank(templates, { profile, today = new Date(), hide = true, now 
   }
   const byScore = (a, b) => b[0] - a[0];
   const lanes = [...soon.entries()].sort((a, b) => tScore(a[0]).up - tScore(b[0]).up).map(([, arr]) => arr.sort(byScore));
-  const lead = [];
-  for (let i = 0; lanes.some(l => i < l.length); i++) for (const l of lanes) if (i < l.length) lead.push(l[i][1]);
-  return lead.concat(rest.sort(byScore).map(x => x[1]));
+  // Templates for upcoming occasions alternate by nearest event, one lane each.
+  const coming = [];
+  for (let i = 0; lanes.some(l => i < l.length); i++) for (const l of lanes) if (i < l.length) coming.push(l[i][1]);
+  const feed = rest.sort(byScore).map(x => x[1]);
+  // The main feed keeps its ordinary mix: upcoming occasions get their own section
+  // on the home page (`coming`) and, in the feed, sit among everything else by score
+  // rather than crowding the top, so the catalogue never looks like one holiday.
+  const all = [...rest, ...lanes.flat()].sort(byScore).map(x => x[1]);
+  return Object.assign(hide ? all : feed.concat(coming.filter(t => !feed.includes(t))), { coming, feed });
 }
 
 /** Occasions worth a nudge today: visible sensitive ones that are coming up. */

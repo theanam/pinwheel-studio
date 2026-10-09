@@ -71,6 +71,17 @@ try {
   await p.wait(700);
   check(await p.eval(`(async () => { const l = await (await import('/src/store.js')).listBrands(); return l.length === 2 && l.some(b => b.name === 'Northwind' && b.logo); })()`), 'brand persisted to IndexedDB');
 
+  // ---- coming-up row for a near festival ----
+  // The feed must not turn into one holiday: the festival gets its own row.
+  await p.eval(`__studio.today = new Date('2026-10-27T12:00:00Z')`); await p.wait(400);
+  const coming = await p.eval(`(() => { const v = __studio.renderVals(); return { has: v.hasComing, title: v.comingTitle, n: v.comingItems.length, topics: [...new Set(v.comingItems.map(i => i.meta.split(' · ')[0]))], feedFestival: v.galItems.filter(i => /Halloween|Diwali/i.test(i.name) || /Hollow House|Festival of Lights/.test(i.name)).length, feedN: v.galItems.length }; })()`);
+  check(coming.has && coming.n >= 6 && coming.topics.join(',') === 'Halloween,Diwali' && coming.title === 'Coming up', 'near festivals get their own row ' + JSON.stringify(coming));
+  check(coming.feedFestival < coming.feedN / 3, `the main feed is not mostly festival templates (${coming.feedFestival} of ${coming.feedN})`);
+  await p.shot('coming-up');
+  await p.eval(`__studio.today = new Date('2026-06-15T12:00:00Z')`); await p.wait(300);
+  check(await p.eval(`!__studio.renderVals().hasComing`), 'no row when nothing is near');
+  await p.eval(`__studio.today = null`); await p.wait(200);
+
   // ---- brand preview on the home page ----
   // A new brand is not applied by itself: "No brand" stays selected and templates
   // keep their own style. Choosing a brand restyles the previews, says so, and
