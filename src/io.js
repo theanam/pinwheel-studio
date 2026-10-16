@@ -96,19 +96,31 @@ export async function pickOpenFile() {
 }
 
 /* ---------- fonts for export ---------- */
+// Google Fonts beyond the curated set: the family's css2 URL once it has been loaded
+// in the page, so exports can inline it like the curated ones.
+const googleURLs = new Map();
+const linked = new Set();
+function addLink(href) { if (linked.has(href) || document.querySelector(`link[href="${href}"]`)) return; linked.add(href); const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; l.crossOrigin = 'anonymous'; document.head.appendChild(l); }
+/** Load a catalogue family in full (regular, bold, italics) and remember its URL for exports. */
+export function ensureGoogleFont(entry, url) { if (!entry || !url) return; googleURLs.set(entry.name, url); addLink(url); }
+/** Load just the glyphs of a family's own name, for a picker row. */
+export function loadPreview(url) { addLink(url); }
+export const hasGoogleFont = name => googleURLs.has(name);
 const fontCache = new Map();
 export function usedFonts(doc) {
   const s = new Set(); doc.pages.forEach(p => p.els.forEach(e => { if (e.font) s.add(e.font); })); return [...s];
 }
 /** @font-face rules for the families a design uses: Google fonts fetched and inlined,
  *  uploaded fonts (`custom`, family → { src, mime }) written straight from their data URL. */
+/** For tests: the inlined @font-face CSS exports embed for the given families. */
+export const exportFontCSS = (families, custom) => fontCSS(families, custom);
 async function fontCSS(families, custom = {}) {
   const parts = await Promise.all(families.map(async fam => {
     if (custom[fam] && custom[fam].src) return `@font-face { font-family: '${fam.replace(/'/g, '')}'; src: url(${custom[fam].src})${FONT_FORMAT[custom[fam].mime] ? ` format('${FONT_FORMAT[custom[fam].mime]}')` : ''}; font-display: block; }`;
     if (fontCache.has(fam)) return fontCache.get(fam);
-    const f = FONTS.find(x => x.name === fam); if (!f) return '';
+    const f = FONTS.find(x => x.name === fam); const url = f ? fontURL(f) : googleURLs.get(fam); if (!url) return '';
     try {
-      let css = await (await fetch(fontURL(f))).text();
+      let css = await (await fetch(url)).text();
       const urls = [...new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map(m => m[1]))];
       // only latin + latin-ext subsets keep exports small
       const blocks = css.split('@font-face').filter(b => /U\+0000-00FF|U\+0100/.test(b) || !/unicode-range/.test(b));

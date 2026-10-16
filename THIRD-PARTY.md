@@ -23,10 +23,14 @@ cached in the browser's Cache Storage under `pinwheel-models`.
 
 ## Fonts
 
-All 34 typefaces are Google Fonts under the
-[SIL Open Font License 1.1](https://openfontlicense.org). They are referenced by
-family name in a `.pinwheel` file rather than embedded, and inlined as data URIs only
-into an export, so exported files render correctly anywhere.
+The curated faces the templates use and the full catalogue of nearly 2,000
+families the pickers offer are all Google Fonts under the
+[SIL Open Font License 1.1](https://openfontlicense.org). The catalogue list in
+`public/fonts/google-fonts.json` is built from the [Fontsource](https://fontsource.org)
+API by `scripts/update-google-fonts.mjs`; the fonts themselves come from Google
+Fonts at use time. They are referenced by family name in a `.pinwheel` file rather
+than embedded, and inlined as data URIs only into an export, so exported files
+render correctly anywhere.
 
 ## This project
 

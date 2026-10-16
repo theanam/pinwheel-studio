@@ -21,7 +21,7 @@ export default class Studio extends React.Component {
     // brandOn: templates and new designs take the active brand's colours and fonts.
     // Off on every visit, so the gallery always opens with templates in their own
     // style; the choice lasts for the session only.
-    brandOn: false, fonts: {}, patCat: 'all',
+    brandOn: false, fonts: {}, patCat: 'all', catalog: null, fontScroll: 0,
     customW: 1080, customH: 1080, fmtsAll: false,
     helpOpen: false, layerDrag: null, layerOver: null, fontQ: '', fontCat: 'all', fontAnchor: null,
     vw: typeof window !== 'undefined' ? window.innerWidth : 1280,
@@ -94,8 +94,8 @@ export default class Studio extends React.Component {
     if ('launchQueue' in window && 'LaunchParams' in window && 'files' in window.LaunchParams.prototype) {
       window.launchQueue.setConsumer(async ({ files }) => { if (files && files.length) this.openProjectFile(await files[0].getFile(), files[0]); });
     }
-    Promise.all([import('./presets.js'), import('./render.js'), import('./io.js'), import('./suggest.js'), import('./store.js'), import('./brand.js'), import('./palette.js'), import('./patterns.js')]).then(async ([P, R, IO, S, DB, B, PAL, PT]) => {
-      this.P = P; this.R = R; this.IO = IO; this.S = S; this.DB = DB; this.B = B; this.PAL = PAL; this.PT = PT;
+    Promise.all([import('./presets.js'), import('./render.js'), import('./io.js'), import('./suggest.js'), import('./store.js'), import('./brand.js'), import('./palette.js'), import('./patterns.js'), import('./fonts.js')]).then(async ([P, R, IO, S, DB, B, PAL, PT, F]) => {
+      this.P = P; this.R = R; this.IO = IO; this.S = S; this.DB = DB; this.B = B; this.PAL = PAL; this.PT = PT; this.F = F;
       this.profile = S.loadProfile(); this._pv = 0; this._rankCache = new Map();
       // The renderer reads window.qrcode synchronously; pull it in now and repaint.
       IO.lib('qr').then(() => this.forceUpdate()).catch(() => { });
@@ -105,6 +105,8 @@ export default class Studio extends React.Component {
       await this.migrateLocalStorage(brand);
       const recents = await this.loadRecents();
       const fonts = B.allFonts(brands); Object.values(fonts).forEach(f => IO.registerFont(f.family, f.src, f.mime));
+      // Every Google Font, for the pickers; catalogue families load on demand.
+      fetch(new URL('fonts/google-fonts.json', document.baseURI)).then(r => r.json()).then(rows => this.setState({ catalog: this.F.mergeCatalog(rows) }, () => this.ensureDocFonts())).catch(e => console.warn('Font catalogue unavailable', e));
       this.setState({ ready: true, brands, brand, fonts, recents, assets: { ...this.state.assets, ...brand.assets } }, () => {
         if (this._pendingFile) { const [f, h] = this._pendingFile; this._pendingFile = null; this.openProjectFile(f, h); }
         else if (this.props.startScreen === 'editor') this.newDoc('ig-post');
@@ -153,7 +155,7 @@ export default class Studio extends React.Component {
   saveBrandSoon() { clearTimeout(this._bt); this._bt = setTimeout(() => { const b = this.state.brand; this.DB.putBrand(b).catch(e => console.warn('Could not save brand', e)); this.DB.setKV('brandId', b.id).catch(() => { }); }, 400); }
   /** Shallow update of the active brand, mirrored into the brands list. */
   setBrand(patch) { this.setState(s => { const b = { ...s.brand, ...patch, updated: Date.now() }; return { brand: b, brands: s.brands.map(x => x.id === b.id ? b : x) }; }); }
-  activateBrand = id => { const b = this.state.brands.find(x => x.id === id); if (!b) return; this.setState(s => ({ brand: b, assets: { ...s.assets, ...b.assets }, menu: null })); this.DB.setKV('brandId', id).catch(() => { }); };
+  activateBrand = id => { const b = this.state.brands.find(x => x.id === id); if (!b) return; this.setState(s => ({ brand: b, assets: { ...s.assets, ...b.assets }, menu: null }), () => this.ensureDocFonts()); this.DB.setKV('brandId', id).catch(() => { }); };
   /** Use a brand for templates and new designs (id), or none (null). */
   useBrand = id => { if (id) this.activateBrand(id); this.setState({ brandOn: !!id }); };
   /** Every uploaded font the editor knows: all brands' plus any that came in with a file. */
@@ -376,7 +378,7 @@ export default class Studio extends React.Component {
   openDoc(doc, assets) {
     this.hist = []; this.fut = []; this.dirty = false; if (!doc.id) doc.id = this.B.bid('d');
     const brandIds = new Set(Object.keys(this.state.brand.assets || {}));
-    this.setState(s => ({ screen: 'editor', doc, assets: { ...s.assets, ...assets }, uploads: [...new Set([...s.uploads, ...Object.keys(assets).filter(id => !brandIds.has(id))])], sel: [], page: 0, editingId: null, cropMode: false, menu: null, phoneMenu: null, propsOpen: false, tplSame: true, tplLimit: 24 }), () => { setTimeout(() => this.fitZoom(), 40); this.ensureAlpha(assets); this.scheduleAutosave(); });
+    this.setState(s => ({ screen: 'editor', doc, assets: { ...s.assets, ...assets }, uploads: [...new Set([...s.uploads, ...Object.keys(assets).filter(id => !brandIds.has(id))])], sel: [], page: 0, editingId: null, cropMode: false, menu: null, phoneMenu: null, propsOpen: false, tplSame: true, tplLimit: 24 }), () => { setTimeout(() => this.fitZoom(), 40); this.ensureAlpha(assets); this.ensureDocFonts(doc); this.scheduleAutosave(); });
   }
   goHome = () => { this.flushAutosave().then(() => this.loadRecents()); this.forgetSession(); this.setState({ screen: 'home', sel: [], editingId: null, menu: null, phoneMenu: null, propsOpen: false, wiz: null }); };
   // Assets restored from an autosave written before alpha detection existed.
@@ -919,6 +921,16 @@ export default class Studio extends React.Component {
     const h = React.createElement;
     return h('select', { value, onChange, style }, options.map(o => h('option', { key: o.value, value: o.value, style: { fontFamily: 'inherit' } }, o.label)));
   }
+  /* ---------- fonts ---------- */
+  /** All fonts the pickers offer: curated first, then the catalogue (once it has loaded). */
+  fontList() { return this.state.catalog || this.P.FONTS.map(f => ({ ...f, curated: true })); }
+  fontEntry(name) { return this.fontList().find(f => f.name === name); }
+  /** Load a catalogue family in full the moment it is used. Curated and uploaded fonts are already in. */
+  ensureFont(name) { const e = this.fontEntry(name); if (e && e.google && !this.IO.hasGoogleFont(name)) this.IO.ensureGoogleFont(e, this.F.familyURL(e)); }
+  ensureDocFonts(doc = this.state.doc) { if (!doc) return; this.IO.usedFonts(doc).forEach(f => this.ensureFont(f)); [this.state.brand.heading, this.state.brand.body].forEach(f => this.ensureFont(f)); }
+  /** The weight to give text when it switches to `font`: the nearest the family has. */
+  weightFor(font, want) { const e = this.fontEntry(font); if (e && e.weights) return this.F.nearestWeight(e.weights, want); return this.ONEW.includes(font) ? 400 : want; }
+
   /* ---------- font picker ---------- */
   // A popover that lists every family set in its own face, with search and category
   // chips. All the families are loaded as stylesheets at start-up, so the previews
@@ -926,23 +938,29 @@ export default class Studio extends React.Component {
   // container cannot clip it; the shared menu backdrop closes it.
   fontPickerEl(key, value, onPick, big) {
     const h = React.createElement, P = this.P, st = this.state, open = st.menu === key, C = this.CORAL;
-    const toggle = e => { const r = e.currentTarget.getBoundingClientRect(); this.setState(s => ({ menu: s.menu === key ? null : key, fontQ: '', fontCat: 'all', fontAnchor: { left: r.left, top: r.bottom, bottom: r.top, width: r.width } })); };
+    const toggle = e => { const r = e.currentTarget.getBoundingClientRect(); this.setState(s => ({ menu: s.menu === key ? null : key, fontQ: '', fontCat: 'all', fontScroll: 0, fontAnchor: { left: r.left, top: r.bottom, bottom: r.top, width: r.width } })); };
     const kids = [h('button', { key: 'b', onClick: toggle, title: 'Change font', style: { height: big ? 36 : 34, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 10px', border: '1px solid ' + (open ? C : 'var(--pw-line-2)'), borderRadius: 7, background: 'var(--pw-surface)', color: 'var(--pw-ink)', cursor: 'pointer', textAlign: 'left' } },
       h('span', { style: { fontFamily: `'${value}'`, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, value), h('span', { style: { fontSize: 11, color: 'var(--pw-muted)', flex: 'none' } }, '▾'))];
     if (open) {
       const a = st.fontAnchor || { left: 0, top: 0, bottom: 0, width: 260 }, vh = window.innerHeight, up = vh - a.top < 360 && a.bottom > vh - a.top;
-      const q = st.fontQ.trim().toLowerCase(), cat = st.fontCat, pick = name => { onPick(name); this.setState({ menu: null }); };
+      const q = st.fontQ.trim().toLowerCase(), cat = st.fontCat, pick = name => { this.ensureFont(name); onPick(name); this.setState({ menu: null }); };
       const custom = Object.values(st.fonts).map(f => ({ name: f.family, cat: 'brand' })), cats = custom.length ? [P.FONT_CATS[0], ['brand', 'Uploaded'], ...P.FONT_CATS.slice(1)] : P.FONT_CATS;
-      const list = [...custom, ...P.FONTS].filter(f => (cat === 'all' || f.cat === cat) && (!q || f.name.toLowerCase().includes(q)));
-      const pos = up ? { bottom: vh - a.bottom + 4, maxHeight: Math.min(460, a.bottom - 16) } : { top: a.top + 4, maxHeight: Math.min(460, vh - a.top - 16) };
+      const list = this.F.filterFonts([...custom, ...this.fontList()], q, cat);
+      // Virtualised: only the rows in view are rendered, and a catalogue family's
+      // preview (just the letters of its name) loads as its row scrolls in.
+      const ROW = 38, VIEW = Math.min(360, Math.max(160, (up ? a.bottom : vh - a.top) - 130));
+      const first = Math.max(0, Math.floor(st.fontScroll / ROW) - 4), last = Math.min(list.length, Math.ceil((st.fontScroll + VIEW) / ROW) + 4);
+      list.slice(first, last).forEach(f => { if (f.google) this.IO.loadPreview(this.F.previewURL(f)); });
+      const row = f => { const on = f.name === value; return h('button', { key: f.name, onClick: () => pick(f.name), title: f.name, className: on ? undefined : 'pw-h1', style: { position: 'absolute', left: 0, right: 0, top: list.indexOf(f) * ROW, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, height: ROW, padding: '0 10px', border: 'none', borderRadius: 7, background: on ? 'var(--pw-accent-tint)' : 'transparent', color: 'var(--pw-ink)', cursor: 'pointer', textAlign: 'left' } },
+        h('span', { style: { fontFamily: `'${f.name}'`, fontSize: 17, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, f.name), h('span', { style: { fontSize: 11, color: on ? 'var(--pw-accent-deep)' : 'var(--pw-muted-2)', flex: 'none' } }, on ? '✓' : f.cat === 'brand' ? 'uploaded' : f.cat)); };
+      const pos = up ? { bottom: vh - a.bottom + 4, maxHeight: Math.min(500, a.bottom - 16) } : { top: a.top + 4, maxHeight: Math.min(500, vh - a.top - 16) };
       const width = Math.max(a.width, 360), left = Math.max(8, Math.min(a.left, window.innerWidth - width - 8));
       kids.push(h('div', { key: 'p', onClick: e => e.stopPropagation(), style: { position: 'fixed', left, width, ...pos, zIndex: 32, display: 'flex', flexDirection: 'column', gap: 6, padding: 8, background: 'var(--pw-surface)', border: '1px solid var(--pw-line)', borderRadius: 10, boxShadow: '0 12px 32px rgba(36,33,29,.18)' } },
-        h('input', { key: 'q', autoFocus: true, value: st.fontQ, placeholder: 'Search fonts', onChange: e => this.setState({ fontQ: e.target.value }), onKeyDown: e => { if (e.key === 'Escape') this.setState({ menu: null }); if (e.key === 'Enter' && list.length) pick(list[0].name); }, style: { height: 32, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 10px', fontSize: 13, outline: 'none', background: 'var(--pw-surface)', flex: 'none' } }),
+        h('input', { key: 'q', autoFocus: true, value: st.fontQ, placeholder: st.catalog ? `Search ${st.catalog.length.toLocaleString()} fonts` : 'Search fonts', onChange: e => this.setState({ fontQ: e.target.value, fontScroll: 0 }), onKeyDown: e => { if (e.key === 'Escape') this.setState({ menu: null }); if (e.key === 'Enter' && list.length) pick(list[0].name); }, style: { height: 32, border: '1px solid var(--pw-line-2)', borderRadius: 7, padding: '0 10px', fontSize: 13, outline: 'none', background: 'var(--pw-surface)', flex: 'none' } }),
         // One row of chips; it scrolls sideways rather than wrapping into orphans.
         h('div', { key: 'c', className: 'pw-chips', style: { display: 'flex', gap: 2, background: 'var(--pw-track)', padding: 3, borderRadius: 8, flex: 'none', overflowX: 'auto' } }, cats.map(([id, label]) => h('button', { key: id, onClick: () => this.setState({ fontCat: id }), style: { ...this.segStyle(cat === id, false), height: 24, fontSize: 12, padding: '0 8px' } }, label))),
-        h('div', { key: 'l', style: { overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1, minHeight: 0 } },
-          list.length ? list.map(f => { const on = f.name === value; return h('button', { key: f.name, onClick: () => pick(f.name), title: f.name, className: on ? undefined : 'pw-h1', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, height: 38, padding: '0 10px', border: 'none', borderRadius: 7, background: on ? 'var(--pw-accent-tint)' : 'transparent', color: 'var(--pw-ink)', cursor: 'pointer', textAlign: 'left', flex: 'none' } },
-            h('span', { style: { fontFamily: `'${f.name}'`, fontSize: 17, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, f.name), h('span', { style: { fontSize: 11, color: on ? 'var(--pw-accent-deep)' : 'var(--pw-muted-2)', flex: 'none' } }, on ? '✓' : f.cat)); })
+        h('div', { key: 'l', className: 'pw-font-list', onScroll: e => { const t = e.currentTarget.scrollTop; if (Math.abs(t - st.fontScroll) > ROW) this.setState({ fontScroll: t }); }, style: { overflowY: 'auto', minHeight: 0, height: VIEW, flex: 'none', position: 'relative' } },
+          list.length ? h('div', { style: { height: list.length * ROW, position: 'relative' } }, list.slice(first, last).map(row))
             : h('div', { style: { padding: '14px 10px', fontSize: 13, color: 'var(--pw-muted)' } }, 'No fonts match.'))));
     }
     return h('div', { style: { position: 'relative' } }, kids);
@@ -992,9 +1010,9 @@ export default class Studio extends React.Component {
     const el = els[0], one = els.length === 1;
     if (one && el.type === 'text') {
       S.push({ title: 'Text', controls: [
-        { k: 'select', label: 'Font', value: el.font, selFont: true, onPick: v => pp(x => { x.font = v; if (this.ONEW.includes(v)) x.weight = 400; }) },
+        { k: 'select', label: 'Font', value: el.font, selFont: true, onPick: v => pp(x => { x.font = v; x.weight = this.weightFor(v, x.weight >= 600 ? 700 : 400); }) },
         slider('Size', Math.round(el.size), 4, 800, 1, v => pp({ size: Math.max(4, v) }, 'size')),
-        seg('Style', [['Bold', el.weight >= 600, () => pp(x => { x.weight = x.weight >= 600 ? 400 : (this.ONEW.includes(x.font) ? 400 : 700); })], ['Italic', el.italic, () => pp(x => { x.italic = !x.italic; })], ['Caps', el.upper, () => pp(x => { x.upper = !x.upper; })]]),
+        seg('Style', [['Bold', el.weight >= 600, () => pp(x => { x.weight = x.weight >= 600 ? this.weightFor(x.font, 400) : this.weightFor(x.font, 700); })], ['Italic', el.italic, () => pp(x => { x.italic = !x.italic; })], ['Caps', el.upper, () => pp(x => { x.upper = !x.upper; })]]),
         seg('Align', [['Left', el.align === 'left', () => pp({ align: 'left' })], ['Center', el.align === 'center', () => pp({ align: 'center' })], ['Right', el.align === 'right', () => pp({ align: 'right' })]]),
         slider('Line height', el.lh, .7, 2.4, .01, v => pp({ lh: v }, 'lh')),
         slider('Letter spacing', el.ls, -.1, .5, .005, v => pp({ ls: v }, 'ls'), null, { def: 0, center: 0 }),

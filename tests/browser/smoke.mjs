@@ -140,7 +140,7 @@ try {
     check(fam === 'Arial Bold' && await p.eval(`document.fonts.check("16px '${fam}'")`), `font uploaded to the brand and loaded (${fam})`);
     await p.click('aside button[title="Change font"]', 0);
     await p.wait(200);
-    check(await p.eval(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Uploaded') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('Arial Bold') && b.textContent.includes('brand'))`), 'the font picker lists the uploaded font first');
+    check(await p.eval(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Uploaded') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('Arial Bold') && b.textContent.includes('uploaded'))`), 'the font picker lists the uploaded font first');
     await p.clickText('Arial Bold', 'button[title="Arial Bold"]');
     await p.wait(200);
     check(await p.eval(`__studio.state.brand.heading === 'Arial Bold'`), 'uploaded font chosen for headings');
@@ -282,6 +282,20 @@ try {
     await p.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: off.x, y: off.y }); await p.wait(350);
     check(await p.eval(`!document.querySelector('button[title="Choose an image for this frame"]')`), 'the pill goes away when the pointer leaves');
   }
+
+  // Every Google Font: the picker searches the full catalogue, a family outside the
+  // curated set loads on pick, and the text takes it.
+  await p.eval(`(() => { const el = __studio.pg.els.find(e => e.type === 'text'); __studio.setState({ sel: [el.id], panel: null }); })()`); await p.wait(150);
+  await p.until(`!!__studio.state.catalog`);
+  await p.click('aside button[title="Change font"]', 0); await p.wait(200);
+  check(await p.eval(`(() => { const i = document.querySelector('input[placeholder^="Search"]'); return i && /Search [\\d,]+ fonts/.test(i.placeholder) && +i.placeholder.replace(/\\D/g, '') > 1500; })()`), 'the font picker offers the whole catalogue ' + await p.eval(`document.querySelector('input[placeholder^="Search"]').placeholder`));
+  await p.type('input[placeholder^="Search"]', 'roboto slab'); await p.wait(200);
+  check(await p.eval(`[...document.querySelectorAll('.pw-font-list button')].map(b => b.title)[0] === 'Roboto Slab'`), 'searching finds a non-curated Google Font');
+  await p.eval(`[...document.querySelectorAll('.pw-font-list button')].find(b => b.title === 'Roboto Slab').click()`); await p.wait(200);
+  await p.until(`document.fonts.check("16px 'Roboto Slab'")`, 15000);
+  check(await p.eval(`__studio.selEls()[0].font === 'Roboto Slab' && !!document.querySelector('link[href*="Roboto+Slab:wght@400;700"]')`), 'the family loads in full and the text takes it');
+  const expCss = await p.eval(`(async () => { const css = await __studio.IO.exportFontCSS(['Roboto Slab']); return css.includes("font-family: 'Roboto Slab'") && css.includes('data:font/woff2'); })()`);
+  check(expCss, 'exports inline the catalogue font');
 
   // Page background: a pattern from the picker, recoloured, resized, then a photo over it.
   await p.eval(`__studio.setState({ sel: [], panel: null })`); await p.wait(150);

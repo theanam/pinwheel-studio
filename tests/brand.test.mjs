@@ -58,6 +58,29 @@ assert.equal(fback.fonts.f1.src, 'data:font/woff2;base64,AAAA'); assert.equal(fb
 assert.deepEqual(Object.keys(allFonts([fb, newBrand(), fb])), ['Brand Sans'], 'registry lists each family once');
 assert.deepEqual(brandFromKit(fkit, {}, {}).fonts, {}, 'a kit missing the font bytes drops the font');
 
+/* ---------- the font catalogue ---------- */
+import { parseCatalog, mergeCatalog, filterFonts, nearestWeight, familyURL, previewURL } from '../src/fonts.js';
+import { FONTS } from '../src/presets.js';
+import { readFileSync } from 'node:fs';
+const rows = JSON.parse(readFileSync(new URL('../public/fonts/google-fonts.json', import.meta.url), 'utf8'));
+const gcat = parseCatalog(rows);
+assert.ok(gcat.length > 1500, `the catalogue holds every Google Font (${gcat.length})`);
+assert.ok(gcat.every(f => f.google && ['sans', 'serif', 'display', 'script', 'mono'].includes(f.cat) && f.weights.length), 'every entry is well formed');
+assert.ok(gcat.some(f => f.name === 'Roboto Slab') && gcat.some(f => f.name === 'Open Sans') && gcat.some(f => f.name === 'Noto Sans'), 'well-known families are present');
+assert.ok(FONTS.every(c => gcat.some(f => f.name === c.name)), 'every curated face is a Google Font too');
+const merged = mergeCatalog(rows);
+assert.equal(merged[0].name, FONTS[0].name, 'curated faces come first'); assert.ok(merged[0].curated && !merged[0].google);
+assert.equal(new Set(merged.map(f => f.name)).size, merged.length, 'no family twice');
+assert.equal(parseCatalog([['x', 'Broken', 'sans', []], ['y', 'Odd', 'unknown', [400]]]).map(f => f.cat).join(), 'sans', 'bad rows are dropped and odd categories fall back');
+assert.deepEqual(filterFonts(merged, 'robo', 'all').slice(0, 1).map(f => f.name), ['Roboto'], 'prefix matches rank first');
+assert.ok(filterFonts(merged, 'slab', 'serif').some(f => f.name === 'Roboto Slab') && !filterFonts(merged, 'slab', 'mono').some(f => f.name === 'Roboto Slab'), 'category filter applies');
+assert.equal(nearestWeight([300, 500, 800], 700), 800); assert.equal(nearestWeight([400], 700), 400); assert.equal(nearestWeight([600, 800], 700), 800, 'ties go heavier');
+const rs = gcat.find(f => f.name === 'Roboto Slab');
+assert.equal(familyURL(rs), 'https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;700&display=swap');
+assert.ok(previewURL(rs).includes('text=Roboto%20Slab') && previewURL(rs).includes('wght@400'));
+const it = gcat.find(f => f.italic && f.weights.includes(400) && f.weights.includes(700));
+assert.ok(familyURL(it).includes('ital,wght@0,400;0,700;1,400;1,700'), 'italic families carry their italics ' + familyURL(it));
+
 /* ---------- recents trim ---------- */
 const metas = Array.from({ length: 105 }, (_, i) => ({ id: 'd' + i, updated: 1000 + i }));
 const drop = beyond(metas);

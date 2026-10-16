@@ -31,6 +31,9 @@ input[type=range].pw-range:focus-visible { outline: 2px solid var(--pw-accent-li
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--pw-line-strong); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
 
+/* The font list is virtualised: rows are absolutely placed inside a tall spacer. */
+.pw-font-list { scrollbar-width: thin; }
+
 /* Chip rows scroll sideways without a visible scrollbar. */
 .pw-chips { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .pw-chips::-webkit-scrollbar { display: none; }

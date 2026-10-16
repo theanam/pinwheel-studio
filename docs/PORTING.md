@@ -170,6 +170,16 @@ at the top.
     half an illustration. Re-measure with `scripts`-style probes if a pairing
     changes face.
 
+20. Every Google Font. `scripts/update-google-fonts.mjs` writes
+    `public/fonts/google-fonts.json` from the Fontsource catalogue (compact rows:
+    id, family, category, weights, has-italic). `src/fonts.js` merges it behind the
+    curated faces, filters and builds css2 URLs. The picker is virtualised (38 px
+    rows, only the visible slice rendered) and loads a preview per visible family
+    with the css2 `text=` trick; picking a family, opening a design that uses one, or
+    activating a brand loads it in full (`ensureFont`), and `io.js` remembers the
+    URL so exports inline it like a curated face. Weights follow what the family
+    has (`nearestWeight`). Rerun the script now and then to pick up new families.
+
 ## Browser smoke test
 
 `npm run test:browser` (`tests/browser/smoke.mjs`) drives a local headless Chrome
