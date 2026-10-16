@@ -313,7 +313,9 @@ export function renderEl(h, el, o = {}) {
         onBlur: e => o.onTextCommit(el.id, readText(e.currentTarget)), onKeyDown: e => { e.stopPropagation(); if (e.key === 'Escape') e.currentTarget.blur(); } }, el.text);
     }
     const inner = el.bg ? h('span', { style: { background: el.bg, padding: '.04em .22em', WebkitBoxDecorationBreak: 'clone', boxDecorationBreak: 'clone', borderRadius: el.size * .06 } }, el.text) : el.text;
-    return h('div', { ...common, style: { ...st, padding: el.bg ? '0 .22em' : 0 } }, inner);
+    // The highlight's own inline padding is in flow, so the box needs none of its
+    // own: adding more doubled the allowance the layouts make and wrapped lines.
+    return h('div', { ...common, style: { ...st, padding: 0 } }, inner);
   }
   if (el.type === 'shape') return h('div', { ...common, style: { ...base, filter: el.shadow ? `drop-shadow(0 ${Math.min(el.w, el.h) * .04}px ${Math.min(el.w, el.h) * .06}px rgba(0,0,0,.22))` : undefined } }, h('svg', { width: el.w, height: el.h, viewBox: `0 0 ${el.w} ${el.h}`, style: { display: 'block', overflow: 'visible' } }, shapeNode(h, el)));
   if (el.type === 'line') {

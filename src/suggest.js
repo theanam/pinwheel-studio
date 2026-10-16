@@ -138,8 +138,9 @@ export function rank(templates, { profile, today = new Date(), hide = true, now 
   // The main feed keeps its ordinary mix: upcoming occasions get their own section
   // on the home page (`coming`) and, in the feed, sit among everything else by score
   // rather than crowding the top, so the catalogue never looks like one holiday.
-  const all = [...rest, ...lanes.flat()].sort(byScore).map(x => x[1]);
-  return Object.assign(hide ? all : feed.concat(coming.filter(t => !feed.includes(t))), { coming, feed });
+  // With the row showing, the feed leaves those occasions to it; a search or a
+  // filter (hide off) still lists everything.
+  return Object.assign(hide ? feed : feed.concat(coming.filter(t => !feed.includes(t))), { coming, feed });
 }
 
 /** Occasions worth a nudge today: visible sensitive ones that are coming up. */

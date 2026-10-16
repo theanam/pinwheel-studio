@@ -72,7 +72,7 @@ const merged = mergeCatalog(rows);
 assert.equal(merged[0].name, FONTS[0].name, 'curated faces come first'); assert.ok(merged[0].curated && !merged[0].google);
 assert.equal(new Set(merged.map(f => f.name)).size, merged.length, 'no family twice');
 assert.equal(parseCatalog([['x', 'Broken', 'sans', []], ['y', 'Odd', 'unknown', [400]]]).map(f => f.cat).join(), 'sans', 'bad rows are dropped and odd categories fall back');
-assert.deepEqual(filterFonts(merged, 'robo', 'all').slice(0, 1).map(f => f.name), ['Roboto'], 'prefix matches rank first');
+assert.ok(filterFonts(merged, 'robo', 'all').slice(0, 2).every(f => f.name.startsWith('Roboto')) && filterFonts(merged, 'robo', 'all').some(f => f.name === 'Roboto'), 'prefix matches rank first');
 assert.ok(filterFonts(merged, 'slab', 'serif').some(f => f.name === 'Roboto Slab') && !filterFonts(merged, 'slab', 'mono').some(f => f.name === 'Roboto Slab'), 'category filter applies');
 assert.equal(nearestWeight([300, 500, 800], 700), 800); assert.equal(nearestWeight([400], 700), 400); assert.equal(nearestWeight([600, 800], 700), 800, 'ties go heavier');
 const rs = gcat.find(f => f.name === 'Roboto Slab');

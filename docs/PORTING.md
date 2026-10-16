@@ -180,6 +180,18 @@ at the top.
     URL so exports inline it like a curated face. Weights follow what the family
     has (`nearestWeight`). Rerun the script now and then to pick up new families.
 
+21. Fourteen pairings draw on the wider catalogue (Bungee, Teko, Yeseva One,
+    Shrikhand, Bangers, Marcellus, Bodoni Moda, Sora, Satisfy, Monoton, Orbitron,
+    Amatic SC, Fjalla One and Gloock, with Figtree, Open Sans, Crimson Pro, Plus
+    Jakarta Sans, Lexend, EB Garamond, Libre Baskerville, Urbanist, Exo 2, Patrick
+    Hand, Roboto Slab and Newsreader as bodies). Any face a pairing uses must be in
+    `FONTS` so it loads at start-up for the gallery, and must have measured metrics:
+    `tests/browser/audit/metrics.mjs --write` measures every pairing in a browser
+    and patches presets.js. `tests/browser/audit/overlap.mjs [per] [layout]` is the
+    layout audit (heights, overlaps, overflow) and `sheets.mjs` renders contact
+    sheets, optionally for a list of pairing ids. Icon, barcode, symbol and
+    redacted families are never used in pairings.
+
 ## Browser smoke test
 
 `npm run test:browser` (`tests/browser/smoke.mjs`) drives a local headless Chrome

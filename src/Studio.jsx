@@ -35,7 +35,7 @@ export default class Studio extends React.Component {
   CORAL = 'var(--pw-accent-line)';
   /** Resolved value of a UI token, for the few places that need a literal (SVG fills). */
   cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-  ONEW = ['Anton', 'Bebas Neue', 'Archivo Black', 'Abril Fatface', 'DM Serif Display', 'Pacifico', 'Instrument Serif', 'Permanent Marker', 'Alfa Slab One', 'Righteous', 'Lobster'];
+  ONEW = ['Anton', 'Bebas Neue', 'Archivo Black', 'Abril Fatface', 'DM Serif Display', 'Pacifico', 'Instrument Serif', 'Permanent Marker', 'Alfa Slab One', 'Righteous', 'Lobster', 'Bungee', 'Yeseva One', 'Shrikhand', 'Bangers', 'Marcellus', 'Satisfy', 'Monoton', 'Fjalla One', 'Gloock', 'Patrick Hand'];
   // Text styles: a face plus outline, shadow or highlight, with colours as theme roles
   // resolved when applied. Click adds a heading, or restyles the selected text.
   TEXT_STYLES = [
@@ -1235,8 +1235,9 @@ export default class Studio extends React.Component {
         galQ: st.galQ, onGalQ: e => { this.noteQuery(e.target.value); this.setState({ galQ: e.target.value, galLimit: 48 }); },
         galHint: '',
         hasComing: coming.length > 0,
-        comingTitle: soon.length === 1 ? (soon[0].days === 0 ? `${soon[0].name} is today` : `${soon[0].name} is ${soon[0].days === 1 ? 'tomorrow' : 'in ' + soon[0].days + ' days'}`) : 'Coming up',
-        comingSub: soon.map(x => x.days === 0 ? `${x.name} today` : `${x.name} in ${x.days} day${x.days === 1 ? '' : 's'}`).join(' · '),
+        // The heading names the occasion(s); the line beside it says when.
+        comingTitle: soon.length === 1 ? soon[0].name : soon.length === 2 ? `${soon[0].name} & ${soon[1].name}` : 'Coming up',
+        comingSub: soon.map(x => soon.length === 1 ? (x.days === 0 ? 'Today' : x.days === 1 ? 'Tomorrow' : `In ${x.days} days`) : `${x.name} ${x.days === 0 ? 'today' : x.days === 1 ? 'tomorrow' : 'in ' + x.days + ' days'}`).join(' · '),
         comingChips: soon.map(x => ({ label: 'All ' + x.name + ' templates', onClick: () => { this.note('topic', x.id, 1); this.setState({ galOcc: x.id, galLimit: 48 }); }, style: { height: 28, padding: '0 12px', borderRadius: 14, border: '1px solid var(--pw-accent-tint-line)', background: 'var(--pw-surface)', color: 'var(--pw-accent-deep)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', flex: 'none' } })),
         comingRowStyle: phone ? { display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 6, scrollSnapType: 'x proximity' } : { display: 'flex', flexWrap: 'wrap', gap: '18px 14px', alignItems: 'flex-start' },
         comingItems: coming.slice(0, comingMax).map(t => { const ar = t.w / t.h; const w = Math.round(Math.max(comingH * .6, Math.min(comingH * ar, comingH * 2.2))); return { name: t.name, title: `${t.name} — ${t.layoutName}`, meta: `${P.TOPIC[t.topic].name} · ${t.fmtName}`, onClick: () => this.fromTemplate(t), thumb: this.thumbFor(t, w, comingH),

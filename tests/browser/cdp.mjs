@@ -23,7 +23,8 @@ export const OUT = new URL('./shots/', import.meta.url).pathname;
 fs.mkdirSync(OUT, { recursive: true });
 
 export async function launch() {
-  const dir = path.join(os.tmpdir(), 'pinwheel-smoke-profile');
+  // One profile per port, so two runs (the smoke test and an audit) can overlap.
+  const dir = path.join(os.tmpdir(), 'pinwheel-smoke-profile-' + PORT);
   fs.rmSync(dir, { recursive: true, force: true });
   const proc = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${dir}`, '--no-first-run', '--disable-gpu', '--hide-scrollbars', '--window-size=1400,900', 'about:blank'], { stdio: 'ignore' });
   for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/json/version`); break; } catch (e) { await new Promise(r => setTimeout(r, 100)); } }

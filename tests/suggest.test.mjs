@@ -5,7 +5,8 @@ import { catalog, TOPICS } from '../src/presets.js';
 
 const at = iso => new Date(iso + 'T12:00:00Z');
 const cat = catalog();
-const topicsOf = list => new Set(list.map(t => t.topic));
+// Topics a visitor sees: the feed plus the coming-up row.
+const topicsOf = list => new Set([...list, ...(list.coming || [])].map(t => t.topic));
 const fresh = () => ({ v: 1, topics: {}, formats: {}, searches: [] });
 
 // Easter: known dates.
@@ -20,14 +21,15 @@ assert.ok(seen.has('birthday') && seen.has('wedding') && seen.has('sale'), 'neut
 // Ten days before Diwali 2026 (Nov 8, window from Nov 6 − 10) it surfaces — and sits on top.
 assert.equal(daysUntil('diwali', at('2026-10-27')), 10);
 const ranked = rank(cat, { profile: fresh(), today: at('2026-10-27') });
-assert.ok(topicsOf(ranked).has('diwali'), 'Diwali within 10 days is shown');
+assert.ok(topicsOf(ranked).has('diwali') && ranked.coming.some(t => t.topic === 'diwali'), 'Diwali within 10 days is shown, in the coming-up row');
 // Upcoming occasions get their own row (nearest first, alternating), and the main
 // feed keeps its ordinary mix rather than leading with them.
 assert.deepEqual(ranked.coming.slice(0, 4).map(t => t.topic), ['halloween', 'diwali', 'halloween', 'diwali']);
 assert.ok(ranked.coming.every(t => ['halloween', 'diwali'].includes(t.topic)), 'the row holds only the upcoming occasions');
 const top = ranked.slice(0, 48).map(t => t.topic);
-assert.ok(top.filter(t => t === 'halloween' || t === 'diwali').length < 24, 'the feed is not mostly festival templates: ' + top.filter(t => t === 'halloween' || t === 'diwali').length + ' of 48');
+assert.ok(!ranked.some(t => t.topic === 'halloween' || t.topic === 'diwali'), 'the feed leaves the upcoming occasions to their row');
 assert.ok(new Set(top).size >= 8, 'the first page of the feed spans many topics');
+assert.ok(rank(cat, { profile: fresh(), today: at('2026-10-27'), hide: false }).some(t => t.topic === 'diwali'), 'a search or filter still lists them');
 assert.ok(!topicsOf(ranked).has('christmas'), 'Christmas is still 48 days out');
 
 // Christmas: hidden on Dec 1, shown on Dec 15, shown on the day, gone on Dec 27.

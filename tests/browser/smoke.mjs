@@ -75,8 +75,11 @@ try {
   // The feed must not turn into one holiday: the festival gets its own row.
   await p.eval(`__studio.today = new Date('2026-10-27T12:00:00Z')`); await p.wait(400);
   const coming = await p.eval(`(() => { const v = __studio.renderVals(); return { has: v.hasComing, title: v.comingTitle, n: v.comingItems.length, topics: [...new Set(v.comingItems.map(i => i.meta.split(' · ')[0]))], feedFestival: v.galItems.filter(i => /Halloween|Diwali/i.test(i.name) || /Hollow House|Festival of Lights/.test(i.name)).length, feedN: v.galItems.length }; })()`);
-  check(coming.has && coming.n >= 6 && coming.topics.join(',') === 'Halloween,Diwali' && coming.title === 'Coming up', 'near festivals get their own row ' + JSON.stringify(coming));
-  check(coming.feedFestival < coming.feedN / 3, `the main feed is not mostly festival templates (${coming.feedFestival} of ${coming.feedN})`);
+  check(coming.has && coming.n >= 6 && coming.topics.join(',') === 'Halloween,Diwali' && coming.title === 'Halloween & Diwali', 'near festivals get their own row ' + JSON.stringify(coming));
+  check(coming.feedFestival === 0, `the main feed has no templates from the occasions in the row (${coming.feedFestival} of ${coming.feedN})`);
+  await p.eval(`__studio.today = new Date('2026-10-16T12:00:00Z')`); await p.wait(300);
+  const one = await p.eval(`(() => { const v = __studio.renderVals(); return [v.comingTitle, v.comingSub]; })()`);
+  check(one[0] === 'Puja' && one[1] === 'Today', 'a single occasion: heading names it, the line says when ' + JSON.stringify(one));
   await p.shot('coming-up');
   await p.eval(`__studio.today = new Date('2026-06-15T12:00:00Z')`); await p.wait(300);
   check(await p.eval(`!__studio.renderVals().hasComing`), 'no row when nothing is near');
