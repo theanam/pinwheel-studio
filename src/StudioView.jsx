@@ -1796,6 +1796,17 @@ export default function StudioView(v) {
               <div style={{ color: "var(--pw-text-2)", lineHeight: "1.5" }}>
                 Pinwheel Studio is free and open source. Everything runs in your browser and nothing you make leaves your machine.
               </div>
+              <button onClick={v.startTour} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--pw-accent-tint-line)", background: "var(--pw-accent-tint)", color: "var(--pw-ink)", textAlign: "left", cursor: "pointer", fontSize: "14px" }} className="pw-h3">
+                <Mark size={26} />
+                <span style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                  <span style={{ fontWeight: "700" }}>
+                    Take the tour
+                  </span>
+                  <span style={{ fontSize: "13px", color: "var(--pw-text-2)" }}>
+                    A one-minute look at everything the studio can do
+                  </span>
+                </span>
+              </button>
               <a href="https://github.com/theanam/pinwheel-studio/issues" target="_blank" rel="noopener" style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--pw-line)", color: "var(--pw-ink)", textDecoration: "none" }} className="pw-h3">
                 <span style={{ fontWeight: "700" }}>
                   Report a bug or request a feature

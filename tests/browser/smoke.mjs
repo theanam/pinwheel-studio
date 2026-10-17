@@ -19,6 +19,27 @@ try {
   await p.size(1400, 900);
   await p.goto(URL);
   await p.until(`document.body.innerText.includes('What are you making today?')`);
+
+  // ---- welcome tour: opens on the first visit only, Help brings it back ----
+  await p.until(`!!document.querySelector('.pw-tour')`);
+  await p.wait(400);
+  await p.shot('00-tour-welcome');
+  const steps = await p.eval(`document.querySelectorAll('.pw-tour [role=tab]').length`);
+  check(steps >= 10, `the welcome tour opens on the first visit (${steps} steps)`);
+  await p.clickText('Show me around', '.pw-tour button');
+  check(await p.eval(`/2 of \\d+/i.test(document.querySelector('.pw-tour').innerText)`), 'Next moves the tour to the second step');
+  check(await p.eval(`document.querySelectorAll('.pw-tour [data-page-node]').length >= 6`), 'tour slides draw real templates');
+  await p.clickText('Skip tour', '.pw-tour button'); await p.wait(200);
+  check(await p.eval(`!document.querySelector('.pw-tour') && localStorage.getItem('pinwheel.tour') === 'seen'`), 'skipping closes the tour and remembers it');
+  await p.goto(URL);
+  await p.until(`document.body.innerText.includes('What are you making today?')`);
+  await p.wait(800);
+  check(!(await p.eval(`!!document.querySelector('.pw-tour')`)), 'the tour stays closed on the next visit');
+  await p.click('button[title="Help & support"]');
+  await p.clickText('Take the tour');
+  check(await p.eval(`!!document.querySelector('.pw-tour')`), 'Help reopens the tour');
+  await p.clickText('Skip tour', '.pw-tour button'); await p.wait(200);
+
   await p.wait(400);
   await p.shot('01-home-desktop');
   check(await p.eval(`document.body.innerText.includes('Brands')`), 'home shows the Brands section');

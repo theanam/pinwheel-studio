@@ -59,6 +59,46 @@ input[type=range].pw-range:focus-visible { outline: 2px solid var(--pw-accent-li
   ::-webkit-scrollbar { width: 0; height: 0; }
 }
 
+/* The welcome tour. Each slide slides in from the side it was reached from; the
+   visuals loop small demonstrations: drifting templates, a background lifting off
+   a photo, snap guides, a layer being dragged, a double-clicked file. */
+.pw-tour-in { animation: pw-tour-in .32s cubic-bezier(.2,.7,.2,1); }
+@keyframes pw-tour-in { from { opacity: 0; transform: translateX(var(--pw-tour-dx, 16px)); } }
+.pw-tour-float { animation: pw-tour-float 6s ease-in-out infinite; }
+@keyframes pw-tour-float { 50% { transform: translateY(-7px); } }
+.pw-tour-rise { animation: pw-tour-rise .45s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes pw-tour-rise { from { opacity: 0; transform: translateY(14px); } }
+.pw-tour-pop { animation: pw-tour-pop .4s cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes pw-tour-pop { from { opacity: 0; transform: scale(.6); } }
+.pw-tour-caret { animation: pw-tour-caret 1s steps(1) infinite; }
+@keyframes pw-tour-caret { 50% { opacity: 0; } }
+.pw-tour-seq { animation: pw-tour-seq 3.6s ease-in-out infinite; }
+@keyframes pw-tour-seq { 0%, 30%, 100% { transform: translateY(0); } 12% { transform: translateY(-8px); } }
+.pw-tour-scene { animation: pw-tour-cut 7s ease-in-out infinite; }
+@keyframes pw-tour-cut { 0%, 28% { opacity: 1; } 42%, 88% { opacity: 0; } 100% { opacity: 1; } }
+.pw-tour-scan { animation: pw-tour-scan 7s ease-in-out infinite; }
+@keyframes pw-tour-scan { 0%, 14% { transform: translateX(0); opacity: 0; } 16% { opacity: 1; } 40% { transform: translateX(420px); opacity: 1; } 42%, 100% { transform: translateX(420px); opacity: 0; } }
+.pw-tour-subject { animation: pw-tour-hug 7s ease-in-out infinite; }
+@keyframes pw-tour-hug {
+  0%, 44%, 92%, 100% { filter: drop-shadow(3px 0 0 transparent) drop-shadow(-3px 0 0 transparent) drop-shadow(0 3px 0 transparent) drop-shadow(0 -3px 0 transparent) drop-shadow(8px 12px 10px transparent); }
+  54%, 84% { filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(8px 12px 10px rgba(0,0,0,.35)); }
+}
+.pw-tour-guide { animation: pw-tour-guide 2.4s ease-in-out infinite; }
+@keyframes pw-tour-guide { 0%, 100% { opacity: 0; } 30%, 70% { opacity: 1; } }
+.pw-tour-drag { animation: pw-tour-drag 3s ease-in-out infinite; }
+@keyframes pw-tour-drag { 0%, 15%, 100% { transform: translate(0, 0) rotate(0); } 40%, 70% { transform: translate(8px, -35px) rotate(-1.5deg); } }
+.pw-tour-ripple { animation: pw-tour-ripple 2.4s ease-out infinite; }
+@keyframes pw-tour-ripple { 0%, 40% { transform: scale(.3); opacity: 0; } 45% { opacity: .9; } 70%, 100% { transform: scale(1.8); opacity: 0; } }
+.pw-tour-bounce { animation: pw-tour-bounce 2.4s ease-in-out infinite; }
+@keyframes pw-tour-bounce { 0%, 55%, 100% { transform: translateY(0); } 65% { transform: translateY(-12px); } 75% { transform: translateY(0); } 82% { transform: translateY(-5px); } }
+.pw-tour-sheet { animation: pw-tour-sheet 4s ease-in-out infinite; }
+@keyframes pw-tour-sheet { 0%, 20%, 100% { transform: translateY(100%); } 35%, 80% { transform: translateY(0); } }
+.pw-tour-spin { animation: pw-tour-spin 5s cubic-bezier(.5,0,.3,1) infinite; }
+@keyframes pw-tour-spin { to { transform: rotate(360deg); } }
+.pw-tour-cta:hover { background: var(--pw-accent-hover) !important; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  /* The tour's loops would flicker at that speed; hold them still instead. */
+  .pw-tour-anim { animation: none !important; }
 }

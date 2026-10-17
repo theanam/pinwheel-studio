@@ -6,6 +6,7 @@
 import React from 'react';
 
 import StudioView from './StudioView.jsx';
+import Tour, { tourSeen, markTourSeen } from './Tour.jsx';
 import './lib/hover.css';
 
 let firstBrand = null;
@@ -23,7 +24,7 @@ export default class Studio extends React.Component {
     // style; the choice lasts for the session only.
     brandOn: false, fonts: {}, patCat: 'all', catalog: null, fontScroll: 0,
     customW: 1080, customH: 1080, fmtsAll: false,
-    helpOpen: false, layerDrag: null, layerOver: null, fontQ: '', fontCat: 'all', fontAnchor: null,
+    helpOpen: false, tour: false, layerDrag: null, layerOver: null, fontQ: '', fontCat: 'all', fontAnchor: null,
     vw: typeof window !== 'undefined' ? window.innerWidth : 1280,
     theme: (() => { try { return localStorage.getItem('pinwheel.theme') || 'system'; } catch (e) { return 'system'; } })()
   };
@@ -79,6 +80,29 @@ export default class Studio extends React.Component {
   applyTheme(t) { const r = document.documentElement; if (t === 'system') delete r.dataset.theme; else r.dataset.theme = t; }
   isDark() { const t = this.state.theme; return t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); }
   toggleHelp = () => this.setState(s => ({ helpOpen: !s.helpOpen, menu: null }));
+  /* ---------- welcome tour ---------- */
+  // Opens by itself the first time the studio starts on a device; Help reopens it.
+  // Closing it any way (finish, skip, Escape) records it as seen.
+  startTour = () => this.setState({ tour: true, helpOpen: false, menu: null, phoneMenu: null });
+  closeTour = () => { markTourSeen(); this.setState({ tour: false }); };
+  tourBrand = () => { this.closeTour(); this.startWizard(); };
+  /** A template built for the tour, optionally restyled in a sample brand's colours and fonts. Pure. */
+  tourDoc = (desc, brand) => {
+    const P = this.P, t = P.TOPIC[desc.topic];
+    const d = P.build({ ...desc, id: `tour~${desc.fmt}~${desc.layout}~${desc.topic}`, pal: desc.pal || t.pals[0], pair: desc.pair || t.pairs[0] });
+    if (brand) {
+      this.applyThemeTo(d, { ...P.makeTheme({ id: 'brand', name: brand.name, bg: brand.bg, ink: brand.ink, accent: brand.accent, accent2: brand.accent2 }), display: brand.heading, body: brand.body, pairId: null });
+      this.applyPairingTo(d, { display: brand.heading, body: brand.body, dw: this.ONEW.includes(brand.heading) ? 400 : 700, upper: false, track: -.01, id: null });
+    }
+    return d;
+  };
+  tourKit() {
+    const st = this.state, P = this.P;
+    const stats = { templates: P.catalog().length, formats: P.FORMATS.length, palettes: P.PALETTES.length, pairings: P.PAIRINGS.length, occasions: P.OCCASIONS.length, patterns: this.PT.PATTERNS.length, shapes: this.R.SHAPES.length, textStyles: this.TEXT_STYLES.length, fonts: st.catalog ? st.catalog.length : 0 };
+    const k = this._tourKit;
+    if (k && k.stats.fonts === stats.fonts) return k;
+    return this._tourKit = { P, R: this.R, PT: this.PT, doc: this.tourDoc, qr: () => this.IO.lib('qr'), stats };
+  }
   stopClick = e => e.stopPropagation();
   toggleTheme = () => { const t = this.isDark() ? 'light' : 'dark'; try { localStorage.setItem('pinwheel.theme', t); } catch (e) { } this.applyTheme(t); this.setState({ theme: t }); };
   componentDidMount() {
@@ -107,7 +131,9 @@ export default class Studio extends React.Component {
       const fonts = B.allFonts(brands); Object.values(fonts).forEach(f => IO.registerFont(f.family, f.src, f.mime));
       // Every Google Font, for the pickers; catalogue families load on demand.
       fetch(new URL('fonts/google-fonts.json', document.baseURI)).then(r => r.json()).then(rows => this.setState({ catalog: this.F.mergeCatalog(rows) }, () => this.ensureDocFonts())).catch(e => console.warn('Font catalogue unavailable', e));
-      this.setState({ ready: true, brands, brand, fonts, recents, assets: { ...this.state.assets, ...brand.assets } }, () => {
+      // The tour waits when the studio was launched to open a file; it shows on the next plain start.
+      const tour = !this._pendingFile && this.props.startScreen !== 'editor' && !tourSeen();
+      this.setState({ ready: true, brands, brand, fonts, recents, tour, assets: { ...this.state.assets, ...brand.assets } }, () => {
         if (this._pendingFile) { const [f, h] = this._pendingFile; this._pendingFile = null; this.openProjectFile(f, h); }
         else if (this.props.startScreen === 'editor') this.newDoc('ig-post');
         else this.restoreSession();
@@ -708,7 +734,7 @@ export default class Studio extends React.Component {
   addLogo = () => { const id = this.state.brand.logo; if (id && this.state.doc) this.addImageAsset(id); };
 
   onKey(e) {
-    if (this.state.screen !== 'editor' || !this.state.doc) return; const t = e.target;
+    if (this.state.screen !== 'editor' || !this.state.doc || this.state.tour) return; const t = e.target;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     const mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase(), sel = this.state.sel;
     if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? this.redo() : this.undo(); return; }
@@ -1204,7 +1230,7 @@ export default class Studio extends React.Component {
         onValue: e => this.setState({ dialogValue: e.target.value }), onKey: e => { if (e.key === 'Enter') { e.preventDefault(); this.dialogDone(true); } },
         confirmLabel: st.dialog.confirmLabel, cancelLabel: st.dialog.cancelLabel, confirm: () => this.dialogDone(true), cancel: () => this.dialogDone(false), onOpenChange: o => { if (!o) this.dialogDone(false); },
         confirmStyle: { height: 38, padding: '0 16px', borderRadius: 9, border: 'none', background: st.dialog.danger ? '#B23A22' : 'var(--pw-accent)', color: '#FFFFFF', fontWeight: 700, fontSize: 14, cursor: 'pointer' } } : { open: false },
-      repoURL: 'https://github.com/theanam/pinwheel-studio', hasHelp: st.helpOpen, toggleHelp: this.toggleHelp, stopClick: this.stopClick, helpVersion: 'Pinwheel Studio ' + (import.meta.env.VITE_APP_VERSION || '1.0'),
+      repoURL: 'https://github.com/theanam/pinwheel-studio', hasHelp: st.helpOpen, toggleHelp: this.toggleHelp, startTour: this.startTour, stopClick: this.stopClick, helpVersion: 'Pinwheel Studio ' + (import.meta.env.VITE_APP_VERSION || '1.0'),
       toggleTheme: this.toggleTheme, themeGlyph: this.isDark() ? '☀' : '☾', themeTitle: this.isDark() ? 'Switch to light mode' : 'Switch to dark mode',
       phone, tablet, desktop: layout === 'desktop',
       setImgInput: this.setImgInput, setFileInput: this.setFileInput, setLogoInput: this.setLogoInput, setBrandAssetInput: this.setBrandAssetInput, setFontInput: this.setFontInput, setPatternInput: this.setPatternInput, onImageFile: this.onImageFile, onProjectFile: this.onProjectFile, onLogoFile: this.onLogoFile, onBrandAssetFile: this.onBrandAssetFile, onFontFile: this.onFontFile, onPatternFile: this.onPatternFile, openFile: this.openFile,
@@ -1433,6 +1459,8 @@ export default class Studio extends React.Component {
   }
 
   render() {
-    return StudioView(this.renderVals());
+    const st = this.state, view = StudioView(this.renderVals());
+    if (!st.ready || !st.tour) return view;
+    return React.createElement(React.Fragment, null, view, React.createElement(Tour, { open: true, kit: this.tourKit(), phone: this.layout === 'phone', onClose: this.closeTour, onBrand: this.tourBrand }));
   }
 }

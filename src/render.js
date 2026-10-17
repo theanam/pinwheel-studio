@@ -87,7 +87,7 @@ function qrPath(value) {
 function chartNode(h, el) {
   const w = el.w, H = el.h, data = el.data || [], cols = el.colors || ['#333'];
   const fs = Math.max(8, Math.min(w, H) * .055), font = `'${el.font || 'DM Sans'}', sans-serif`;
-  const txt = (x, y, s, o = {}) => h('text', { x, y, fontSize: o.fs || fs, fontFamily: font, fill: o.fill || el.ink, textAnchor: o.a || 'middle', fontWeight: o.fw || 600 }, s);
+  const txt = (x, y, s, o = {}) => h('text', { key: o.key || `t${x}:${y}`, x, y, fontSize: o.fs || fs, fontFamily: font, fill: o.fill || el.ink, textAnchor: o.a || 'middle', fontWeight: o.fw || 600 }, s);
   const kids = [];
   const max = Math.max(1, ...data.map(d => +d.v || 0));
   if (el.chart === 'pie' || el.chart === 'donut') {
