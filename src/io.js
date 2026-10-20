@@ -1,6 +1,7 @@
 // Pinwheel Studio — I/O: export (PDF/PNG/JPG/SVG), native .pinwheel files, on-device background removal.
 import { FONTS, fontURL } from './presets.js';
-import { FONT_MIME, FONT_FORMAT } from './brand.js';
+import { FONT_MIME, FONT_FORMAT, faceOf, faceKey } from './brand.js';
+import { fontKind, facesIn, extractFace, woffToSfnt, infoFromFileName, pickFaces, styleWeight, KIND_MIME } from './fontfile.js';
 
 // Self-hosting mode (spec §3 and §12): `npm run vendor` downloads the pinned
 // libraries and the model into public/vendor and turns on VITE_VENDOR, after which
@@ -111,12 +112,14 @@ export function usedFonts(doc) {
   const s = new Set(); doc.pages.forEach(p => p.els.forEach(e => { if (e.font) s.add(e.font); })); return [...s];
 }
 /** @font-face rules for the families a design uses: Google fonts fetched and inlined,
- *  uploaded fonts (`custom`, family → { src, mime }) written straight from their data URL. */
+ *  uploaded fonts (`custom`: any map of faces { family, src, mime, weight, style })
+ *  written straight from their data URLs, one rule per face. */
 /** For tests: the inlined @font-face CSS exports embed for the given families. */
 export const exportFontCSS = (families, custom) => fontCSS(families, custom);
 async function fontCSS(families, custom = {}) {
   const parts = await Promise.all(families.map(async fam => {
-    if (custom[fam] && custom[fam].src) return `@font-face { font-family: '${fam.replace(/'/g, '')}'; src: url(${custom[fam].src})${FONT_FORMAT[custom[fam].mime] ? ` format('${FONT_FORMAT[custom[fam].mime]}')` : ''}; font-display: block; }`;
+    const own = Object.values(custom || {}).filter(f => f && f.family === fam && f.src);
+    if (own.length) return own.map(f => { const { weight, style } = faceOf(f); return `@font-face { font-family: '${fam.replace(/'/g, '')}'; src: url(${f.src})${FONT_FORMAT[f.mime] ? ` format('${FONT_FORMAT[f.mime]}')` : ''}; font-weight: ${weight}; font-style: ${style}; font-display: block; }`; }).join('\n');
     if (fontCache.has(fam)) return fontCache.get(fam);
     const f = FONTS.find(x => x.name === fam); const url = f ? fontURL(f) : googleURLs.get(fam); if (!url) return '';
     try {
@@ -202,13 +205,13 @@ async function packFonts(z, fonts) {
   const index = {};
   for (const [id, f] of Object.entries(fonts || {})) {
     if (!f || !f.src) continue; const blob = await dataURLToBlob(f.src); const ext = Object.keys(FONT_MIME).find(k => FONT_MIME[k] === (f.mime || blob.type)) || 'ttf'; const path = `fonts/${id}.${ext}`;
-    z.file(path, blob); index[id] = { path, mime: f.mime || blob.type, name: f.name || id, family: f.family, bytes: blob.size };
+    z.file(path, blob); index[id] = { path, mime: f.mime || blob.type, name: f.name || id, family: f.family, ...faceOf(f), bytes: blob.size };
   }
   return index;
 }
 async function unpackFonts(z, index) {
   const fonts = {};
-  for (const [id, f] of Object.entries(index || {})) { const file = z.file(f.path); if (!file) continue; const b = await file.async('blob'); fonts[id] = { name: f.name, family: f.family, mime: f.mime, src: await blobToDataURL(new Blob([b], { type: f.mime })) }; }
+  for (const [id, f] of Object.entries(index || {})) { const file = z.file(f.path); if (!file) continue; const b = await file.async('blob'); fonts[id] = { name: f.name, family: f.family, mime: f.mime, ...faceOf(f), src: await blobToDataURL(new Blob([b], { type: f.mime })) }; }
   return fonts;
 }
 async function unpackAssets(z, index) {
@@ -297,23 +300,63 @@ export async function analyzePattern(src) {
 }
 
 /* ---------- uploaded fonts ---------- */
-/** Read a font file (TTF, OTF, WOFF, WOFF2) as a data URL with its MIME type. */
+/** Read a font file (TTF, OTF, WOFF, WOFF2, or a TTC/OTC collection) into faces:
+ *  `[{ name, mime, src, family, weight, style }]`. Family, weight and style come from
+ *  the file's own tables where it has them, else from its name. A collection gives
+ *  one face per font inside it. */
 export async function readFontFile(file) {
-  const ext = (file.name.split('.').pop() || '').toLowerCase(); const mime = FONT_MIME[ext];
-  if (!mime) throw new Error('Use a .ttf, .otf, .woff or .woff2 file');
-  const src = await blobToDataURL(new Blob([await file.arrayBuffer()], { type: mime }));
-  return { name: file.name, mime, src };
+  const buf = await file.arrayBuffer(), kind = fontKind(buf), ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (!kind && !FONT_MIME[ext]) throw new Error('Use a .ttf, .otf, .ttc, .woff or .woff2 file');
+  const fromName = infoFromFileName(file.name);
+  const face = async (bytes, info, k) => ({ name: file.name, mime: KIND_MIME[k] || FONT_MIME[ext], src: await blobToDataURL(new Blob([bytes], { type: KIND_MIME[k] || FONT_MIME[ext] })),
+    family: (info && info.family) || fromName.family, weight: info ? info.weight : fromName.weight, style: (info ? info.italic : fromName.italic) ? 'italic' : 'normal' });
+  try {
+    if (kind === 'ttc') return Promise.all(facesIn(buf).map(f => face(extractFace(buf, f.offset), f, f.cff ? 'otf' : 'ttf')));
+    if (kind === 'woff') { const info = facesIn(await woffToSfnt(buf))[0]; return [await face(buf, info, 'woff')]; }
+    if (kind === 'ttf' || kind === 'otf') return [await face(buf, facesIn(buf)[0], kind)];
+  } catch (e) { console.warn('Could not read the font tables; using the file name', e); }
+  return [await face(buf, null, kind)];
 }
 const registered = new Map();
-/** Make an uploaded font available to the page under `family`. Idempotent. */
-export async function registerFont(family, src, mime) {
+/** Make an uploaded face available to the page under its family. Idempotent per face. */
+export async function registerFont(family, src, mime, weight = 400, style = 'normal') {
   if (!family || !src || typeof FontFace === 'undefined') return false;
-  if (registered.get(family) === src) return true;
+  const key = faceKey({ family, weight, style }); if (registered.get(key) === src) return true;
   try {
-    const old = registered.has(family) && [...document.fonts].find(f => f.family === family || f.family === `"${family}"`); if (old) document.fonts.delete(old);
-    const face = new FontFace(family, `url(${src})${FONT_FORMAT[mime] ? ` format('${FONT_FORMAT[mime]}')` : ''}`, { display: 'block' });
-    await face.load(); document.fonts.add(face); registered.set(family, src); return true;
+    const old = registered.has(key) && [...document.fonts].find(f => (f.family === family || f.family === `"${family}"`) && f.weight === String(weight) && f.style === style); if (old) document.fonts.delete(old);
+    const face = new FontFace(family, `url(${src})${FONT_FORMAT[mime] ? ` format('${FONT_FORMAT[mime]}')` : ''}`, { display: 'block', weight: String(weight), style });
+    await face.load(); document.fonts.add(face); registered.set(key, src); return true;
   } catch (e) { console.warn('Could not load font', family, e); return false; }
+}
+
+/* ---------- fonts installed on the device ---------- */
+// The Local Font Access API (Chrome and Edge on desktop) lists the fonts installed on
+// the computer, after the browser asks the user. A family the user picks is copied
+// in as uploaded faces, so exports embed it and files carry it to other devices.
+export const localFontsSupported = () => typeof window !== 'undefined' && 'queryLocalFonts' in window;
+let localData = null;
+/** The installed families, A–Z: `[{ family, styles }]`. Asks for permission the first time. */
+export async function listLocalFonts() {
+  if (!localFontsSupported()) throw new Error('This browser keeps installed fonts private');
+  const all = await window.queryLocalFonts(); localData = new Map();
+  for (const d of all) { if (!d.family || d.family.startsWith('.')) continue; if (!localData.has(d.family)) localData.set(d.family, []); localData.get(d.family).push(d); }
+  return [...localData].map(([family, list]) => ({ family, styles: list.length })).sort((a, b) => a.family.localeCompare(b.family));
+}
+/** Copy an installed family's regular, bold and italic faces in: `[{ name, mime, src, family, weight, style, source }]`. */
+export async function importLocalFamily(family) {
+  const list = localData && localData.get(family); if (!list || !list.length) throw new Error(`“${family}” is not installed on this device`);
+  const guess = list.map(d => ({ d, ...styleWeight(d.style) })), out = [];
+  for (const g of pickFaces(guess)) {
+    const buf = await (await g.d.blob()).arrayBuffer(), kind = fontKind(buf);
+    let bytes = buf, info = null, k = kind;
+    if (kind === 'ttc') { const f = facesIn(buf).find(x => x.postscript === g.d.postscriptName) || facesIn(buf).find(x => x.full === g.d.fullName); if (!f) continue; bytes = extractFace(buf, f.offset); info = f; k = f.cff ? 'otf' : 'ttf'; }
+    else if (kind === 'ttf' || kind === 'otf') info = facesIn(buf)[0];
+    if (!KIND_MIME[k]) continue;
+    const mime = KIND_MIME[k];
+    out.push({ name: g.d.fullName || g.d.postscriptName, mime, src: await blobToDataURL(new Blob([bytes], { type: mime })), family, weight: info ? info.weight : g.weight, style: (info ? info.italic : g.italic) ? 'italic' : 'normal', source: 'device' });
+  }
+  if (!out.length) throw new Error(`Could not read the files for “${family}”`);
+  return out;
 }
 
 /* ---------- images ---------- */

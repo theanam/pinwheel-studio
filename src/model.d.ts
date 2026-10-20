@@ -85,6 +85,12 @@ export interface CustomFont {
   mime: 'font/ttf' | 'font/otf' | 'font/woff' | 'font/woff2';
   /** Data URL of the file; absent in brand.json, where the bytes live in fonts/. */
   src?: string;
+  /** The face this file is: a weight (100–900), or "min max" for a variable font's
+   *  weight axis, and a style. Several entries with one family make up a family. */
+  weight?: number | string;
+  style?: 'normal' | 'italic';
+  /** 'device' when copied from the fonts installed on the user's computer. */
+  source?: 'upload' | 'device';
 }
 
 export interface Brand extends BrandKit {
@@ -318,7 +324,7 @@ export interface ManifestBase {
   name: string;
   assets: AssetIndex;
   /** Uploaded fonts in fonts/: a design carries the ones it uses, a brand kit all of its own. */
-  fonts?: Record<string, { path: string; mime: string; name: string; family: string; bytes: number }>;
+  fonts?: Record<string, { path: string; mime: string; name: string; family: string; bytes: number; weight?: number | string; style?: 'normal' | 'italic' }>;
 }
 
 /** A design: document.json plus assets/ and thumbnail.png. */

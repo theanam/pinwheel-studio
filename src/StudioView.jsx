@@ -1037,16 +1037,16 @@ export default function StudioView(v) {
                           ))}
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                             <span style={{ fontSize: "13px", fontWeight: "600" }}>
-                              Uploaded fonts
+                              Your fonts
                             </span>
-                            <button onClick={v.uploadFont} title="Add a .ttf, .otf, .woff or .woff2 file to the brand" style={{ height: "26px", padding: "0 9px", borderRadius: "6px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", fontWeight: "600", cursor: "pointer", color: "var(--pw-ink)", fontSize: "12px" }} className="pw-h1">
+                            <button onClick={v.uploadFont} title="Add .ttf, .otf, .ttc, .woff or .woff2 files to the brand. Several files of one family become one family with its weights and italics." style={{ height: "26px", padding: "0 9px", borderRadius: "6px", border: "1px solid var(--pw-line-2)", background: "var(--pw-surface)", fontWeight: "600", cursor: "pointer", color: "var(--pw-ink)", fontSize: "12px" }} className="pw-h1">
                               + Upload font
                             </button>
                           </div>
                           {v.noFonts ? (
                             <>
                               <div style={{ fontSize: "12px", color: "var(--pw-muted-2)", marginTop: "-6px" }}>
-                                Your own typefaces, kept with the brand and offered in every font picker. Exports embed them.
+                                Your own typefaces, kept with the brand and offered in every font picker. Add a family's regular, bold and italic files together and bold and italic text use them. Exports embed them. To use a font installed on this computer, open any font picker and choose Installed fonts.
                               </div>
                             </>
                           ) : null}
@@ -1055,7 +1055,7 @@ export default function StudioView(v) {
                               <Fragment key={$index}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 8px 8px 10px", border: "1px solid var(--pw-line-soft)", background: "var(--pw-surface)", borderRadius: "8px" }}>
                                   <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", gap: "3px" }}>
-                                    <span style={sty(f.sampleStyle)} title={f.file}>
+                                    <span style={sty(f.sampleStyle)} title={f.title}>
                                       {f.label}
                                     </span>
                                     <span style={{ fontSize: "11px", color: "var(--pw-muted-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -1521,7 +1521,7 @@ export default function StudioView(v) {
       <input type="file" data-input="project" ref={v.setFileInput} onChange={v.onProjectFile} accept=".pinwheel,.zip" style={{ display: "none" }} />
       <input type="file" data-input="logo" ref={v.setLogoInput} onChange={v.onLogoFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
       <input type="file" data-input="brand" ref={v.setBrandAssetInput} onChange={v.onBrandAssetFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
-      <input type="file" data-input="font" ref={v.setFontInput} onChange={v.onFontFile} accept=".ttf,.otf,.woff,.woff2" multiple="multiple" style={{ display: "none" }} />
+      <input type="file" data-input="font" ref={v.setFontInput} onChange={v.onFontFile} accept=".ttf,.otf,.ttc,.otc,.woff,.woff2" multiple="multiple" style={{ display: "none" }} />
       <input type="file" data-input="pattern" ref={v.setPatternInput} onChange={v.onPatternFile} accept="image/*" multiple="multiple" style={{ display: "none" }} />
       {v.hasWiz ? (
         <>

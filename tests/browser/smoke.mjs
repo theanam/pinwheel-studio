@@ -152,24 +152,56 @@ try {
   await p.wait(100);
   try { await p.clickText('+ From selection'); } catch (e) { console.log('DIAG', await p.eval(`JSON.stringify({ panel: __studio.state.panel, sel: __studio.state.sel, tail: document.querySelector('aside') && document.querySelector('aside').innerText.slice(0, 400) })`)); throw e; }
   check(await p.eval(`__studio.state.brand.textStyles.length === 1`), 'text style saved to brand');
-  // Uploaded fonts: a real TTF from the system goes into the brand, shows in the
-  // font picker, can be chosen for headings, and travels in a .pinwheel file.
+  // Uploaded fonts: real TTFs from the system go into the brand. Two files of one
+  // family become one family with two faces (read from the files' own tables), show
+  // in the font picker, can be chosen for headings, and travel in .pinwheel files.
   const fontPath = process.env.PINWHEEL_TEST_FONT || '/System/Library/Fonts/Supplemental/Arial Bold.ttf';
+  const fontFile = (path, name) => `(async () => { const r = await fetch('data:font/ttf;base64,${fs.readFileSync(path).toString('base64')}'); return new File([await r.blob()], ${JSON.stringify(name)}, { type: 'font/ttf' }); })()`;
   if (fs.existsSync(fontPath)) {
-    const b64 = fs.readFileSync(fontPath).toString('base64');
-    await p.eval(feed('input[data-input="font"]', `(async () => { const r = await fetch('data:font/ttf;base64,${b64}'); return new File([await r.blob()], 'Arial Bold.ttf', { type: 'font/ttf' }); })()`));
+    await p.eval(feed('input[data-input="font"]', fontFile(fontPath, 'Arial Bold.ttf')));
     await p.until(`Object.keys(__studio.state.brand.fonts).length === 1`);
+    const regPath = fontPath.replace(' Bold.ttf', '.ttf');
+    if (fs.existsSync(regPath)) { await p.eval(feed('input[data-input="font"]', fontFile(regPath, 'Arial.ttf'))); await p.until(`Object.keys(__studio.state.brand.fonts).length === 2`); }
     await p.wait(200);
-    const fam = await p.eval(`Object.values(__studio.state.brand.fonts)[0].family`);
-    check(fam === 'Arial Bold' && await p.eval(`document.fonts.check("16px '${fam}'")`), `font uploaded to the brand and loaded (${fam})`);
+    const faces = await p.eval(`Object.values(__studio.state.brand.fonts).map(f => f.family + ' ' + f.weight + ' ' + f.style).sort().join(', ')`);
+    check(/^Arial 400 normal, Arial 700 normal$|^Arial 700 normal$/.test(faces) && await p.eval(`document.fonts.check("bold 16px 'Arial'")`), `uploaded files group into one family by their own names (${faces})`);
+    check(await p.eval(`document.body.innerText.includes('Regular · Bold') || document.body.innerText.includes('Bold')`), 'the brand lists the family with its styles');
     await p.click('aside button[title="Change font"]', 0);
     await p.wait(200);
-    check(await p.eval(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Uploaded') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('Arial Bold') && b.textContent.includes('uploaded'))`), 'the font picker lists the uploaded font first');
-    await p.clickText('Arial Bold', 'button[title="Arial Bold"]');
+    check(await p.eval(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Your fonts') && [...document.querySelectorAll('button')].some(b => b.title === 'Arial' && b.textContent.includes('uploaded'))`), 'the font picker lists the uploaded family first');
+    check(await p.eval(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'On this device') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('Upload font'))`), 'the font picker offers uploading and installed fonts');
+    await p.clickText('Arial', 'button[title="Arial"]');
     await p.wait(200);
-    check(await p.eval(`__studio.state.brand.heading === 'Arial Bold'`), 'uploaded font chosen for headings');
-    const fontRt = await p.eval(`(async () => { const s = __studio; const d = structuredClone(s.state.doc); d.pages[0].els.find(e => e.type === 'text').font = 'Arial Bold'; const blob = await s.IO.packProject(d, s.state.assets, null, s.fontsFor(d)); const r = await s.IO.openProject(blob); const kit = await s.IO.openProject(await s.IO.packBrandKit(s.state.brand, s.B.brandForKit(s.state.brand))); return { design: Object.values(r.fonts).map(f => f.family), kit: Object.values(kit.fonts).map(f => f.family), kitSrc: Object.values(kit.fonts)[0].src.slice(0, 14) }; })()`);
-    check(fontRt.design.includes('Arial Bold') && fontRt.kit.includes('Arial Bold') && fontRt.kitSrc.startsWith('data:font/ttf'), 'the font travels in design and brand-kit files ' + JSON.stringify(fontRt));
+    check(await p.eval(`__studio.state.brand.heading === 'Arial'`), 'uploaded font chosen for headings');
+    const fontRt = await p.eval(`(async () => { const s = __studio; const d = structuredClone(s.state.doc); d.pages[0].els.find(e => e.type === 'text').font = 'Arial'; const blob = await s.IO.packProject(d, s.state.assets, null, s.fontsFor(d)); const r = await s.IO.openProject(blob); const kit = await s.IO.openProject(await s.IO.packBrandKit(s.state.brand, s.B.brandForKit(s.state.brand))); const css = await s.IO.exportFontCSS(['Arial'], s.state.fonts); return { design: Object.values(r.fonts).map(f => f.family + ' ' + f.weight).sort(), kit: Object.values(kit.fonts).map(f => f.family + ' ' + f.weight).sort(), kitSrc: Object.values(kit.fonts)[0].src.slice(0, 14), cssFaces: (css.match(/@font-face/g) || []).length, cssBold: css.includes('font-weight: 700') }; })()`);
+    const nFaces = faces.split(', ').length;
+    check(fontRt.design.length === nFaces && fontRt.design[0].startsWith('Arial') && fontRt.kit.length === nFaces && fontRt.kitSrc.startsWith('data:font/ttf') && fontRt.cssFaces === nFaces && fontRt.cssBold, 'every face travels in design and brand-kit files and exports ' + JSON.stringify(fontRt));
+    // Uploading from a font picker applies the new family straight away.
+    const itPath = '/System/Library/Fonts/Supplemental/Georgia Italic.ttf';
+    if (fs.existsSync(itPath)) {
+      await p.eval(`__studio._afterUpload = n => { window.__picked = n; }`);
+      await p.eval(feed('input[data-input="font"]', fontFile(itPath, 'Georgia Italic.ttf')));
+      await p.until(`window.__picked === 'Georgia'`);
+      check(await p.eval(`Object.values(__studio.state.brand.fonts).some(f => f.family === 'Georgia' && f.style === 'italic')`), 'a font uploaded from the picker is applied, and its italic is read from the file');
+    }
+    // Installed fonts: with the permission granted, the picker lists the computer's
+    // fonts; picking one the catalogue lacks copies its faces into the brand, taking
+    // single faces out of a collection file.
+    await p.send('Browser.grantPermissions', { origin: new globalThis.URL(URL).origin, permissions: ['localFonts'] }).catch(e => console.log('  (no localFonts permission: ' + e.message + ')'));
+    await p.click('aside button[title="Change font"]', 0); await p.wait(200);
+    await p.clickText('Installed fonts…');
+    try { await p.until(`Array.isArray(__studio.state.localFonts)`, 8000); } catch (e) { console.log('  localFonts state:', await p.eval(`String(__studio.state.localFonts)`)); }
+    const local = await p.eval(`Array.isArray(__studio.state.localFonts) ? __studio.state.localFonts.length : -1`);
+    const hasHelv = await p.eval(`Array.isArray(__studio.state.localFonts) && __studio.state.localFonts.some(f => f.family === 'Helvetica')`);
+    if (local > 0 && hasHelv) {
+      await p.type('input[placeholder^="Search"]', 'Helvet'); await p.wait(200);
+      check(await p.eval(`[...document.querySelectorAll('button')].some(b => b.title === 'Helvetica' && b.textContent.includes('installed'))`), `the picker lists installed fonts (${local} families)`);
+      await p.clickText('Helvetica', 'button[title="Helvetica"]');
+      await p.until(`__studio.state.brand.heading === 'Helvetica'`, 15000);
+      const hv = await p.eval(`Object.values(__studio.state.brand.fonts).filter(f => f.family === 'Helvetica').map(f => f.weight + ' ' + f.style + ' ' + f.source + ' ' + f.mime).sort()`);
+      check(hv.length === 4 && hv.every(x => x.includes('device')) && hv.includes('700 normal device font/ttf') && await p.eval(`document.fonts.check("italic bold 16px 'Helvetica'")`), 'an installed family is copied in with regular, bold and italics ' + JSON.stringify(hv));
+    } else console.log('  skip  installed fonts (' + (local < 0 ? 'not available in this browser' : 'no Helvetica installed') + ')');
+    await p.eval(`__studio.setState({ menu: null })`);
   } else console.log('  skip  font upload (no test font at ' + fontPath + ')');
   await p.clickText('Text');
   await p.wait(200);

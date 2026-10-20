@@ -1,6 +1,6 @@
 // node tests/brand.test.mjs — brand kits, logo palettes and the recents trim, all pure.
 import assert from 'node:assert/strict';
-import { newBrand, migrateBrand, brandForFile, brandForKit, brandFromKit, paletteFrom, textStyleFrom, ago, DEFAULT_BRAND, fontFamilyFrom, allFonts } from '../src/brand.js';
+import { newBrand, migrateBrand, brandForFile, brandForKit, brandFromKit, paletteFrom, textStyleFrom, ago, DEFAULT_BRAND, fontFamilyFrom, allFonts, fontFamilies, faceLabel, faceKey } from '../src/brand.js';
 import { dominantColors, kitsFromColors, kitsFromPixels, ensureContrast, hsl } from '../src/palette.js';
 import { beyond, RECENTS_MAX } from '../src/store.js';
 import { contrast, makeTheme, catalog, build, textByKey, editedText, carryText, descFor } from '../src/presets.js';
@@ -55,7 +55,13 @@ const fkit = brandForKit(fb);
 assert.equal(fkit.fonts.f1.src, undefined); assert.equal(fkit.fonts.f1.family, 'Brand Sans');
 const fback = brandFromKit(JSON.parse(JSON.stringify(fkit)), {}, { f1: { src: 'data:font/woff2;base64,AAAA' } });
 assert.equal(fback.fonts.f1.src, 'data:font/woff2;base64,AAAA'); assert.equal(fback.fonts.f1.mime, 'font/woff2');
-assert.deepEqual(Object.keys(allFonts([fb, newBrand(), fb])), ['Brand Sans'], 'registry lists each family once');
+assert.deepEqual(Object.keys(allFonts([fb, newBrand(), fb])), ['Brand Sans|400|normal'], 'registry lists each face once');
+// Faces: several files of one family, each with its weight and style.
+const ff = { a: { name: 'B.ttf', family: 'Brand Sans', mime: 'font/ttf', src: 'data:x', weight: 700 }, b: { name: 'I.ttf', family: 'Brand Sans', mime: 'font/ttf', src: 'data:y', style: 'italic' }, c: { name: 'O.ttf', family: 'Other', mime: 'font/ttf', src: 'data:z' } };
+assert.deepEqual(Object.keys(allFonts([newBrand({ fonts: ff })])).sort(), ['Brand Sans|400|italic', 'Brand Sans|700|normal', 'Other|400|normal']);
+assert.deepEqual(fontFamilies(ff).map(x => [x.family, x.faces.map(([, f]) => faceLabel(f))]), [['Brand Sans', ['Italic', 'Bold']], ['Other', ['Regular']]], 'faces group into families, lightest first');
+assert.equal(faceLabel({ weight: '100 900' }), 'Variable'); assert.equal(faceKey({ family: 'X' }), 'X|400|normal');
+assert.equal(brandForKit(newBrand({ fonts: ff })).fonts.a.weight, 700, 'a kit keeps each face\'s weight'); assert.equal(brandForKit(newBrand({ fonts: ff })).fonts.b.style, 'italic');
 assert.deepEqual(brandFromKit(fkit, {}, {}).fonts, {}, 'a kit missing the font bytes drops the font');
 
 /* ---------- the font catalogue ---------- */

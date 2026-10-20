@@ -45,7 +45,7 @@ export const brandAssetIds = b => [...new Set([...(b.logo ? [b.logo] : []), ...O
 export function brandForKit(b) {
   const { assets, fonts, ...rest } = b;
   return { ...rest, assets: Object.fromEntries(Object.entries(assets || {}).map(([id, a]) => [id, { name: a.name, w: a.w, h: a.h, alpha: !!a.alpha }])),
-    fonts: Object.fromEntries(Object.entries(fonts || {}).map(([id, f]) => [id, { name: f.name, family: f.family, mime: f.mime }])) };
+    fonts: Object.fromEntries(Object.entries(fonts || {}).map(([id, f]) => [id, { name: f.name, family: f.family, mime: f.mime, ...faceOf(f), ...(f.source ? { source: f.source } : {}) }])) };
 }
 
 /** Rebuild a brand from brand.json and the decoded assets of a kit file. */
@@ -68,8 +68,25 @@ export function fontFamilyFrom(fileName, taken = []) {
   while (used.has(name.toLowerCase())) name = `${base} ${n++}`;
   return name;
 }
-/** Every uploaded font across all brands, by family: the editor's font registry. */
-export function allFonts(brands) { const out = {}; for (const b of brands) for (const f of Object.values(b.fonts || {})) if (f.family && f.src && !out[f.family]) out[f.family] = f; return out; }
+/** A font entry is one face of a family: its weight (a number, or "min max" for a
+ *  variable font) and style. Entries from before faces existed are regular. */
+export const faceOf = f => ({ weight: f.weight ?? 400, style: f.style === 'italic' ? 'italic' : 'normal' });
+/** The registry key for a face: family, weight and style. */
+export const faceKey = f => { const { weight, style } = faceOf(f); return `${f.family}|${weight}|${style}`; };
+/** Every uploaded face across all brands, by face key: the editor's font registry. */
+export function allFonts(brands) { const out = {}; for (const b of brands) for (const f of Object.values(b.fonts || {})) { const k = f.family && f.src && faceKey(f); if (k && !out[k]) out[k] = f; } return out; }
+/** Faces grouped into families, in first-seen order: `[{ family, faces: [[id, face]] }]`. */
+export function fontFamilies(fonts) {
+  const m = new Map(); for (const [id, f] of Object.entries(fonts || {})) { if (!f || !f.family) continue; if (!m.has(f.family)) m.set(f.family, []); m.get(f.family).push([id, f]); }
+  return [...m].map(([family, faces]) => ({ family, faces: faces.sort((a, b) => weightNum(a[1]) - weightNum(b[1]) || (a[1].style === 'italic') - (b[1].style === 'italic')) }));
+}
+const weightNum = f => (typeof f.weight === 'number' ? f.weight : 400);
+const WEIGHT_NAMES = { 100: 'Thin', 200: 'Extra Light', 300: 'Light', 400: 'Regular', 500: 'Medium', 600: 'Semibold', 700: 'Bold', 800: 'Extra Bold', 900: 'Black' };
+/** A face's name for people: "Bold Italic", "Light", "Variable". */
+export function faceLabel(f) {
+  const { weight, style } = faceOf(f), w = typeof weight === 'string' ? 'Variable' : WEIGHT_NAMES[weight] || String(weight);
+  return style === 'italic' ? (w === 'Regular' ? 'Italic' : w + ' Italic') : w;
+}
 
 /** A palette entry for the brand's saved colour schemes. */
 export const paletteFrom = (t, name) => ({ id: bid('p'), name: name || 'Scheme', bg: t.bg, ink: t.ink, accent: t.accent, accent2: t.accent2 });
